@@ -1,0 +1,35 @@
+## Fixture catalog for the AshGettext library's own suite.
+##
+## Deliberately its own catalog: the library must be provable against a backend
+## no application owns, so a host's translations never become part of what
+## AshGettext itself guarantees.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "greeting"
+msgstr "Hello"
+
+msgid "intake_added"
+msgstr "Added %{protein}g protein, %{calories} calories"
+
+msgid "album"
+msgid_plural "albums"
+msgstr[0] "%{count} album"
+msgstr[1] "%{count} albums"
+
+msgid "translated_in_english_only"
+msgstr "English only"
+
+msgid "weight_too_low"
+msgstr "Weight must be at least %{min} kg"
+
+msgid "order_already_placed"
+msgstr "This order has already been placed"
+
+msgid "status.placed"
+msgstr "Placed"
+
+msgid "status.awaiting_pickup"
+msgstr "Awaiting pickup"

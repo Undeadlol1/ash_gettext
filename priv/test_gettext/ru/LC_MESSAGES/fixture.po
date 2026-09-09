@@ -1,0 +1,26 @@
+## Fixture catalog for the AshGettext library's own suite.
+##
+## `translated_in_english_only` is intentionally absent here — it is what proves
+## fetch/5 reports a miss instead of silently handing back the msgid.
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "greeting"
+msgstr "Привет"
+
+msgid "intake_added"
+msgstr "Добавлено %{protein}г белка, %{calories} калорий"
+
+msgid "weight_too_low"
+msgstr "Вес должен быть не менее %{min} кг"
+
+msgid "order_already_placed"
+msgstr "Этот заказ уже размещён"
+
+msgid "status.placed"
+msgstr "Размещён"
+
+msgid "status.awaiting_pickup"
+msgstr "Ожидает выдачи"
