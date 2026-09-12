@@ -17,3 +17,6 @@ ash_gettext-*.tar
 .elixir-tools/
 .lexical/
 .DS_Store
+
+# Scratch files written by ExUnit @tmp_dir tests.
+/tmp/

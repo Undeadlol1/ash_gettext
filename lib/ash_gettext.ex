@@ -7,13 +7,6 @@ defmodule AshGettext do
   depends only on what the caller passed in. That makes a translation test a
   single assertion with no setup, no actor, and no database.
 
-  > #### Standalone library {: .info}
-  >
-  > `AshGettext.*` is destined for extraction as a public Hex package. It may
-  > depend on `gettext`, `ash`, `spark` and the standard library — never on the
-  > host application. See `docs/ASH_GETTEXT_RESEARCH.livemd` §2.0. The boundary
-  > is enforced by `Credo.Check.Warning.AshGettextBoundary`.
-
   ## Missing translations are observable
 
   `fetch/5` reports `{:missing, fallback}` rather than silently handing back the

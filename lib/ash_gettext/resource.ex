@@ -10,9 +10,9 @@ defmodule AshGettext.Resource do
 
   Adding this changes nothing about the resource's shape. No attribute is
   rewritten, no enum is replaced, no field is injected into any payload — the
-  extension only points each write action's `error_handler` at the library (see
-  the notebook §2.1a: using `ash_gettext` must never require a diff to a
-  consumer's `attributes do` block).
+  extension only points each write action's `error_handler` at the library.
+  Adopting `ash_gettext` never requires a change to a resource's
+  `attributes do` block.
 
   What to translate is read from the resource's **domain** (`AshGettext.Domain`).
   A resource whose domain does not configure `gettext`, or which sets

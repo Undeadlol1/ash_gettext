@@ -7,7 +7,7 @@ defmodule AshGettext.Errors.Handler do
   the locale is resolved from the changeset, and the error is handed to
   `AshGettext.Errors`.
 
-  It sits below every transport by design (see the notebook §2.0d). It also sits
+  It sits below every transport by design. It also sits
   below every *validation* — an error raised by a custom validation, a builtin
   constraint, or the data layer all arrive here the same way.
 

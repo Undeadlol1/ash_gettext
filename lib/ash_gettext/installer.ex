@@ -17,7 +17,7 @@ defmodule AshGettext.Installer do
   `AshGettext.Locale.Context`, which reads a locale someone already put on the
   action context. Resolving "the signed-in user's saved language" needs to know
   where the host stores that, which is exactly what a generic library must not
-  assume (see the notebook §2.0). `resolver_stub/1` generates a module with the
+  assume. `resolver_stub/1` generates a module with the
   behaviour and a `TODO` instead of guessing.
   """
 
@@ -68,8 +68,7 @@ defmodule AshGettext.Installer do
   installed by the *resource* extension, so a migration that wires only domains
   changes no behaviour at all. This is the other half.
 
-  Resources are never otherwise touched — no attribute, action or policy — which
-  is the notebook's §2.1a promise.
+  Resources are never otherwise touched — no attribute, action or policy.
   """
   # `use Ash.Resource` and nothing more. Without the boundary this also matches
   # `use Ash.Resource.Validation`, `.Change` and `.Preparation` -- 174 files in

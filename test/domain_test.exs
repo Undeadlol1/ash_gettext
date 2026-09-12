@@ -29,8 +29,8 @@ defmodule AshGettext.DomainTest do
     assert option(:default_locale)[:default] == "en"
   end
 
-  test "the text domain defaults to errors" do
-    assert option(:text_domain)[:default] == "errors"
+  test "the text domain defaults to ash_errors, the file mix ash_gettext.extract writes" do
+    assert option(:text_domain)[:default] == "ash_errors"
   end
 
   test "locale resolvers default to reading the action context" do

@@ -1,27 +1,131 @@
 # AshGettext
 
 Gettext translation for Ash validation and error messages, opted into per
-domain. `Ash.Domain` and `Ash.Resource` extensions let a translatable message
-travel as a plain msgid all the way to your host's own Gettext backend,
-without every resource author writing `Gettext.dgettext/3` by hand.
+domain.
 
-## Design constraints
+## Why AshGettext?
 
-- **No host dependency.** This library depends only on `ash`, `spark`,
-  `gettext` and the standard library. It never imports, aliases, or calls
-  into an application that uses it. See `docs/ASH_GETTEXT_RESEARCH.livemd` in
-  the parent repository for the design notebook this library came out of.
-- **Opt-in per domain.** A domain with no `gettext` block is untouched;
-  nothing about adopting this library changes behavior for a resource that
-  doesn't ask for it.
-- **Missing translations are observable.** `AshGettext.fetch/5` reports
-  `{:missing, fallback}` rather than silently returning the msgid, so a
-  missing catalog entry is something a test can catch.
+You can't wrap an Ash error in `dgettext`. Ash raises it, somewhere inside the
+action, and hands the finished struct to whatever renders it. So translating
+Ash errors by hand means catching them on the way out, in every action, in
+every process, forever.
+
+**1. Stop wiring translation into every action.**
+
+Today, translating errors means a handler on each write action and a module to
+back it:
+
+```elixir
+create :register do
+  accept [:email]
+  error_handler {MyApp.Errors, :translate, []}
+end
+
+update :change_email do
+  accept [:email]
+  # forgot the error_handler — this one ships in English
+end
+```
+
+```elixir
+defmodule MyApp.Errors do
+  def translate(changeset, %{message: msg, vars: vars} = error) do
+    locale = changeset.context[:locale] || "en"
+
+    Gettext.with_locale(MyApp.Gettext, locale, fn ->
+      %{error | message: Gettext.dgettext(MyApp.Gettext, "errors", msg, vars)}
+    end)
+  end
+
+  def translate(_changeset, error), do: error
+end
+```
+
+With AshGettext, delete both. Add one block to the domain:
+
+```elixir
+defmodule MyApp.Shop do
+  use Ash.Domain, extensions: [AshGettext.Domain]
+
+  gettext do
+    backend(MyApp.Gettext)
+  end
+end
+```
+
+and the extension to its resources, once, in your base resource:
+
+```elixir
+use Ash.Resource, extensions: [AshGettext.Resource]
+```
+
+Every create, update and destroy is covered — the ones you have and the ones
+your team adds next year. Ash's own messages come through too, once they're in
+your catalog: a `min: 30` constraint fails as "muss mindestens 30 sein", number
+filled in, in JSON:API, GraphQL and LiveView alike.
+
+**2. Stop setting the locale in every process.**
+
+Gettext's locale lives in the current process. So every controller, channel
+and worker that runs an action for a user has to set it first:
+
+```elixir
+def perform(%{args: %{"user_id" => id}}) do
+  user = Accounts.get_user!(id)
+  Gettext.put_locale(MyApp.Gettext, user.locale)   # miss this once: English
+  Orders.cancel_stale(actor: user)
+end
+```
+
+The action already knows who's acting. Say once where their language lives:
+
+```elixir
+defmodule MyApp.UserLocale do
+  @behaviour AshGettext.Locale.Resolver
+
+  def resolve(%{actor: %{locale: locale}}), do: locale
+  def resolve(_), do: nil
+end
+```
+
+```elixir
+gettext do
+  backend(MyApp.Gettext)
+  locale_resolvers([MyApp.UserLocale])
+end
+```
+
+Now every error, from any process, comes out in the actor's language.
+
+**3. Stop maintaining your `.pot` by hand.**
+
+`mix gettext.extract` only finds `gettext` calls. Your Ash messages live in
+`message:` options, so to get them in front of translators you keep a file
+like this in sync by hand:
+
+```elixir
+defmodule MyApp.AshMessages do
+  use Gettext, backend: MyApp.Gettext
+
+  def noop do
+    dgettext_noop("errors", "This email is already registered")
+    dgettext_noop("errors", "must be greater than or equal to %{min}")
+    # ...every message in every resource, forever
+  end
+end
+```
+
+Delete it:
+
+```
+mix ash_gettext.extract          # writes priv/gettext/ash_errors.pot
+mix ash_gettext.extract --check  # in CI: fails when the template is out of date
+```
+
+It reads your resources and writes the template. In CI, `--check` fails the
+build when someone adds a message without its entry.
 
 ## Installation
-
-Add to `mix.exs` (once published) or via a `path:` dependency from within
-this monorepo:
 
 Not on Hex yet:
 
@@ -104,17 +208,18 @@ The `gettext` DSL block on an `Ash.Domain` accepts:
 
 - `backend(Module)` — required, the host's `Gettext.Backend` module.
 - `default_locale("en")` — locale used when none is resolved from context.
-- `text_domain("name")` — the gettext domain (`.pot`/`.po` file) to look
-  translations up in.
+- `text_domain("ash_errors")` — the gettext domain (`.pot`/`.po` file) to look
+  translations up in. Defaults to `ash_errors`, the file
+  `mix ash_gettext.extract` writes.
 - `locale_resolvers([Module, ...])` — modules implementing
-  `AshGettext.Locale.Resolver` to pick a locale from the action context.
-- `translate_errors?(false)` — opt a domain's `gettext` config in without
-  translating errors (rare; mostly for staged rollout).
+  `AshGettext.Locale.Resolver`, tried in order until one picks a locale.
+  Defaults to `AshGettext.Locale.Context`, which reads `context[:locale]`.
+- `translate_errors?(false)` — keep a domain's `gettext` config without
+  translating its errors (mostly for a staged rollout).
 
-An `Ash.Resource.Validation`'s error `message:` becomes the msgid looked up
-in the domain's configured `text_domain`. Use `AshGettext.Extractor` (see
-`mix ash_gettext.extract`) to keep the `.pot` template in sync with every
-`message:` your resources declare.
+An error's `message:` is the msgid, looked up in the domain's `text_domain`.
+Errors from write actions (create, update, destroy) are translated; read
+actions have no error hook in Ash, so their errors pass through as written.
 
 ## Testing your own use of this library
 
@@ -125,7 +230,6 @@ app's tests, which should assert the text through their own API instead.
 ## Development
 
 ```bash
-cd lib/ash_gettext   # from the parent repository's back-end/elixir
 mix deps.get
 mix test
 ```

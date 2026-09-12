@@ -1,6 +1,6 @@
 defmodule AshGettext.ResourceTest do
   @moduledoc """
-  Guards the notebook's §2.1a promise: adopting the extension must never require
+  Guards the promise that adopting the extension must never require
   — or cause — a change to a consumer's resource shape.
 
   `AshGettextFixture.Parcel` uses the extension. If any of these fail, the

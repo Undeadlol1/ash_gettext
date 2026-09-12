@@ -107,7 +107,7 @@ defmodule AshGettextFixture.Parcel do
   A resource that opts into translated errors and nothing else.
 
   Note what is *absent*: no attribute here is declared differently because of
-  `AshGettext.Resource`, which is the notebook's §2.1a promise made concrete.
+  `AshGettext.Resource`.
   """
 
   use Ash.Resource,
