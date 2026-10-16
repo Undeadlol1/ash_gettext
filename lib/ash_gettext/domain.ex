@@ -77,9 +77,10 @@ defmodule AshGettext.Domain do
         type: :boolean,
         default: false,
         doc: """
-        When true, compiling the domain fails if any resource in its `resources`
-        block lacks the `AshGettext.Resource` extension. Off by default on
-        purpose: Ash extensions are opted into, never imposed.
+        When true, compiling the domain reports every resource in its `resources`
+        block that lacks the `AshGettext.Resource` extension (a compiler warning,
+        an error under `--warnings-as-errors`). Off by default on purpose: Ash
+        extensions are opted into, never imposed.
         """
       ]
     ]
