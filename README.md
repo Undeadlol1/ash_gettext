@@ -222,9 +222,11 @@ The `gettext` DSL block on an `Ash.Domain` accepts:
   Defaults to `AshGettext.Locale.Context`, which reads `context[:locale]`.
 - `translate_errors?(false)` — keep a domain's `gettext` config without
   translating its errors (mostly for a staged rollout).
-- `verify_resources?(false)` — when `true`, compiling the domain fails if any
-  of its resources lacks the `AshGettext.Resource` extension. Off by default:
-  extensions are opted into, never imposed.
+- `verify_resources?(false)` — when `true`, compiling the domain reports every
+  resource that lacks the `AshGettext.Resource` extension, as a compiler
+  warning naming each one (an error under `--warnings-as-errors`, the way any
+  Spark verifier reports). Off by default: extensions are opted into, never
+  imposed.
 
 An error's `message:` is the msgid, looked up in the domain's `text_domain`.
 Errors from write actions (create, update, destroy) are translated; read

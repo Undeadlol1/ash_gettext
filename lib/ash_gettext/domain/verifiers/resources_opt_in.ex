@@ -1,10 +1,11 @@
 defmodule AshGettext.Domain.Verifiers.ResourcesOptIn do
   @moduledoc """
-  Fails compilation when a domain that asked for it holds a resource that never
-  added `AshGettext.Resource`.
+  Reports, at compile time, every resource of a domain that asked for it which
+  never added `AshGettext.Resource`.
 
   A resource without the extension silently answers in English; this turns that
-  into a compile error instead of a host-app test with a hand-kept domain list.
+  into a compiler diagnostic (an error under `--warnings-as-errors`, as with any
+  Spark verifier) instead of a host-app test with a hand-kept domain list.
   It checks the extension, not each action's `error_handler`: an action that
   declares its own handler is a deliberate choice the transformer already
   respects.
