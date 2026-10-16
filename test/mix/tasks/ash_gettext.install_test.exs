@@ -67,6 +67,7 @@ defmodule Mix.Tasks.AshGettext.InstallTest do
     assert shop =~ "extensions: [AshGettext.Domain]"
     assert shop =~ "gettext do"
     assert shop =~ "backend MyApp.Gettext"
+    refute shop =~ "locale_resolvers"
     assert read(dir, "order") =~ "extensions: [AshGettext.Resource]"
   end
 

@@ -185,17 +185,22 @@ defmodule AshGettext.InstallerTest do
   end
 
   describe "gettext_block/1" do
-    test "defaults the text domain to the one our own extraction writes" do
-      assert Installer.gettext_block(@opts) =~ ~s|text_domain "ash_errors"|
+    test "writes only the backend when everything else is a default" do
+      block = Installer.gettext_block(@opts)
+
+      assert block =~ "backend MyApp.Gettext"
+      refute block =~ "text_domain"
+      refute block =~ "locale_resolvers"
     end
 
-    test "honours an explicit text domain" do
+    test "leaves out a text domain that is the default" do
+      refute Installer.gettext_block(backend: "MyApp.Gettext", text_domain: "ash_errors") =~
+               "text_domain"
+    end
+
+    test "honours a text domain that differs from the default" do
       assert Installer.gettext_block(backend: "MyApp.Gettext", text_domain: "errors") =~
                ~s|text_domain "errors"|
-    end
-
-    test "uses only the generic resolver when the host has none" do
-      assert Installer.gettext_block(@opts) =~ "locale_resolvers [AshGettext.Locale.Context]"
     end
 
     test "puts a host resolver after the context resolver, so an explicit locale still wins" do
