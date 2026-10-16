@@ -137,6 +137,12 @@ def deps do
 end
 ```
 
+Then run `mix ash_gettext.install` to preview the edits, and
+`mix ash_gettext.install --apply` to write them. It adds the
+`AshGettext.Domain` extension and a `gettext do` block to every domain, and the
+`AshGettext.Resource` extension to every resource; domains already wired are
+skipped, so re-running is safe.
+
 ## A complete example
 
 ```elixir

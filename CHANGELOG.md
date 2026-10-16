@@ -10,3 +10,5 @@
 - `text_domain` defaults to `ash_errors`, the file the extractor writes.
 - `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` for strings
   outside errors, with the locale passed as an argument.
+- `mix ash_gettext.install` previews, and with `--apply` writes, the domain and
+  resource extensions and `gettext` block for an existing app.
