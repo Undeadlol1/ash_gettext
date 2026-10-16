@@ -12,3 +12,5 @@
   outside errors, with the locale passed as an argument.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain and
   resource extensions and `gettext` block for an existing app.
+- `verify_resources?` on the domain `gettext` block: opt-in compile-time check
+  that every resource in the domain carries `AshGettext.Resource`.

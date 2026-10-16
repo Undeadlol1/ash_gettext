@@ -72,8 +72,19 @@ defmodule AshGettext.Domain do
         type: :boolean,
         default: true,
         doc: "Whether resources in this domain translate their action errors."
+      ],
+      verify_resources?: [
+        type: :boolean,
+        default: false,
+        doc: """
+        When true, compiling the domain fails if any resource in its `resources`
+        block lacks the `AshGettext.Resource` extension. Off by default on
+        purpose: Ash extensions are opted into, never imposed.
+        """
       ]
     ]
   }
-  use Spark.Dsl.Extension, sections: [@gettext]
+  use Spark.Dsl.Extension,
+    sections: [@gettext],
+    verifiers: [AshGettext.Domain.Verifiers.ResourcesOptIn]
 end
