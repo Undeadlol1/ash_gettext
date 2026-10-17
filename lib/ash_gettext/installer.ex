@@ -42,7 +42,8 @@ defmodule AshGettext.Installer do
   ## Options
 
     * `:backend` — required; the host's Gettext backend module, as a string.
-    * `:text_domain` — the gettext text domain. Defaults to `"ash_errors"`.
+    * `:text_domain` — the gettext text domain. Defaults to `"ash_errors"`, and
+      is then left out of the block.
     * `:resolver` — a locale resolver module name to place ahead of the generic
       context resolver. Omitted when absent.
   """
@@ -103,19 +104,19 @@ defmodule AshGettext.Installer do
 
   @doc """
   The `gettext do` block for a domain, as source text.
+
+  Only what differs from the DSL defaults is written: `backend` always,
+  `text_domain` when it is not `"ash_errors"`, and `locale_resolvers` when a
+  `:resolver` was given. Repeating a default would pin it, so a later change to
+  the library's default would silently skip every installed domain.
   """
   @spec gettext_block(keyword()) :: String.t()
   def gettext_block(opts) do
-    backend = Keyword.fetch!(opts, :backend)
-    text_domain = Keyword.get(opts, :text_domain, "ash_errors")
+    lines =
+      ["backend #{Keyword.fetch!(opts, :backend)}"] ++
+        text_domain_line(opts[:text_domain]) ++ resolver_line(opts[:resolver])
 
-    """
-      gettext do
-        backend #{backend}
-        text_domain "#{text_domain}"
-        locale_resolvers [#{resolvers(opts)}]
-      end
-    """
+    "  gettext do\n" <> Enum.map_join(lines, &"    #{&1}\n") <> "  end\n"
   end
 
   @doc """
@@ -155,12 +156,11 @@ defmodule AshGettext.Installer do
     """
   end
 
-  defp resolvers(opts) do
-    case Keyword.get(opts, :resolver) do
-      nil -> "AshGettext.Locale.Context"
-      resolver -> "AshGettext.Locale.Context, #{resolver}"
-    end
-  end
+  defp text_domain_line(text_domain) when text_domain in [nil, "ash_errors"], do: []
+  defp text_domain_line(text_domain), do: [~s|text_domain "#{text_domain}"|]
+
+  defp resolver_line(nil), do: []
+  defp resolver_line(resolver), do: ["locale_resolvers [AshGettext.Locale.Context, #{resolver}]"]
 
   # `use Ash.Domain` appears with an extensions list, or bare. Both are common.
   defp add_extension(content) do
