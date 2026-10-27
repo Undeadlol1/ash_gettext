@@ -16,4 +16,4 @@
   that every resource in the domain carries `AshGettext.Resource`.
 - `fetch/5`, `fetch_plural/7` and `fetch_enum_label/5` never report `:missing`
   in the source locale (the backend's default locale): the msgid is the text,
-  so an `en` catalog no longer has to repeat it.
+  so the source language needs no catalog.
