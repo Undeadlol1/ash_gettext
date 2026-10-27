@@ -15,10 +15,12 @@ defmodule AshGettext do
       assert {:ok, _} = AshGettext.fetch(MyApp.Gettext, "errors", "too_low", [], "ru")
 
   The detection is gettext's own signal — a lookup that misses returns the msgid
-  unchanged. One consequence is worth knowing: an *identity* translation, where
-  a catalog deliberately maps a msgid to itself (common in an `en` source
-  catalog), is indistinguishable from a miss and is reported as `:missing`. Use
-  `translate/5` when you only want the string.
+  unchanged. The one exception is the *source locale* (the backend's configured
+  `:default_locale`, else the global `:gettext` one, else `"en"`): there the
+  msgid is the text, no catalog is needed, and `fetch/5` always reports `:ok`.
+  In a translated locale, an *identity* translation (a catalog mapping a msgid
+  to itself) is indistinguishable from a miss and is reported as `:missing`.
+  Use `translate/5` when you only want the string.
   """
 
   @type backend :: module()
@@ -48,7 +50,7 @@ defmodule AshGettext do
     Gettext.with_locale(backend, locale, fn ->
       :dgettext
       |> lookup([backend, text_domain, msgid, to_bindings(bindings)])
-      |> classify([msgid])
+      |> classify(backend, locale, [msgid])
     end)
   end
 
@@ -94,7 +96,7 @@ defmodule AshGettext do
     Gettext.with_locale(backend, locale, fn ->
       :dngettext
       |> lookup([backend, text_domain, msgid, msgid_plural, count, bindings])
-      |> classify([msgid, msgid_plural])
+      |> classify(backend, locale, [msgid, msgid_plural])
     end)
   end
 
@@ -123,7 +125,11 @@ defmodule AshGettext do
   @spec fetch_enum_label(backend(), text_domain(), msgid(), msgid(), locale()) ::
           {:ok, String.t()} | {:missing, String.t()}
   def fetch_enum_label(backend, text_domain, attribute, value, locale) do
-    case fetch(backend, text_domain, enum_msgid(attribute, value), [], locale) do
+    msgid = enum_msgid(attribute, value)
+
+    case fetch(backend, text_domain, msgid, [], locale) do
+      # The source locale echoes an uncovered msgid as a hit; a label must still read as a word.
+      {:ok, ^msgid} -> {:ok, humanize(value)}
       {:ok, label} -> {:ok, label}
       {:missing, _msgid} -> {:missing, humanize(value)}
     end
@@ -150,8 +156,22 @@ defmodule AshGettext do
   defp string({:ok, translated}), do: translated
   defp string({:missing, fallback}), do: fallback
 
-  defp classify(translated, msgids) do
-    if translated in msgids, do: {:missing, translated}, else: {:ok, translated}
+  defp classify(translated, backend, locale, msgids) do
+    if translated in msgids and not source_locale?(backend, locale),
+      do: {:missing, translated},
+      else: {:ok, translated}
+  end
+
+  # In gettext the source text IS the msgid, so an echoed msgid in the source
+  # locale is a hit. The backend's `__gettext__(:default_locale)` already falls
+  # back to the global `:gettext` `:default_locale` (gettext's compiler.ex).
+  defp source_locale?(backend, locale) do
+    default_locale =
+      if function_exported?(backend, :__gettext__, 1),
+        do: backend.__gettext__(:default_locale),
+        else: Application.get_env(:gettext, :default_locale, "en")
+
+    locale == default_locale
   end
 
   # Gettext's runtime entry points are reached through apply/3 so the compiler
