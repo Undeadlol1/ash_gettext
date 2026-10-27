@@ -58,7 +58,20 @@ defmodule AshGettextTest do
 
     test "reports an unknown text domain as :missing" do
       assert {:missing, "greeting"} =
-               AshGettext.fetch(Backend, "no_such_domain", "greeting", [], "en")
+               AshGettext.fetch(Backend, "no_such_domain", "greeting", [], "ru")
+    end
+
+    test "never reports the source locale as :missing, even with no catalog entry" do
+      assert {:ok, "That exact msgid"} =
+               AshGettext.fetch(Backend, @text_domain, "That exact msgid", [], "en")
+
+      assert {:ok, "Hello, Ann"} =
+               AshGettext.fetch(Backend, @text_domain, "Hello, %{name}", [name: "Ann"], "en")
+    end
+
+    test "still reports a msgid with no entry as :missing in a translated locale" do
+      assert {:missing, "That exact msgid"} =
+               AshGettext.fetch(Backend, @text_domain, "That exact msgid", [], "ru")
     end
   end
 
@@ -93,6 +106,22 @@ defmodule AshGettextTest do
     test "reports a locale whose catalog has no plural forms as :missing" do
       assert {:missing, _fallback} =
                AshGettext.fetch_plural(Backend, @text_domain, "album", "albums", 5, [], "ru")
+    end
+
+    test "never reports the source locale as :missing, even with no catalog entry" do
+      assert {:ok, "files"} =
+               AshGettext.fetch_plural(Backend, @text_domain, "file", "files", 2, [], "en")
+
+      assert {:ok, "2 files"} =
+               AshGettext.fetch_plural(
+                 Backend,
+                 @text_domain,
+                 "%{count} file",
+                 "%{count} files",
+                 2,
+                 [],
+                 "en"
+               )
     end
 
     test "keeps the count argument authoritative over a conflicting count binding" do
@@ -143,6 +172,11 @@ defmodule AshGettextTest do
     test "reports a covered value as :ok" do
       assert {:ok, "Размещён"} =
                AshGettext.fetch_enum_label(Backend, @text_domain, :status, :placed, "ru")
+    end
+
+    test "never reports the source locale as :missing, and keeps the humanized label" do
+      assert {:ok, "Awaiting refund"} =
+               AshGettext.fetch_enum_label(Backend, @text_domain, :status, :awaiting_refund, "en")
     end
 
     test "reports an uncovered value as :missing, with the humanized fallback" do
