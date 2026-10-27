@@ -185,7 +185,13 @@ defmodule MyApp.Shipping.Parcel do
 end
 ```
 
-A validation returns a msgid instead of a rendered sentence:
+A validation writes its message as a sentence in the source language, the
+language your code is written in. That sentence is the msgid: gettext's rule is
+that the source text *is* the key, so the source language needs no catalog and
+the `.po` files hold only the other languages. The source language is the
+backend's default locale (`en` unless you configure gettext otherwise). Ids
+like `"weight_too_low"` work mechanically but force you to keep a catalog for
+the source language by hand and show a raw key whenever an entry is missing.
 
 ```elixir
 defmodule MyApp.Shipping.MinimumWeight do
@@ -196,7 +202,7 @@ defmodule MyApp.Shipping.MinimumWeight do
   def validate(changeset, _opts, _context) do
     case Ash.Changeset.get_attribute(changeset, :weight) do
       weight when is_integer(weight) and weight < 30 ->
-        {:error, InvalidAttribute.exception(field: :weight, message: "weight_too_low", vars: [min: 30])}
+        {:error, InvalidAttribute.exception(field: :weight, message: "must weigh at least %{min} kg", vars: [min: 30])}
 
       _ ->
         :ok
@@ -205,8 +211,14 @@ defmodule MyApp.Shipping.MinimumWeight do
 end
 ```
 
-`AshGettext.Resource` renders `"weight_too_low"` through
-`MyApp.Gettext`'s `"shipping"` text domain in the caller's locale.
+`AshGettext.Resource` looks `"must weigh at least %{min} kg"` up in
+`MyApp.Gettext`'s `"shipping"` text domain in the caller's locale. In the
+source locale the sentence itself is the answer; in `ru` the catalog entry is:
+
+```po
+msgid "must weigh at least %{min} kg"
+msgstr "должен весить не меньше %{min} кг"
+```
 
 ## Configuration
 

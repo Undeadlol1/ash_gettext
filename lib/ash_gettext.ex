@@ -12,7 +12,7 @@ defmodule AshGettext do
   `fetch/5` reports `{:missing, fallback}` rather than silently handing back the
   msgid, so a test can assert that a string really *is* covered in a locale:
 
-      assert {:ok, _} = AshGettext.fetch(MyApp.Gettext, "errors", "too_low", [], "ru")
+      assert {:ok, _} = AshGettext.fetch(MyApp.Gettext, "errors", "must weigh at least %{min} kg", [], "ru")
 
   The detection is gettext's own signal — a lookup that misses returns the msgid
   unchanged. The one exception is the *source locale* (the backend's configured
