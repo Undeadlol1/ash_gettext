@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- `AshGettext.Error`: a user-facing error with a required `code`, a translatable
+  `message`, an optional `field` and `vars`, rendered for JSON:API when
+  `:ash_json_api` is present (optional dependency).
+
 ## 0.1.0 — unreleased
 
 - `AshGettext.Domain` and `AshGettext.Resource` extensions: a `gettext do`
