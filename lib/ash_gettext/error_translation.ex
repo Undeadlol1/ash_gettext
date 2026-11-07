@@ -13,6 +13,10 @@ defmodule AshGettext.ErrorTranslation do
 
   Pure by construction: backend, text domain and locale are all arguments, so a
   test is one assertion over one struct — no action run, no database, no actor.
+
+  `AshGettext.ErrorTranslation.ActionHandler` calls this each time a create,
+  update or destroy action fails on a resource that uses `AshGettext.Resource`.
+  You can also call it yourself on any error you already hold.
   """
 
   @type option ::
@@ -24,7 +28,14 @@ defmodule AshGettext.ErrorTranslation do
   Translate `error`'s message, leaving anything untranslatable untouched.
 
   Handles a bare error struct, a list of them, and a class error whose nested
-  `:errors` hold the real messages.
+  `:errors` hold the real messages. Anything that is not a struct with a binary
+  `:message` comes back as it was. Missing options raise `KeyError`.
+
+      AshGettext.ErrorTranslation.translate(error,
+        backend: MyApp.Gettext,
+        text_domain: "ash_errors",
+        locale: "ru"
+      )
 
   ## Options
 

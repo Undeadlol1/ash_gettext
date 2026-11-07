@@ -5,10 +5,18 @@ defmodule AshGettext.Locale.Normalizer do
   Clients send `ru_RU`, `en-US`, `ru`, or nothing at all. Catalogs are keyed by
   the language subtag. This module is the single place that reconciles the two,
   so no call site has to decide what `en_KZ` means.
+
+  `AshGettext.Locale.resolve/2` runs it on the first answer your resolvers give.
+  It runs on every translated error, so it does no I/O and keeps no state.
+  A language the backend does not ship falls back to the default locale.
   """
 
   @doc """
   Reduce `locale` to a supported locale, or `default` when it maps to none.
+
+  The region and script are dropped, so `"ru_RU"` and `"ru-Cyrl"` both become
+  `"ru"`. A `nil` locale returns `default`. The result is always a member of
+  `supported` or `default` itself.
 
       iex> AshGettext.Locale.Normalizer.normalize("ru_RU", ["en", "ru"], "en")
       "ru"
