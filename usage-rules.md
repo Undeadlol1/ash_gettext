@@ -59,6 +59,9 @@ options only when a requirement demands them.
   every literal `message:` in `lib`. Arguments: source paths and
   `--output PATH`. Run `mix ash_gettext.extract --check` in CI: it fails when
   the `.pot` is stale.
+- The extract task always writes `priv/gettext/ash_errors.pot`, whatever the
+  domain's `text_domain`. For a custom `text_domain`, pass
+  `--output priv/gettext/<text_domain>.pot`.
 - Extraction only sees `message:` written as a literal string. A message in a
   module attribute or any other expression is skipped silently: add its
   msgid to the `.pot` by hand. An interpolated string (`"... #{x}"`) is

@@ -2,7 +2,7 @@ defmodule AshGettext.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/Undeadlol1/ash_gettext"
-  @version "0.2.0"
+  @version "0.1.0"
 
   def project do
     [
@@ -104,7 +104,8 @@ defmodule AshGettext.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib priv .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      files:
+        ~w(lib documentation .formatter.exs mix.exs README.md CHANGELOG.md LICENSE usage-rules.md)
     ]
   end
 end
