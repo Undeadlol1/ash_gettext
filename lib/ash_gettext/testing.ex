@@ -1,19 +1,13 @@
 defmodule AshGettext.Testing do
   @moduledoc """
-  One-line assertions about translated text, for the library's own suite and for
-  consumers writing their own.
+  One-line assertions about translated text.
 
-  > #### Not for host application tests {: .warning}
-  >
-  > A host's tests should assert the *text its users read*, through the host's
-  > own API, so they keep passing whether `ash_gettext` sits behind that API or
-  > not. Reaching for these helpers in host tests couples the suite to this
-  > library and throws that property away. A host can enforce this with its
-  > own static-analysis rule against reaching for `AshGettext.Testing` outside
-  > this library's own suite.
+  `assert_translates/6` checks the exact text a message renders as.
+  `assert_covered/5` checks that a catalog has an entry for it, without pinning
+  the wording. Both take the locale as an argument, so tests that use them can
+  run `async: true`.
 
-  These helpers exist for the cases where the library *is* the subject: the
-  library's own tests, and a consumer auditing catalog coverage.
+  See the "How to test with AshGettext" guide for examples.
   """
 
   import ExUnit.Assertions

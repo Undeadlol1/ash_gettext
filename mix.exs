@@ -12,7 +12,8 @@ defmodule AshGettext.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
-      docs: docs(),
+      aliases: aliases(),
+      docs: &docs/0,
       description: description(),
       package: package(),
       name: "AshGettext",
@@ -33,12 +34,66 @@ defmodule AshGettext.MixProject do
       {:spark, "~> 2.3"},
       {:gettext, "~> 1.0"},
       {:ash_json_api, "~> 1.4", optional: true},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      # Only for `mix spark.cheat_sheets`, which generates the DSL reference.
+      {:igniter, "~> 0.6", only: :dev, runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshGettext.Domain",
+      docs: ["spark.cheat_sheets", "docs"]
     ]
   end
 
   defp docs do
-    [main: "readme", extras: ["README.md", "CHANGELOG.md"], source_ref: "v#{@version}"]
+    [
+      main: "readme",
+      source_ref: "v#{@version}",
+      extras: [
+        {"README.md", title: "Home"},
+        "documentation/topics/getting-started.md",
+        "documentation/topics/translating-errors.md",
+        "documentation/topics/locales.md",
+        "documentation/topics/extracting-messages.md",
+        "documentation/topics/testing.md",
+        "documentation/topics/how-it-works.md",
+        {"documentation/dsls/DSL-AshGettext.Domain.md",
+         search_data: Spark.Docs.search_data_for(AshGettext.Domain)},
+        "CHANGELOG.md"
+      ],
+      groups_for_extras: [
+        Topics: ~r"documentation/topics",
+        Reference: ~r"documentation/dsls",
+        "About AshGettext": ["CHANGELOG.md"]
+      ],
+      groups_for_modules: [
+        "Public API": [
+          AshGettext,
+          AshGettext.Domain,
+          AshGettext.Resource,
+          AshGettext.Error,
+          AshGettext.Testing
+        ],
+        Locales: [
+          AshGettext.Locale,
+          AshGettext.Locale.Resolver,
+          AshGettext.Locale.FromContext,
+          AshGettext.Locale.Normalizer
+        ],
+        "How it works": [
+          AshGettext.Info,
+          AshGettext.ErrorTranslation,
+          AshGettext.ErrorTranslation.ActionHandler,
+          AshGettext.Extractor,
+          AshGettext.Installer,
+          AshGettext.Resource.Transformers.AttachErrorHandler,
+          AshGettext.Domain.Verifiers.ValidateResourceExtensions
+        ],
+        "Mix tasks": [Mix.Tasks.AshGettext.Extract, Mix.Tasks.AshGettext.Install]
+      ]
+    ]
   end
 
   defp description do
