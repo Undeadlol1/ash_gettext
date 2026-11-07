@@ -33,6 +33,7 @@ defmodule AshGettext.MixProject do
       {:ash, "~> 3.32"},
       {:spark, "~> 2.3"},
       {:gettext, "~> 1.0"},
+      {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Only for `mix spark.cheat_sheets`, which generates the DSL reference.

@@ -43,6 +43,7 @@ defmodule AshGettext do
   def translate(backend, text_domain, msgid, bindings, locale) do
     backend
     |> translate_or_missing(text_domain, msgid, bindings, locale)
+    |> report_missing(backend, text_domain, to_msgid(msgid), locale)
     |> text_of()
   end
 
@@ -80,6 +81,7 @@ defmodule AshGettext do
   def translate_plural(backend, text_domain, msgid, msgid_plural, count, bindings, locale) do
     backend
     |> translate_plural_or_missing(text_domain, msgid, msgid_plural, count, bindings, locale)
+    |> report_missing(backend, text_domain, to_msgid(msgid), locale)
     |> text_of()
   end
 
@@ -166,7 +168,34 @@ defmodule AshGettext do
   list can never drift from the catalogs on disk.
   """
   @spec known_locales(backend()) :: [locale()]
-  def known_locales(backend), do: Gettext.known_locales(backend)
+  def known_locales(backend) do
+    Enum.uniq([source_locale(backend) | Gettext.known_locales(backend)])
+  end
+
+  @doc """
+  The backend's source locale: the language its msgids are written in, which
+  needs no catalog.
+  """
+  @spec source_locale(backend()) :: locale()
+  def source_locale(backend) do
+    if function_exported?(backend, :__gettext__, 1),
+      do: backend.__gettext__(:default_locale),
+      else: Application.get_env(:gettext, :default_locale, "en")
+  end
+
+  # Emits `[:ash_gettext, :translation, :missing]` so an app can count gaps.
+  defp report_missing({:missing, _} = result, backend, text_domain, msgid, locale) do
+    :telemetry.execute([:ash_gettext, :translation, :missing], %{count: 1}, %{
+      backend: backend,
+      text_domain: text_domain,
+      msgid: msgid,
+      locale: locale
+    })
+
+    result
+  end
+
+  defp report_missing(result, _backend, _text_domain, _msgid, _locale), do: result
 
   defp text_of({:ok, translated}), do: translated
   defp text_of({:missing, fallback}), do: fallback
@@ -178,16 +207,8 @@ defmodule AshGettext do
   end
 
   # In gettext the source text IS the msgid, so an echoed msgid in the source
-  # locale is a hit. The backend's `__gettext__(:default_locale)` already falls
-  # back to the global `:gettext` `:default_locale` (gettext's compiler.ex).
-  defp source_locale?(backend, locale) do
-    default_locale =
-      if function_exported?(backend, :__gettext__, 1),
-        do: backend.__gettext__(:default_locale),
-        else: Application.get_env(:gettext, :default_locale, "en")
-
-    locale == default_locale
-  end
+  # locale is a hit.
+  defp source_locale?(backend, locale), do: locale == source_locale(backend)
 
   # Gettext's runtime entry points are reached through apply/3 so the compiler
   # treats the msgid as data. Calling them directly makes gettext's extraction
