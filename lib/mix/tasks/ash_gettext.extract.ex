@@ -26,6 +26,10 @@ defmodule Mix.Tasks.AshGettext.Extract do
       this run would produce. For CI, so a new `message:` cannot land without
       its template entry.
 
+  The template also lists, for every resource of a translating domain, each
+  public attribute's name and each enum value's label, with a `#.` comment
+  naming the attribute they come from.
+
   Interpolated messages (`message: "Bad value: \#{inspect(x)}"`) cannot be msgids
   and are reported at the end rather than skipped silently — each one is a string
   a user may read in a language they did not choose.
@@ -46,14 +50,15 @@ defmodule Mix.Tasks.AshGettext.Extract do
     paths = if paths == [], do: @default_paths, else: paths
 
     result = paths |> sources() |> Extractor.find_messages()
-    pot = Extractor.to_template(result.messages)
+    messages = Extractor.merge([result.messages, Extractor.resource_messages(resources())])
+    pot = Extractor.to_template(messages)
 
-    report(result, paths)
+    report(result, messages, paths)
 
     if Keyword.get(opts, :check, false) do
       check(output, pot)
     else
-      write(output, pot, length(result.messages))
+      write(output, pot, length(messages))
     end
   end
 
@@ -84,18 +89,24 @@ defmodule Mix.Tasks.AshGettext.Extract do
   end
 
   defp configured_templates do
+    domains() |> Enum.flat_map(&template_for/1) |> Enum.uniq()
+  end
+
+  defp domains do
     Mix.Task.run("app.config")
 
     case Keyword.get(Mix.Project.config(), :app) do
-      nil ->
-        []
-
-      app ->
-        app
-        |> Application.get_env(:ash_domains, [])
-        |> Enum.flat_map(&template_for/1)
-        |> Enum.uniq()
+      nil -> []
+      app -> List.wrap(Application.get_env(app, :ash_domains))
     end
+  end
+
+  # Attribute names and enum labels of every resource in a translating domain.
+  defp resources do
+    for domain <- domains(),
+        {:ok, _settings} <- [AshGettext.Info.settings(domain)],
+        resource <- Ash.Domain.Info.resources(domain),
+        do: resource
   end
 
   defp template_for(domain) do
@@ -116,9 +127,9 @@ defmodule Mix.Tasks.AshGettext.Extract do
     |> Enum.map(&{&1, File.read!(&1)})
   end
 
-  defp report(result, paths) do
+  defp report(result, messages, paths) do
     Mix.shell().info(
-      "Scanned #{Enum.join(paths, ", ")}: #{length(result.messages)} translatable messages."
+      "Scanned #{Enum.join(paths, ", ")}: #{length(messages)} translatable messages."
     )
 
     case result.interpolated do

@@ -95,6 +95,22 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
       refute File.exists?(Path.join(dir, "priv/gettext/ash.pot"))
     end
 
+    test "adds attribute names and enum labels of the translating domains", %{
+      tmp_dir: dir,
+      src: src
+    } do
+      Application.put_env(:ash_gettext, :ash_domains, [AshGettextFixture.Shipping])
+
+      File.cd!(dir, fn -> Extract.run([src]) end)
+
+      pot = File.read!(Path.join(dir, "priv/test_gettext/fixture.pot"))
+      assert pot =~ "#. AshGettextFixture.Parcel.weight\nmsgid \"Weight\""
+      assert pot =~ ~s(msgid "On its way")
+      assert pot =~ ~s(msgid "is too heavy")
+
+      File.cd!(dir, fn -> Extract.run([src, "--check"]) end)
+    end
+
     test "asks which template when the domains disagree", %{tmp_dir: dir, src: src} do
       Application.put_env(:ash_gettext, :ash_domains, [
         AshGettextFixture.Shipping,

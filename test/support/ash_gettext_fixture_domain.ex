@@ -147,6 +147,16 @@ defmodule AshGettextFixture.Parcel do
     attribute :label, :string do
       public?(true)
     end
+
+    attribute :status, AshGettextFixture.ParcelStatus do
+      public?(true)
+    end
+
+    attribute :past_statuses, {:array, AshGettextFixture.ParcelStatus} do
+      public?(true)
+    end
+
+    attribute(:secret_note, :string)
   end
 end
 

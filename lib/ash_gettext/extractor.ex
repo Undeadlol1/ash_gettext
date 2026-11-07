@@ -30,7 +30,11 @@ defmodule AshGettext.Extractor do
   """
 
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
-  @type message :: %{msgid: String.t(), references: [reference_entry()]}
+  @type message :: %{
+          required(:msgid) => String.t(),
+          required(:references) => [reference_entry()],
+          optional(:comments) => [String.t()]
+        }
   @type interpolated :: %{path: String.t(), line: pos_integer()}
   @type find_result :: %{messages: [message()], interpolated: [interpolated()]}
 
@@ -53,6 +57,71 @@ defmodule AshGettext.Extractor do
         |> Enum.sort_by(&{&1.path, &1.line})
     }
   end
+
+  @doc """
+  The messages a list of resources contribute: every public attribute's name
+  (`AshGettext.attribute_msgid/1`) and, for enum attributes (also
+  `{:array, enum}`), every value's label.
+
+  Each message carries a `comments` entry like `MyApp.Parcel.weight` in place of
+  file references. Pure: reads compiled resource modules only.
+  """
+  @spec resource_messages([module()]) :: [message()]
+  def resource_messages(resources) do
+    resources
+    |> Enum.flat_map(fn resource ->
+      resource
+      |> Ash.Resource.Info.public_attributes()
+      |> Enum.flat_map(&attribute_messages(resource, &1))
+    end)
+    |> merge()
+  end
+
+  @doc """
+  Combine message lists, deduplicating by msgid and merging references and
+  comments. Sorted by msgid, so the output is deterministic.
+  """
+  @spec merge([[message()]]) :: [message()]
+  def merge(message_lists) do
+    message_lists
+    |> List.flatten()
+    |> Enum.group_by(& &1.msgid)
+    |> Enum.map(fn {msgid, group} ->
+      %{
+        msgid: msgid,
+        references:
+          group
+          |> Enum.flat_map(& &1.references)
+          |> Enum.uniq()
+          |> Enum.sort_by(&{&1.path, &1.line}),
+        comments:
+          group |> Enum.flat_map(&Map.get(&1, :comments, [])) |> Enum.uniq() |> Enum.sort()
+      }
+    end)
+    |> Enum.sort_by(& &1.msgid)
+  end
+
+  defp attribute_messages(resource, %{name: name, type: type}) do
+    source = "#{inspect(resource)}.#{name}"
+    labels = type |> enum_of() |> enum_labels()
+
+    for msgid <- [AshGettext.attribute_msgid(name) | labels] do
+      %{msgid: msgid, references: [], comments: [source]}
+    end
+  end
+
+  defp enum_of({:array, type}), do: enum_of(type)
+
+  defp enum_of(type) when is_atom(type) do
+    if Code.ensure_loaded?(type) and function_exported?(type, :values, 0) and
+         function_exported?(type, :label, 1),
+       do: type
+  end
+
+  defp enum_of(_type), do: nil
+
+  defp enum_labels(nil), do: []
+  defp enum_labels(enum), do: Enum.map(enum.values(), &enum.label/1)
 
   @doc """
   Render extracted messages as the contents of a `.pot` file.
@@ -148,18 +217,18 @@ defmodule AshGettext.Extractor do
   # A reference deliberately carries no line number: the template is compared
   # byte for byte against a fresh extraction, so any edit above a `message:`
   # would move a line and be reported as a message change.
-  defp entry(%{msgid: msgid, references: references}) do
-    file_references =
-      references
-      |> Enum.map(& &1.path)
-      |> Enum.uniq()
-      |> Enum.map_join("\n", &"#: #{&1}")
+  defp entry(%{msgid: msgid, references: references} = message) do
+    comment_lines = message |> Map.get(:comments, []) |> Enum.map(&"#. #{&1}")
 
-    """
-    #{file_references}
-    msgid "#{escape(msgid)}"
-    msgstr ""
-    """
+    file_lines =
+      references |> Enum.map(& &1.path) |> Enum.uniq() |> Enum.map(&"#: #{&1}")
+
+    Enum.join(comment_lines ++ file_lines, "\n") <>
+      """
+
+      msgid "#{escape(msgid)}"
+      msgstr ""
+      """
   end
 
   defp escape(string) do

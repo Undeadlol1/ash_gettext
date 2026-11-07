@@ -16,7 +16,7 @@ defmodule AshGettext.ResourceTest do
   test "adds no attribute" do
     attributes = Parcel |> Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
-    assert attributes == [:id, :label, :weight]
+    assert attributes == [:id, :label, :past_statuses, :secret_note, :status, :weight]
   end
 
   test "adds no calculation" do

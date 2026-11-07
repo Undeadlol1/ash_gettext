@@ -165,4 +165,49 @@ defmodule AshGettext.ExtractorTest do
       assert Extractor.to_template([]) =~ ~s|msgid ""|
     end
   end
+
+  describe "messages from resources" do
+    test "lists public attribute names and enum labels with where they come from" do
+      messages = Extractor.resource_messages([AshGettextFixture.Parcel])
+
+      assert Enum.map(messages, & &1.msgid) ==
+               Enum.sort(
+                 ~w(Id Label Status Weight) ++
+                   ["Past statuses", "Awaiting pickup", "Lost", "On its way", "Placed"]
+               )
+
+      assert %{comments: ["AshGettextFixture.Parcel.weight"], references: []} =
+               Enum.find(messages, &(&1.msgid == "Weight"))
+
+      assert %{
+               comments: [
+                 "AshGettextFixture.Parcel.past_statuses",
+                 "AshGettextFixture.Parcel.status"
+               ]
+             } =
+               Enum.find(messages, &(&1.msgid == "Lost"))
+    end
+
+    test "skips private attributes" do
+      refute Enum.any?(
+               Extractor.resource_messages([AshGettextFixture.Parcel]),
+               &(&1.msgid == "Secret note")
+             )
+    end
+
+    test "merging combines references and comments of one msgid" do
+      merged =
+        Extractor.merge([
+          [%{msgid: "A", references: [%{path: "b.ex", line: 1}]}],
+          [%{msgid: "A", references: [], comments: ["X.a"]}]
+        ])
+
+      assert [%{msgid: "A", references: [%{path: "b.ex"}], comments: ["X.a"]}] = merged
+    end
+
+    test "the template prints comments" do
+      pot = Extractor.to_template([%{msgid: "A", references: [], comments: ["X.a"]}])
+      assert pot =~ "#. X.a\nmsgid \"A\""
+    end
+  end
 end
