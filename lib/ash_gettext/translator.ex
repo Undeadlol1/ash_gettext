@@ -28,7 +28,8 @@ defmodule AshGettext.Translator do
     * `:locale` - an explicit locale; wins over the resolvers.
     * `:actor` - handed to the resolvers as `:actor`.
     * `:context` - a map merged into the resolver context.
-    * `:text_domain` - defaults to `"default"`.
+    * `:text_domain` - defaults to `"default"`; `enum_label/3` and
+      `attribute_label/3` default to `"ash"`.
 
   A resolver must be a pure function of its context: read the locale off the
   loaded actor, do not query a database.
@@ -61,6 +62,20 @@ defmodule AshGettext.Translator do
           opts
         )
       end
+
+      @doc "Translate the label of an `Ash.Type.Enum` value (see `AshGettext.Translator`)."
+      def enum_label(enum_module, value, opts \\ []),
+        do: AshGettext.Translator.enum_label(__ash_gettext_config__(), enum_module, value, opts)
+
+      @doc "Translate a resource attribute's name (see `AshGettext.Translator`)."
+      def attribute_label(resource, attribute, opts \\ []),
+        do:
+          AshGettext.Translator.attribute_label(
+            __ash_gettext_config__(),
+            resource,
+            attribute,
+            opts
+          )
 
       defp __ash_gettext_config__, do: unquote(opts)
     end
@@ -116,6 +131,30 @@ defmodule AshGettext.Translator do
       msgid_plural,
       count,
       bindings,
+      locale(config, opts)
+    )
+  end
+
+  @doc "Translate an enum value's label in the locale `opts` resolve to."
+  @spec enum_label(keyword(), module(), AshGettext.msgid(), keyword()) :: String.t()
+  def enum_label(config, enum_module, value, opts) do
+    AshGettext.enum_label(
+      Keyword.fetch!(config, :backend),
+      Keyword.get(opts, :text_domain, "ash"),
+      enum_module,
+      value,
+      locale(config, opts)
+    )
+  end
+
+  @doc "Translate a resource attribute's name in the locale `opts` resolve to."
+  @spec attribute_label(keyword(), module(), atom(), keyword()) :: String.t()
+  def attribute_label(config, resource, attribute, opts) do
+    AshGettext.attribute_label(
+      Keyword.fetch!(config, :backend),
+      Keyword.get(opts, :text_domain, "ash"),
+      resource,
+      attribute,
       locale(config, opts)
     )
   end

@@ -1,6 +1,6 @@
 defmodule AshGettext do
   @moduledoc """
-  Translate the text an Ash app shows: strings, plurals and enum values.
+  Translate the text an Ash app shows: strings, plurals, enum values and attribute names.
 
       AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
       #=> "Заказ отправлен"
@@ -118,48 +118,74 @@ defmodule AshGettext do
   end
 
   @doc """
-  The label a catalog gives one value of an enum attribute.
+  The translated label of one value of an `Ash.Type.Enum`.
 
-  The msgid is `"<attribute>.<value>"` — see `enum_msgid/2`. An uncovered value
-  falls back to a humanized form of the value itself (`:awaiting_pickup` reads
-  as `"Awaiting pickup"`), because the alternative is putting `status.awaiting_pickup`
-  in front of a user. The fallback is a stopgap that keeps a screen readable, not
-  a substitute for the catalog entry — use `enum_label_or_missing/5` to assert coverage.
+  The msgid is `enum_module.label(value)`: the value's custom `label:` or, by
+  default, the humanized value (`:awaiting_pickup` is `"Awaiting pickup"`). A
+  value missing from the catalog falls back to that label, and the miss is
+  reported through telemetry like `translate/5`. Use `enum_label_or_missing/5`
+  to assert coverage.
 
-  Nothing here touches the attribute or its `Ash.Type.Enum`: this is a function
-  a caller uses where they already render, not a change to a resource.
+  Raises `ArgumentError` when `enum_module` is not an `Ash.Type.Enum`.
   """
-  @spec enum_label(backend(), text_domain(), msgid(), msgid(), locale()) :: String.t()
-  def enum_label(backend, text_domain, attribute, value, locale) do
+  @spec enum_label(backend(), text_domain(), module(), msgid(), locale()) :: String.t()
+  def enum_label(backend, text_domain, enum_module, value, locale) do
     backend
-    |> enum_label_or_missing(text_domain, attribute, value, locale)
+    |> enum_label_or_missing(text_domain, enum_module, value, locale)
+    |> report_missing(backend, text_domain, label_msgid!(enum_module, value), locale)
     |> text_of()
   end
 
   @doc """
   The label for an enum value, reporting whether the catalog covered it.
   """
-  @spec enum_label_or_missing(backend(), text_domain(), msgid(), msgid(), locale()) ::
+  @spec enum_label_or_missing(backend(), text_domain(), module(), msgid(), locale()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def enum_label_or_missing(backend, text_domain, attribute, value, locale) do
-    msgid = enum_msgid(attribute, value)
-
-    case translate_or_missing(backend, text_domain, msgid, [], locale) do
-      # The source locale echoes an uncovered msgid as a hit; a label must still read as a word.
-      {:ok, ^msgid} -> {:ok, humanize(value)}
-      {:ok, label} -> {:ok, label}
-      {:missing, _msgid} -> {:missing, humanize(value)}
-    end
+  def enum_label_or_missing(backend, text_domain, enum_module, value, locale) do
+    translate_or_missing(backend, text_domain, label_msgid!(enum_module, value), [], locale)
   end
 
   @doc """
-  The msgid an enum value is looked up under: `"<attribute>.<value>"`.
+  The translated name of a resource attribute.
 
-  Public because a catalog author has to know it, and because it is what
-  `mix ash_gettext.extract` and any hand-written entry must agree on.
+  The msgid is `attribute_msgid/1`: the attribute name in sentence case
+  (`:date_of_birth` is `"Date of birth"`). Misses fall back to it and are
+  reported through telemetry. Raises `ArgumentError` for an unknown attribute.
   """
-  @spec enum_msgid(msgid(), msgid()) :: String.t()
-  def enum_msgid(attribute, value), do: "#{to_msgid(attribute)}.#{to_msgid(value)}"
+  @spec attribute_label(backend(), text_domain(), module(), atom(), locale()) :: String.t()
+  def attribute_label(backend, text_domain, resource, attribute, locale) do
+    backend
+    |> attribute_label_or_missing(text_domain, resource, attribute, locale)
+    |> report_missing(backend, text_domain, attribute_msgid!(resource, attribute), locale)
+    |> text_of()
+  end
+
+  @doc """
+  The name of a resource attribute, reporting whether the catalog covered it.
+  """
+  @spec attribute_label_or_missing(backend(), text_domain(), module(), atom(), locale()) ::
+          {:ok, String.t()} | {:missing, String.t()}
+  def attribute_label_or_missing(backend, text_domain, resource, attribute, locale) do
+    translate_or_missing(
+      backend,
+      text_domain,
+      attribute_msgid!(resource, attribute),
+      [],
+      locale
+    )
+  end
+
+  @doc """
+  The msgid an attribute name is looked up under: sentence case,
+  `:date_of_birth` -> `"Date of birth"`.
+  """
+  @spec attribute_msgid(atom() | String.t()) :: String.t()
+  def attribute_msgid(attribute) do
+    attribute
+    |> to_msgid()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 
   @doc """
   The locales `backend` ships catalogs for.
@@ -218,13 +244,20 @@ defmodule AshGettext do
     apply(Gettext, entry_point, args)
   end
 
-  # Sentence case, not title case: an enum value is a word, and `Awaiting pickup`
-  # is what a person would have written if they had written it.
-  defp humanize(value) do
-    value
-    |> to_msgid()
-    |> String.replace("_", " ")
-    |> String.capitalize()
+  defp label_msgid!(enum_module, value) do
+    unless Code.ensure_loaded?(enum_module) and function_exported?(enum_module, :label, 1) do
+      raise ArgumentError, "#{inspect(enum_module)} is not an Ash.Type.Enum"
+    end
+
+    enum_module.label(value)
+  end
+
+  defp attribute_msgid!(resource, attribute) do
+    unless Ash.Resource.Info.attribute(resource, attribute) do
+      raise ArgumentError, "#{inspect(resource)} has no attribute #{inspect(attribute)}"
+    end
+
+    attribute_msgid(attribute)
   end
 
   defp to_msgid(msgid) when is_atom(msgid), do: Atom.to_string(msgid)

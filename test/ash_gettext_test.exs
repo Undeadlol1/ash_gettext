@@ -188,68 +188,96 @@ defmodule AshGettextTest do
   end
 
   describe "labelling an enum value" do
-    test "renders the label a catalog gives an enum value, per locale" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :placed, "en") == "Placed"
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :placed, "ru") == "Размещён"
+    alias AshGettextFixture.ParcelStatus
+
+    test "translates the default (humanized) label per locale" do
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :placed, "ru") ==
+               "Размещён"
+
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :awaiting_pickup, "ru") ==
+               "Ожидает выдачи"
     end
 
-    test "accepts the value as a string, as it arrives from a payload" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, "placed", "ru") == "Размещён"
+    test "translates a custom label: by that label" do
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :shipped, "ru") ==
+               "В пути"
     end
 
-    test "accepts the attribute as a string too" do
-      assert AshGettext.enum_label(Backend, @text_domain, "status", :placed, "ru") == "Размещён"
+    test "the source locale returns the label itself" do
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :shipped, "en") ==
+               "On its way"
+
+      assert {:ok, "Lost"} =
+               AshGettext.enum_label_or_missing(Backend, @text_domain, ParcelStatus, :lost, "en")
     end
 
-    test "renders a multi-word value from the catalog" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :awaiting_pickup, "en") ==
-               "Awaiting pickup"
+    test "reports an uncovered value as :missing, with the label as fallback" do
+      assert {:missing, "Lost"} =
+               AshGettext.enum_label_or_missing(Backend, @text_domain, ParcelStatus, :lost, "ru")
+
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :lost, "ru") == "Lost"
     end
 
-    test "humanizes an uncovered value rather than putting the msgid on screen" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :awaiting_refund, "ru") ==
-               "Awaiting refund"
-    end
-
-    test "humanizes an uncovered value of an attribute no catalog mentions at all" do
-      assert AshGettext.enum_label(Backend, @text_domain, :shipping_speed, :next_day, "en") ==
-               "Next day"
-    end
-  end
-
-  describe "labelling an enum value and reporting a gap" do
-    test "reports a covered value as :ok" do
-      assert {:ok, "Размещён"} =
-               AshGettext.enum_label_or_missing(Backend, @text_domain, :status, :placed, "ru")
-    end
-
-    test "never reports the source locale as :missing, and keeps the humanized label" do
-      assert {:ok, "Awaiting refund"} =
-               AshGettext.enum_label_or_missing(
-                 Backend,
-                 @text_domain,
-                 :status,
-                 :awaiting_refund,
-                 "en"
-               )
-    end
-
-    test "reports an uncovered value as :missing, with the humanized fallback" do
-      assert {:missing, "Awaiting refund"} =
-               AshGettext.enum_label_or_missing(
-                 Backend,
-                 @text_domain,
-                 :status,
-                 :awaiting_refund,
-                 "ru"
-               )
+    test "raises for a module that is not an Ash.Type.Enum" do
+      assert_raise ArgumentError, ~r/not an Ash.Type.Enum/, fn ->
+        AshGettext.enum_label(Backend, @text_domain, String, :placed, "ru")
+      end
     end
   end
 
-  describe "naming the msgid of an enum value" do
-    test "is the convention a catalog author has to know" do
-      assert AshGettext.enum_msgid(:status, :placed) == "status.placed"
-      assert AshGettext.enum_msgid("status", "awaiting_pickup") == "status.awaiting_pickup"
+  describe "labelling an attribute" do
+    alias AshGettextFixture.Parcel
+
+    test "translates the sentence-case attribute name" do
+      assert AshGettext.attribute_label(Backend, @text_domain, Parcel, :weight, "ru") == "Вес"
+      assert AshGettext.attribute_label(Backend, @text_domain, Parcel, :weight, "en") == "Weight"
+    end
+
+    test "reports coverage" do
+      assert {:ok, "Вес"} =
+               AshGettext.attribute_label_or_missing(Backend, @text_domain, Parcel, :weight, "ru")
+
+      assert {:missing, "Label"} =
+               AshGettext.attribute_label_or_missing(Backend, @text_domain, Parcel, :label, "ru")
+    end
+
+    test "raises for an unknown attribute" do
+      assert_raise ArgumentError, ~r/no attribute :nope/, fn ->
+        AshGettext.attribute_label(Backend, @text_domain, Parcel, :nope, "ru")
+      end
+    end
+
+    test "attribute_msgid/1 is sentence case" do
+      assert AshGettext.attribute_msgid(:date_of_birth) == "Date of birth"
+    end
+  end
+
+  describe "missing telemetry from label functions" do
+    setup do
+      id = {__MODULE__, make_ref()}
+      test_pid = self()
+
+      :telemetry.attach(
+        id,
+        [:ash_gettext, :translation, :missing],
+        fn _event, _measurements, metadata, _ -> send(test_pid, {:missing, metadata}) end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+    end
+
+    test "enum_label fires on a miss, not on a hit" do
+      AshGettext.enum_label(Backend, @text_domain, AshGettextFixture.ParcelStatus, :placed, "ru")
+      refute_receive {:missing, %{msgid: "Placed"}}
+
+      AshGettext.enum_label(Backend, @text_domain, AshGettextFixture.ParcelStatus, :lost, "ru")
+      assert_receive {:missing, %{msgid: "Lost", locale: "ru", text_domain: "fixture"}}
+    end
+
+    test "attribute_label fires on a miss" do
+      AshGettext.attribute_label(Backend, @text_domain, AshGettextFixture.Parcel, :label, "ru")
+      assert_receive {:missing, %{msgid: "Label", locale: "ru"}}
     end
   end
 

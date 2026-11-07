@@ -76,6 +76,23 @@ defmodule AshGettext.TranslatorTest do
     end
   end
 
+  describe "enum_label/3 and attribute_label/3" do
+    test "translate by actor locale, defaulting to the ash text domain" do
+      opts = [actor: %{locale: "ru"}, text_domain: "fixture"]
+      assert Translator.enum_label(AshGettextFixture.ParcelStatus, :shipped, opts) == "В пути"
+      assert Translator.attribute_label(AshGettextFixture.Parcel, :weight, opts) == "Вес"
+    end
+
+    test "explicit locale; the default text domain is ash" do
+      # No "ash" catalog in the fixture: falls back to the label.
+      assert Translator.enum_label(AshGettextFixture.ParcelStatus, :shipped, locale: "ru") ==
+               "On its way"
+
+      assert Translator.attribute_label(AshGettextFixture.Parcel, :weight, locale: "en") ==
+               "Weight"
+    end
+  end
+
   describe "missing-translation telemetry" do
     setup do
       id = {__MODULE__, make_ref()}
@@ -112,12 +129,12 @@ defmodule AshGettext.TranslatorTest do
 
     test "does not fire on a hit" do
       Translator.translate("greeting", [], [locale: "ru"] ++ @opts)
-      refute_receive {:missing, _, _}
+      refute_receive {:missing, _, %{msgid: "greeting"}}
     end
 
     test "does not fire in the source locale" do
       Translator.translate("not in any catalog", [], [locale: "en"] ++ @opts)
-      refute_receive {:missing, _, _}
+      refute_receive {:missing, _, %{msgid: "not in any catalog"}}
     end
   end
 
