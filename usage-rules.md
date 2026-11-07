@@ -6,10 +6,11 @@ options only when a requirement demands them.
 
 ## Setup
 
-- Add `{:ash_gettext, "~> 0.1"}` to deps. It needs `:ash`, `:spark` and
-  `:gettext` (a Gettext backend, `use Gettext.Backend`, must already exist in
-  the app). `{:ash_json_api, "~> 1.4"}` is optional: add it only if the app
-  serves JSON:API.
+- AshGettext is not on Hex yet. Add
+  `{:ash_gettext, github: "Undeadlol1/ash_gettext"}` to deps. It needs `:ash`,
+  `:spark` and `:gettext` (a Gettext backend, `use Gettext.Backend`, must
+  already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
+  only if the app serves JSON:API.
 - Run `mix ash_gettext.install` to preview the edits, then
   `mix ash_gettext.install --apply` to write them. It adds the
   `AshGettext.Domain` extension and a `gettext do` block to every domain, and
@@ -55,13 +56,15 @@ options only when a requirement demands them.
   translated text.
 - `text_domain` defaults to `"ash_errors"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash_errors.po`.
-- Run `mix ash_gettext.extract` to write `priv/gettext/ash_errors.pot` from
-  every literal `message:` in `lib`. Arguments: source paths and
-  `--output PATH`. Run `mix ash_gettext.extract --check` in CI: it fails when
-  the `.pot` is stale.
-- The extract task always writes `priv/gettext/ash_errors.pot`, whatever the
-  domain's `text_domain`. For a custom `text_domain`, pass
-  `--output priv/gettext/<text_domain>.pot`.
+- Run `mix ash_gettext.extract` to write the template from every literal
+  `message:` in `lib`. Arguments: source paths and `--output PATH`. Run
+  `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
+- Without `--output` the task writes the file your own lookups read: the
+  backend's `priv` directory holding `<text_domain>.pot`. Do not pass
+  `--output` to correct the path; it is already right.
+- One run writes one template. When the app's domains name different text
+  domains, the task refuses to guess and `--output` becomes required, along
+  with the source paths belonging to that domain.
 - Extraction only sees `message:` written as a literal string. A message in a
   module attribute or any other expression is skipped silently: add its
   msgid to the `.pot` by hand. An interpolated string (`"... #{x}"`) is

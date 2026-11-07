@@ -1,7 +1,5 @@
 # AshGettext
 
-[![Hex.pm](https://img.shields.io/hexpm/v/ash_gettext.svg)](https://hex.pm/packages/ash_gettext)
-[![HexDocs](https://img.shields.io/badge/hexdocs-ash__gettext-blue.svg)](https://hexdocs.pm/ash_gettext)
 [![CI](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml/badge.svg)](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml)
 [![License](https://img.shields.io/hexpm/l/ash_gettext.svg)](https://github.com/Undeadlol1/ash_gettext/blob/main/LICENSE)
 
@@ -41,12 +39,12 @@ Gettext catalogs, in the locale of the request. That's it.
 
 ## Installation
 
-Add the package to `mix.exs`:
+Not on Hex yet, so take it from GitHub:
 
 ```elixir
 def deps do
   [
-    {:ash_gettext, "~> 0.1"}
+    {:ash_gettext, github: "Undeadlol1/ash_gettext"}
   ]
 end
 ```
@@ -155,8 +153,8 @@ the file is out of date. See
   lookup works, but the `.pot` has no entry until you add it by hand.
 - **A message built with `#{...}` cannot be a msgid.** The extract task lists
   each one so you can rewrite it with `%{name}` and `vars`.
-- **`mix ash_gettext.extract` always writes `priv/gettext/ash_errors.pot`.** A
-  custom `text_domain` needs `--output priv/gettext/<domain>.pot`.
+- **One run writes one template.** When your domains name different text
+  domains, `mix ash_gettext.extract` asks you to pick one with `--output`.
 - **An action's own `error_handler` is kept.** AshGettext does not replace a
   handler you wrote.
 

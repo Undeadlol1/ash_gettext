@@ -5,7 +5,7 @@ defmodule Mix.Tasks.AshGettext.Extract do
   Write every translatable Ash `message:` string to a `.pot` file.
 
       mix ash_gettext.extract
-      mix ash_gettext.extract lib apps/other/lib --output priv/gettext/ash_errors.pot
+      mix ash_gettext.extract lib apps/other/lib --output priv/gettext/shipping.pot
       mix ash_gettext.extract --check
 
   `mix gettext.extract` only sees calls to gettext macros. Ash error messages are
@@ -15,8 +15,13 @@ defmodule Mix.Tasks.AshGettext.Extract do
 
   ## Options
 
-    * `--output` — where to write the template.
-      Defaults to `priv/gettext/ash_errors.pot`.
+    * `--output` — where to write the template. Defaults to the file your own
+      errors are looked up in: the `priv` directory of the backend your domains
+      name, holding `<text_domain>.pot`. A domain with the default
+      `text_domain` of `ash_errors` and a backend on the default `priv` gives
+      `priv/gettext/ash_errors.pot`. When the app's domains translate into more
+      than one template, there is no single answer and this option becomes
+      required.
     * `--check` — write nothing; exit non-zero if the file on disk is not what
       this run would produce. For CI, so a new `message:` cannot land without
       its template entry.
@@ -30,14 +35,14 @@ defmodule Mix.Tasks.AshGettext.Extract do
 
   alias AshGettext.Extractor
 
-  @default_output "priv/gettext/ash_errors.pot"
+  @fallback_output "priv/gettext/ash_errors.pot"
   @default_paths ["lib"]
 
   @impl Mix.Task
   def run(argv) do
     {opts, paths} = OptionParser.parse!(argv, strict: [output: :string, check: :boolean])
 
-    output = Keyword.get(opts, :output, @default_output)
+    output = Keyword.get_lazy(opts, :output, &default_output/0)
     paths = if paths == [], do: @default_paths, else: paths
 
     result = paths |> sources() |> Extractor.find_messages()
@@ -49,6 +54,57 @@ defmodule Mix.Tasks.AshGettext.Extract do
       check(output, pot)
     else
       write(output, pot, length(result.messages))
+    end
+  end
+
+  # Where the template goes when nobody says. It has to be the file the lookups
+  # read, which is the backend's priv directory holding `<text_domain>.pot`. A
+  # fixed `ash_errors.pot` left anyone who set a custom `text_domain` with a
+  # template their own errors never consult.
+  defp default_output do
+    case configured_templates() do
+      [] ->
+        @fallback_output
+
+      [only] ->
+        only
+
+      several ->
+        Mix.raise("""
+        The domains in this app translate into more than one template:
+
+          #{Enum.join(several, "\n  ")}
+
+        One run writes one template, so name the one you mean along with the
+        sources whose messages belong in it:
+
+            mix ash_gettext.extract lib/my_app/shipping --output #{hd(several)}
+        """)
+    end
+  end
+
+  defp configured_templates do
+    Mix.Task.run("app.config")
+
+    case Keyword.get(Mix.Project.config(), :app) do
+      nil ->
+        []
+
+      app ->
+        app
+        |> Application.get_env(:ash_domains, [])
+        |> Enum.flat_map(&template_for/1)
+        |> Enum.uniq()
+    end
+  end
+
+  defp template_for(domain) do
+    with {:ok, %{backend: backend, text_domain: text_domain}} <- AshGettext.Info.settings(domain),
+         true <- Code.ensure_loaded?(backend),
+         true <- function_exported?(backend, :__gettext__, 1) do
+      [Path.join(backend.__gettext__(:priv), "#{text_domain}.pot")]
+    else
+      _not_translating -> []
     end
   end
 
