@@ -1,4 +1,4 @@
-defmodule AshGettext.ErrorTranslation.ActionHandler do
+defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @moduledoc """
   The `error_handler` that `AshGettext.Resource` installs on write actions.
 

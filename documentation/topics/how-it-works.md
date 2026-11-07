@@ -1,14 +1,26 @@
 # How AshGettext works
 
-This page explains what AshGettext does when a resource compiles and when an
-error is raised, and why it has the limits it has.
+This page explains what AshGettext does when you translate text, when a
+resource compiles and when an error is raised, and why it has the limits it
+has.
+
+## When you translate text
+
+`AshGettext.translate/5` runs Gettext's own `dgettext` with the backend, the
+text domain, the text and the values you pass. It sets the language for that
+one call with `Gettext.with_locale/3`, so the process's own language is left
+as it was. `translate_plural/7` does the same with `dngettext`.
+
+Gettext returns the text unchanged when it has no translation. In any
+language but your own, AshGettext reports that as missing. That is how the
+`_or_missing` functions and `AshGettext.Testing` know.
 
 ## When a resource compiles
 
 The `AshGettext.Resource` extension runs a transformer,
 `AshGettext.Resource.Transformers.AttachErrorHandler`. It goes through the
 resource's actions and sets the `error_handler` of each create, update and
-destroy action to `AshGettext.ErrorTranslation.ActionHandler.translate_error/2`.
+destroy action to `AshGettext.ErrorTranslation.ErrorHandler.translate_error/2`.
 
 - An action that already has an `error_handler` is left alone.
 - Read and generic actions are skipped, because Ash has no `error_handler`
@@ -68,16 +80,18 @@ catalogs, so it cannot disagree with the files on disk.
 |---|---|
 | `AshGettext.Domain` | The `gettext` block and its verifier. |
 | `AshGettext.Resource` | The extension that attaches the handler. |
-| `AshGettext.ErrorTranslation.ActionHandler` | The `error_handler`. Resolves the locale, then translates. |
+| `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Resolves the locale, then translates. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Locale` | Runs the resolvers, then normalizes. |
-| `AshGettext` | Looks one message up in the backend. |
+| `AshGettext` | Looks text up in the backend: strings, plurals, enum values. |
 
 `AshGettext.ErrorTranslation.translate/2` and `AshGettext.Locale.resolve/2`
 take everything they need as arguments, so you can call them yourself.
 
 ## Limits
 
+- **Text passed to `AshGettext.translate/5` is not extracted.** Neither
+  extract task sees it. Add it to the template by hand.
 - **Only write actions are translated.** Ash has no `error_handler` for reads
   or generic actions. Their errors reach the caller as written.
 - **A handler you wrote is kept.** If an action declares its own

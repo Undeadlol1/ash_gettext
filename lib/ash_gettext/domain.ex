@@ -1,6 +1,6 @@
 defmodule AshGettext.Domain do
   @moduledoc """
-  Declares, once per Ash domain, how this application translates.
+  Declares, once per Ash domain, how its action errors are translated.
 
       defmodule MyApp.Shop do
         use Ash.Domain, extensions: [AshGettext.Domain]
@@ -33,7 +33,7 @@ defmodule AshGettext.Domain do
 
   @gettext %Spark.Dsl.Section{
     name: :gettext,
-    describe: "Configure how this domain translates user-facing strings.",
+    describe: "Configure how the errors of this domain's actions are translated.",
     examples: [
       """
       gettext do

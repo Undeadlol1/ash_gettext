@@ -1,41 +1,32 @@
 # AshGettext
 
 [![CI](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml/badge.svg)](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml)
-[![License](https://img.shields.io/hexpm/l/ash_gettext.svg)](https://github.com/Undeadlol1/ash_gettext/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Undeadlol1/ash_gettext/blob/main/LICENSE)
 
-Gettext translation for [Ash](https://hexdocs.pm/ash) errors. Validation
-messages come out in the reader's language, with no handler on each action.
+Translations for [Ash](https://hexdocs.pm/ash) apps, with Gettext. Your
+text, your enum values and Ash's error messages come out in each user's
+language.
 
 ## TL;DR
 
 ```elixir
-defmodule MyApp.Shop do
-  use Ash.Domain, extensions: [AshGettext.Domain]
-
-  gettext do
-    backend(MyApp.Gettext)
-  end
-end
-
-# in each resource
-use Ash.Resource, extensions: [AshGettext.Resource]
+AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
+#=> "Заказ отправлен"
 ```
 
-Every error from a create, update or destroy action is looked up in your
-Gettext catalogs, in the locale of the request. That's it.
+Write the text in your own language and put the other languages in your
+Gettext catalogs. The language is an argument, so nothing has to be set per
+process. That's it.
 
 ## Features
 
-- **No handler on each action.** The resource extension translates every
-  create, update and destroy action, including ones you add later.
-- **One place for the locale.** List resolvers in the domain, and errors
-  follow the actor's language from any process.
-- **No second message list.** `mix ash_gettext.extract` finds every `message:`
-  and writes the `.pot` file.
-- **The source language needs no catalog.** The sentence in your code is the
-  msgid, so `.po` files hold only the other languages.
-- **Coded errors.** `AshGettext.Error` carries a `code` for clients and a
-  translated `message` for people, and renders for JSON:API.
+- **Translate any text.** Strings, plurals and enum values, from any
+  process.
+- **Ash's errors in the user's language.** Add one block to a domain, and
+  its create, update and destroy errors are translated, with no handler on
+  each action.
+- **Missing translations show up in tests.** Check that every language has
+  a translation, with tests that run in parallel.
 
 ## Installation
 
@@ -49,114 +40,122 @@ def deps do
 end
 ```
 
-Then preview the edits the install task would make, and apply them:
+Your app needs a Gettext backend, `use Gettext.Backend`. Translating text
+needs nothing else. To translate Ash's errors, see
+[Translate Ash's errors](#translate-ash-s-errors).
+
+## Usage
+
+### Translate text
+
+The text you write is the key. In your own language it is also the
+translation, so you keep catalogs only for the other languages:
+
+```elixir
+AshGettext.translate(MyApp.Gettext, "default", "Hello, %{name}", [name: "Ann"], "ru")
+#=> "Привет, Ann"
+
+AshGettext.translate_plural(MyApp.Gettext, "default", "%{count} parcel", "%{count} parcels", 3, [], "ru")
+#=> "3 посылки"
+```
+
+### Show an enum value
+
+```elixir
+AshGettext.enum_label(MyApp.Gettext, "default", :status, :awaiting_pickup, "ru")
+#=> "Ожидает выдачи"
+```
+
+The key is `status.awaiting_pickup`. With no translation, the label reads
+"Awaiting pickup", never the raw key.
+
+### Pick the user's language
+
+Browsers send `ru_RU` or `en-US`. `AshGettext.Locale.resolve/2` turns that
+into a language your catalogs have, or the default:
+
+```elixir
+AshGettext.Locale.resolve(%{locale: "ru_RU"},
+  supported: AshGettext.known_locales(MyApp.Gettext),
+  default: "en"
+)
+#=> "ru"
+```
+
+### Translate Ash's errors
+
+Add a `gettext` block to the domain and the extension to its resources:
+
+```elixir
+defmodule MyApp.Shop do
+  use Ash.Domain, extensions: [AshGettext.Domain]
+
+  gettext do
+    backend(MyApp.Gettext)
+  end
+end
+```
+
+```elixir
+use Ash.Resource, extensions: [AshGettext.Resource]
+```
+
+Or let the install task add both to every domain and resource. The first
+command shows the edits, the second writes them:
 
 ```
 mix ash_gettext.install
 mix ash_gettext.install --apply
 ```
 
-It adds the extensions to every domain and resource and names your Gettext
-backend. See [Getting started](documentation/topics/getting-started.md) to do
-it by hand.
-
-## Usage
-
-### Write the message in your own language
-
-The `message:` is the msgid. Put values in with `%{name}` and `vars`:
+An error's `message:` is now looked up like any other text, in the language
+from the action's `context: %{locale: "ru"}`:
 
 ```elixir
-InvalidAttribute.exception(
-  field: :weight,
-  message: "must weigh at least %{min} kg",
-  vars: [min: 30]
-)
+validate present(:email), message: "can't be blank"
 ```
 
-```po
-# priv/gettext/ru/LC_MESSAGES/ash_errors.po
-msgid "must weigh at least %{min} kg"
-msgstr "должен весить не меньше %{min} кг"
-```
-
-See [Translating errors](documentation/topics/translating-errors.md).
-
-### Choose the language from the user
-
-```elixir
-defmodule MyApp.UserLocale do
-  @behaviour AshGettext.Locale.Resolver
-
-  def resolve(%{actor: %{locale: locale}}), do: locale
-  def resolve(_context), do: nil
-end
-
-gettext do
-  backend(MyApp.Gettext)
-  locale_resolvers([MyApp.UserLocale, AshGettext.Locale.FromContext])
-end
-```
-
-The first resolver that returns a locale wins. See
+To take the language from the signed-in user instead, see
 [Locales](documentation/topics/locales.md).
 
-### Write the template
-
-```
-mix ash_gettext.extract
-mix ash_gettext.extract --check
-```
-
-The first writes `priv/gettext/ash_errors.pot`. The second fails in CI when
-the file is out of date. See
-[Extracting messages](documentation/topics/extracting-messages.md).
-
-### Return a coded error
+### Check translations in tests
 
 ```elixir
-{:error,
- AshGettext.Error.exception(
-   code: :weight_too_low,
-   field: :weight,
-   message: "must weigh at least %{min} kg",
-   vars: [min: 30]
- )}
-```
+import AshGettext.Testing
 
-`code` is required. See
-[Translating errors](documentation/topics/translating-errors.md#return-a-coded-error).
+test "the shipped message has a Russian translation" do
+  assert_covered(MyApp.Gettext, "default", "Order shipped", "ru")
+end
+```
 
 ## Learn more
 
-- [Getting started](documentation/topics/getting-started.md): install, wire a
-  domain and a resource, and see one error in two languages.
-- [Translating errors](documentation/topics/translating-errors.md): what is
-  translated, placeholders, coded errors and rolling out one domain at a time.
-- [Locales](documentation/topics/locales.md): resolvers, their order, and how
-  a locale is matched to your catalogs.
-- [Extracting messages](documentation/topics/extracting-messages.md): the
-  `.pot` template and the CI check.
-- [How to test with AshGettext](documentation/topics/testing.md): check that a
-  message is translated and that the template is current.
-- [How AshGettext works](documentation/topics/how-it-works.md): the handler,
-  the path of an error, and the limits.
+- [Translating text](documentation/topics/translating-text.md): strings,
+  placeholders, plurals and enum values.
+- [Locales](documentation/topics/locales.md): where the user's language comes
+  from, and how it is matched to your catalogs.
+- [Translating errors](documentation/topics/translating-errors.md): which
+  errors are translated, coded errors, and turning it on one domain at a time.
+- [Extracting messages](documentation/topics/extracting-messages.md): put
+  Ash's `message:` strings in a `.pot` template, and check it in CI.
+- [How to test with AshGettext](documentation/topics/testing.md): check that
+  a translation exists and that an action returns it.
+- [How AshGettext works](documentation/topics/how-it-works.md): the path of a
+  lookup, the path of an error, and the limits.
 - [DSL reference](documentation/dsls/DSL-AshGettext.Domain.md): every option
   in the `gettext` block.
 
 ## Limits
 
-- **Only create, update and destroy actions are translated.** Ash gives read
-  and generic actions no `error_handler`, so their errors reach the caller as
-  written.
-- **A `message:` set from a module attribute is skipped by extraction.** The
-  lookup works, but the `.pot` has no entry until you add it by hand.
-- **A message built with `#{...}` cannot be a msgid.** The extract task lists
-  each one so you can rewrite it with `%{name}` and `vars`.
-- **One run writes one template.** When your domains name different text
-  domains, `mix ash_gettext.extract` asks you to pick one with `--output`.
-- **An action's own `error_handler` is kept.** AshGettext does not replace a
-  handler you wrote.
+- **Only create, update and destroy errors are translated.** Ash gives read
+  and generic actions no error handler, so their errors arrive as written.
+- **Text passed to `AshGettext.translate/5` is not extracted.** Neither
+  `mix gettext.extract` nor `mix ash_gettext.extract` sees it. Add it to the
+  template by hand, or write it with a Gettext macro.
+- **A message built with `#{...}` cannot be translated.** Write `%{name}` in
+  the text and pass the value instead.
+- **A handler you wrote is kept.** An action with its own `error_handler`
+  is not translated.
 
 ## For AI assistants
 

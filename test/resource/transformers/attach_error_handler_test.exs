@@ -2,7 +2,7 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandlerTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Info
-  alias AshGettext.ErrorTranslation.ActionHandler
+  alias AshGettext.ErrorTranslation.ErrorHandler
   alias AshGettext.Resource.Transformers.AttachErrorHandler
   alias AshGettextFixture.Opinionated
   alias AshGettextFixture.Parcel
@@ -13,16 +13,16 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandlerTest do
 
   describe "attaching the error handler" do
     test "points a create action at the library's handler" do
-      assert handler_for(Parcel, :create) == {ActionHandler, :translate_error, []}
+      assert handler_for(Parcel, :create) == {ErrorHandler, :translate_error, []}
     end
 
     test "points an update action at it too" do
-      assert handler_for(Parcel, :relabel) == {ActionHandler, :translate_error, []}
+      assert handler_for(Parcel, :relabel) == {ErrorHandler, :translate_error, []}
     end
 
     test "installs it on a resource whose domain switched translation off, so the flag stays runtime" do
       assert handler_for(AshGettextFixture.SwitchedOff.Parcel, :create) ==
-               {ActionHandler, :translate_error, []}
+               {ErrorHandler, :translate_error, []}
     end
   end
 

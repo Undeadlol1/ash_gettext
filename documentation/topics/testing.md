@@ -1,6 +1,8 @@
 # How to test with AshGettext
 
-The examples below use this domain and a Russian catalog. Swap in your own.
+This page shows how to check that your translations exist and that an Ash
+action returns them. The examples below use this domain and a Russian
+catalog. Swap in your own.
 
 ```elixir
 gettext do

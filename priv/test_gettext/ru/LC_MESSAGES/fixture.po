@@ -24,3 +24,6 @@ msgstr "Размещён"
 
 msgid "status.awaiting_pickup"
 msgstr "Ожидает выдачи"
+
+msgid "must weigh at least %{greater_than_or_equal_to} kg"
+msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"

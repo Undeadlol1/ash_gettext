@@ -1,40 +1,39 @@
 # Locales
 
-This page explains how AshGettext picks the language for an error, and how to
-make it follow the signed-in user.
+This page explains how AshGettext picks a language: from what a client
+sends, from the signed-in user, or from a default.
 
-## Stop setting the locale in every process
+## Turn what a client sends into a language
 
-Gettext keeps its locale in the current process. So every controller, channel
-and background job has to set it before it runs an action:
-
-```elixir
-def perform(%{args: %{"user_id" => id}}) do
-  user = Accounts.get_user!(id)
-  Gettext.put_locale(MyApp.Gettext, user.locale)
-  Orders.cancel_stale(actor: user)
-end
-```
-
-With AshGettext, delete that line. The locale is worked out from the action
-itself, so it is the same in any process.
-
-## Pass a locale on the context
-
-The default resolver is `AshGettext.Locale.FromContext`. It reads
-`context[:locale]`:
+Clients send `ru_RU`, `en-US`, `ru` or nothing. `AshGettext.Locale.resolve/2`
+turns that into a language your catalogs have:
 
 ```elixir
-Ash.create(changeset, context: %{locale: "ru"})
+AshGettext.Locale.resolve(%{locale: "ru_RU"},
+  supported: AshGettext.known_locales(MyApp.Gettext),
+  default: "en"
+)
+#=> "ru"
+
+AshGettext.Locale.resolve(%{locale: "de"},
+  supported: AshGettext.known_locales(MyApp.Gettext),
+  default: "en"
+)
+#=> "en"
 ```
 
-A string key works too, `%{"locale" => "ru"}`, for a locale that came through
-JSON. Use this when the locale is known at the call site, and in tests.
+It cuts the region off and keeps the language. A language with no catalog
+becomes the default. `AshGettext.known_locales/1` reads the languages from
+the backend's `priv` directory, so adding a language directory is all it
+takes to support one.
 
-## Take the locale from the actor
+Pass the result as the last argument of `AshGettext.translate/5` and the
+other functions in [Translating text](translating-text.md).
 
-A resolver is a module with one function. It gets a map and returns a locale
-string, or `nil` if it has no answer:
+## Take the language from the signed-in user
+
+A resolver is a module with one function. It gets a map and returns a
+language, or `nil` if it has no answer:
 
 ```elixir
 defmodule MyApp.UserLocale do
@@ -46,73 +45,53 @@ defmodule MyApp.UserLocale do
 end
 ```
 
-The map holds `:locale` (from the action context), `:actor` and `:changeset`.
-List the resolver in the domain:
+Pass your resolvers to `resolve/2`:
 
 ```elixir
-gettext do
-  backend(MyApp.Gettext)
-  locale_resolvers([MyApp.UserLocale, AshGettext.Locale.FromContext])
-end
+AshGettext.Locale.resolve(%{actor: current_user},
+  resolvers: [MyApp.UserLocale, AshGettext.Locale.FromContext],
+  supported: AshGettext.known_locales(MyApp.Gettext),
+  default: "en"
+)
 ```
 
-Now every error, from any process, comes out in the actor's language.
+The default resolver is `AshGettext.Locale.FromContext`. It reads
+`:locale` from the map, or `"locale"` for a value that came through JSON.
 
 ## Know the order resolvers run in
 
 Resolvers run in the order you list them. The first one that returns a
-locale wins, and a `nil` passes the question to the next:
+language wins, and a `nil` passes the question to the next:
 
 ```elixir
-locale_resolvers([MyApp.UserLocale, AshGettext.Locale.FromContext])
+[MyApp.UserLocale, AshGettext.Locale.FromContext]
 ```
 
-Here the actor's language wins over `context[:locale]`. Swap the two to let an
-explicit locale win. Setting `locale_resolvers` replaces the default list, so
-add `AshGettext.Locale.FromContext` yourself if you still want it.
+Here the user's language wins over an explicit `:locale`. Swap the two to let
+an explicit `:locale` win. Your list replaces the default one, so add
+`AshGettext.Locale.FromContext` yourself if you still want it.
 
-## Set the fallback locale
+## Choose the language of Ash's errors
 
-When no resolver answers, `default_locale` applies. It is `"en"` unless you
-change it:
+[Translated errors](translating-errors.md) run the same steps, with the
+settings from the domain's `gettext` block:
 
 ```elixir
 gettext do
   backend(MyApp.Gettext)
-  default_locale("ru")
+  default_locale("en")
+  locale_resolvers([MyApp.UserLocale, AshGettext.Locale.FromContext])
 end
 ```
 
-## How a locale is matched to your catalogs
-
-Clients send `ru_RU`, `en-US`, `ru` or nothing. AshGettext cuts the region off
-and keeps the language, then checks it against the locales the backend has
-catalogs for:
-
-```elixir
-AshGettext.Locale.Normalizer.normalize("ru_RU", ["en", "ru"], "en")
-#=> "ru"
-
-AshGettext.Locale.Normalizer.normalize("de", ["en", "ru"], "en")
-#=> "en"
-```
-
-A language with no catalog falls back to `default_locale`. The list of known
-locales comes from the backend's `priv` directory, so adding a language
-directory is all it takes to support one. See `AshGettext.known_locales/1`.
-
-## Call the resolver chain yourself
-
-`AshGettext.Locale.resolve/2` runs the same steps outside an action:
+Each resolver gets a map with `:locale` from the action context, `:actor`
+and `:changeset`. So a background job no longer has to call
+`Gettext.put_locale/2` before it runs an action: the language comes from the
+action itself, in any process.
 
 ```elixir
-AshGettext.Locale.resolve(%{locale: "ru_RU"},
-  resolvers: [AshGettext.Locale.FromContext],
-  supported: AshGettext.known_locales(MyApp.Gettext),
-  default: "en"
-)
-#=> "ru"
+Ash.create(changeset, context: %{locale: "ru"})
 ```
 
-Use it to pick a locale for a page you render yourself, with the same rules
-errors use.
+`default_locale` is `"en"` unless you change it. Keep it equal to the
+language your text is written in.
