@@ -55,13 +55,15 @@ options only when a requirement demands them.
   translated text.
 - `text_domain` defaults to `"ash_errors"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash_errors.po`.
-- Run `mix ash_gettext.extract` to write `priv/gettext/ash_errors.pot` from
-  every literal `message:` in `lib`. Arguments: source paths and
-  `--output PATH`. Run `mix ash_gettext.extract --check` in CI: it fails when
-  the `.pot` is stale.
-- The extract task always writes `priv/gettext/ash_errors.pot`, whatever the
-  domain's `text_domain`. For a custom `text_domain`, pass
-  `--output priv/gettext/<text_domain>.pot`.
+- Run `mix ash_gettext.extract` to write the template from every literal
+  `message:` in `lib`. Arguments: source paths and `--output PATH`. Run
+  `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
+- Without `--output` the task writes the file your own lookups read: the
+  backend's `priv` directory holding `<text_domain>.pot`. Do not pass
+  `--output` to correct the path; it is already right.
+- One run writes one template. When the app's domains name different text
+  domains, the task refuses to guess and `--output` becomes required, along
+  with the source paths belonging to that domain.
 - Extraction only sees `message:` written as a literal string. A message in a
   module attribute or any other expression is skipped silently: add its
   msgid to the `.pot` by hand. An interpolated string (`"... #{x}"`) is

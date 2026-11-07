@@ -49,12 +49,12 @@ mix ash_gettext.extract --check
 what a fresh run would write, so a new `message:` cannot be merged without its
 template entry. Run it in CI next to your tests.
 
-## Name the file
+## Where the template lands
 
-Gettext reads the catalog named by `text_domain`, so the template must have
-the same name. The default text domain is `ash_errors`, and the task writes
-`priv/gettext/ash_errors.pot` unless told otherwise. If you set another text
-domain, pass `--output` to match:
+Gettext reads the catalog named by `text_domain`, so the template carries that
+name. The task works the path out from your own domains: the `priv` directory
+of the backend they name, holding `<text_domain>.pot`. Set another text domain
+and the file moves with it, with nothing to pass:
 
 ```elixir
 gettext do
@@ -64,7 +64,16 @@ end
 ```
 
 ```
-mix ash_gettext.extract --output priv/gettext/shipping.pot
+mix ash_gettext.extract
+# Wrote 12 messages to priv/gettext/shipping.pot.
+```
+
+One run writes one template. If your domains name different text domains there
+is no single answer, so the task lists them and asks you to name the one you
+mean, along with the sources that belong to it:
+
+```
+mix ash_gettext.extract lib/my_app/shipping --output priv/gettext/shipping.pot
 ```
 
 To scan more than `lib`, list the paths: `mix ash_gettext.extract lib apps/other/lib`.

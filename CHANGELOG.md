@@ -9,9 +9,13 @@ First packaged release.
 - `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
   block on a domain translates the errors of every create, update and destroy
   action on its resources, in the locale its resolvers pick.
-- `text_domain` defaults to `ash_errors`, the file the extractor writes.
-- `mix ash_gettext.extract` writes every Ash `message:` to a `.pot` template.
-  `--check` fails in CI when the template is out of date.
+- `text_domain` defaults to `ash_errors`, naming the catalog errors are looked
+  up in.
+- `mix ash_gettext.extract` writes every Ash `message:` to a `.pot` template,
+  into the file the lookups read: the backend's `priv` directory holding
+  `<text_domain>.pot`. `--check` fails in CI when the template is out of date.
+  When an app's domains name different text domains, the task lists them and
+  asks for `--output`.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain
   and resource extensions and the `gettext` block for an existing app.
 - `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` translate
