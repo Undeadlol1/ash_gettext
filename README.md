@@ -1,7 +1,7 @@
 # AshGettext
 
 [![CI](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml/badge.svg)](https://github.com/Undeadlol1/ash_gettext/actions/workflows/ci.yml)
-[![License](https://img.shields.io/hexpm/l/ash_gettext.svg)](https://github.com/Undeadlol1/ash_gettext/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Undeadlol1/ash_gettext/blob/main/LICENSE)
 
 Gettext translation for [Ash](https://hexdocs.pm/ash) errors. Validation
 messages come out in the reader's language, with no handler on each action.
