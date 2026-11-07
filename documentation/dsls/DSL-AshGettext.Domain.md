@@ -11,7 +11,7 @@ Declares, once per Ash domain, how its action errors are translated.
       gettext do
         backend MyApp.Gettext
         default_locale "en"
-        text_domain "ash_errors"
+        text_domain "ash"
         locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
       end
 
@@ -44,7 +44,7 @@ Configure how the errors of this domain's actions are translated.
 gettext do
   backend MyApp.Gettext
   default_locale "en"
-  text_domain "ash_errors"
+  text_domain "ash"
 end
 
 ```
@@ -58,7 +58,7 @@ end
 |------|------|---------|------|
 | [`backend`](#gettext-backend){: #gettext-backend .spark-required} | `atom` |  | The Gettext backend whose catalogs this domain translates against. |
 | [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when no resolver has an opinion. |
-| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash_errors"` | The gettext text domain error messages are looked up in. |
+| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for everything Ash-derived: errors, enum labels, attribute names. |
 | [`locale_resolvers`](#gettext-locale_resolvers){: #gettext-locale_resolvers } | `list(module)` | `[AshGettext.Locale.FromContext]` | Modules implementing `AshGettext.Locale.Resolver`, tried in order until one answers. Host-specific resolvers ("read the user's stored locale") belong here; the library ships only the generic ones. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |

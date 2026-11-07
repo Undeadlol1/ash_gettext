@@ -67,6 +67,20 @@ end
 Add a new language directory and the loop checks it with no change to the
 test.
 
+## Check enum labels and attribute names
+
+Both are looked up in the `"ash"` catalog under the enum's label and the
+attribute name in words:
+
+```elixir
+test "the status and the attribute name are translated" do
+  assert {:ok, _} =
+           AshGettext.enum_label_or_missing(MyApp.Gettext, "ash", MyApp.Status, :awaiting_pickup, "ru")
+
+  assert_covered(MyApp.Gettext, "ash", AshGettext.attribute_msgid(:date_of_birth), "ru")
+end
+```
+
 ## Check that an action returns the translated error
 
 For a domain with a `gettext do backend(MyApp.Gettext) text_domain("shipping")
@@ -94,6 +108,29 @@ end
 This goes through the real action, so it also proves the resource has the
 `AshGettext.Resource` extension. The same test works for a create, update or
 destroy action. Read actions are not translated, so do not test them this way.
+
+## Fail a test on a missing translation
+
+Every plain lookup that misses sends `[:ash_gettext, :translation, :missing]`.
+Attach a handler in a test that sends the event to the test process, then
+assert you received nothing:
+
+```elixir
+test "the order page has no gaps in Russian" do
+  :telemetry.attach(
+    "gaps-#{inspect(self())}",
+    [:ash_gettext, :translation, :missing],
+    &__MODULE__.forward/4,
+    self()
+  )
+
+  MyApp.Translator.translate("Order shipped", [], locale: "ru")
+
+  refute_received {:missing, _meta}
+end
+
+def forward(_event, _measurements, meta, test_pid), do: send(test_pid, {:missing, meta})
+```
 
 ## Check that the template is current
 

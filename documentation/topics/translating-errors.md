@@ -51,7 +51,7 @@ end
 ```
 
 ```po
-# priv/gettext/ru/LC_MESSAGES/ash_errors.po
+# priv/gettext/ru/LC_MESSAGES/ash.po
 msgid "must weigh at least %{greater_than_or_equal_to} kg"
 msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
 ```
@@ -66,7 +66,8 @@ MyApp.Shipping.Parcel
 ```
 
 Without `locale`, the message stays in English. To take the language from
-the signed-in user, see [Locales](locales.md).
+the signed-in user, see [Locales](locales.md). Resolvers run while the error
+is built, so they must not query the database.
 
 ## No handler on each action
 
@@ -131,7 +132,8 @@ translated read error, translate it where you render it, with
 ## Choose the catalog file
 
 `text_domain` names the Gettext domain, which is the `.po` file the messages
-live in. It defaults to `ash_errors`:
+live in. It defaults to `"ash"`, the same catalog that holds enum labels and attribute
+names:
 
 ```elixir
 gettext do

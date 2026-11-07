@@ -1,7 +1,8 @@
 # Extracting messages
 
-This page shows how to turn the `message:` strings in your resources into a
-`.pot` template, and how to keep that template current.
+This page shows how to turn the `message:` strings, enum labels and attribute
+names of your resources into a `.pot` template, and how to keep that template
+current.
 
 ## Stop keeping a list of messages by hand
 
@@ -29,15 +30,22 @@ messages itself.
 mix ash_gettext.extract
 ```
 
-The task reads `lib` and writes `priv/gettext/ash_errors.pot`:
+The task reads `lib` and writes `priv/gettext/ash.pot`:
 
 ```
 Scanned lib: 12 translatable messages.
-Wrote 12 messages to priv/gettext/ash_errors.pot.
+Wrote 12 messages to priv/gettext/ash.pot.
 ```
 
 It finds `message: "..."` in keyword options and `message "..."` in DSL
 blocks, such as an `identity`. Each entry lists the files it came from.
+
+It also adds, for every resource in a domain with a `gettext` block, the name
+of each public attribute ("Date of birth") and the label of each value of an
+enum attribute, `{:array, MyEnum}` included. These are the keys
+`attribute_label/3` and `enum_label/3` look up, so they are in the template
+without any call to find. Their entries name the attribute they came from,
+such as `MyApp.Parcel.weight`, in place of a file.
 
 ## Fail CI when the template is stale
 
@@ -86,7 +94,7 @@ Create each language's `.po` file from the template with Gettext's own task:
 mix gettext.merge priv/gettext --locale ru
 ```
 
-Then fill in the `msgstr` lines in `priv/gettext/ru/LC_MESSAGES/ash_errors.po`:
+Then fill in the `msgstr` lines in `priv/gettext/ru/LC_MESSAGES/ash.po`:
 
 ```po
 msgid "This email is already registered"
@@ -131,6 +139,6 @@ InvalidAttribute.exception(field: :weight, message: @too_light, vars: [min: 30])
 The task does not report it. Write the string in place, or add its msgid to
 the `.pot` and `.po` files by hand.
 
-Text you pass to `AshGettext.translate/5` and the other functions is not a
-`message:`, so the task does not find it either. See
+Text you pass to `translate/3` and the other functions is not a `message:`,
+so the task does not find it either. See
 [Translating text](translating-text.md#add-the-text-to-the-template).

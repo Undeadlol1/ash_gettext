@@ -1,10 +1,10 @@
 # Rules for working with AshGettext
 
-AshGettext translates the text an Ash app shows, with Gettext: strings,
-plurals and enum values through `AshGettext.translate/5` and its siblings,
-in the user's language. Translating text needs only a Gettext backend.
-Translating Ash's own error messages is one feature on top, switched on per
-domain. Read these rules before writing code that uses it. Prefer the
+AshGettext is a translation library for Ash. It translates the text an Ash
+app shows (strings, plurals, enum labels, attribute names and Ash's own error
+messages) in the user's language, through Gettext. Translating text needs only
+a Gettext backend. Translating Ash's errors is one feature on top, switched on
+per domain. Read these rules before writing code that uses it. Prefer the
 defaults; add options only when a requirement demands them.
 
 ## Setup
@@ -17,6 +17,8 @@ defaults; add options only when a requirement demands them.
 - Translating text needs nothing else: no domain block, no resource
   extension, no `Gettext.put_locale`. The domain and resource extensions are
   only for translating errors.
+- Start with a translator module. Do not call `AshGettext.translate/5` from
+  app code and thread the backend and locale through by hand.
 - No application config is required. Do not add `config :ash_gettext`. All
   error settings live in the domain DSL.
 - Keep the domain's `default_locale` equal to the backend's source
@@ -25,31 +27,61 @@ defaults; add options only when a requirement demands them.
 
 ## Translating text
 
-- Translate a string with `AshGettext.translate/5`:
-  `(backend, text_domain, msgid, bindings, locale)`. It needs only a Gettext
-  backend: no domain block, no resource extension, no `Gettext.put_locale`.
+- Make one translator module and call it everywhere:
+
+  ```elixir
+  defmodule MyApp.Translator do
+    use AshGettext.Translator,
+      backend: MyApp.Gettext,
+      locale_resolvers: [MyApp.Locale.FromActor, AshGettext.Locale.FromContext],
+      default_locale: "en"
+  end
+  ```
+
+  Only `backend` is required. `locale_resolvers` defaults to
+  `[AshGettext.Locale.FromContext]`; `default_locale` to the backend's source
+  language.
+- It generates `translate(msgid, bindings \\ [], opts \\ [])`,
+  `translate_plural(msgid, msgid_plural, count, bindings \\ [], opts \\ [])`,
+  `enum_label(enum_module, value, opts \\ [])`,
+  `attribute_label(resource, attribute, opts \\ [])` and `locale(opts \\ [])`.
+- Options: `locale:` (explicit, wins over resolvers), `actor:` and `context:`
+  (handed to the resolvers), `text_domain:`. Text defaults to the
+  `"default"` text domain; enum and attribute labels default to `"ash"`.
 - The msgid is the plain sentence in the source language, with `%{var}`
   placeholders filled from `bindings`. Do not invent keys like
   `"orders.shipped"`. The source language needs no catalog.
-- For plurals use `AshGettext.translate_plural/7` with
-  `(backend, text_domain, msgid, msgid_plural, count, bindings, locale)`;
-  `count` is always available as `%{count}`.
-- To label an enum value use `AshGettext.enum_label/5` with
-  `(backend, text_domain, attribute, value, locale)`. The msgid is
-  `"<attribute>.<value>"` (`AshGettext.enum_msgid/2`). An uncovered value
-  falls back to a humanized form (`:awaiting_pickup` becomes
-  `"Awaiting pickup"`).
-- `translate_or_missing/5`, `translate_plural_or_missing/7` and
-  `enum_label_or_missing/5` return `{:ok, string}` or `{:missing, string}`.
-  They are not the `{:ok, v} | :error` shape. A translation identical to its
-  msgid in a non-source locale counts as `:missing`.
-- Neither `mix gettext.extract` nor `mix ash_gettext.extract` finds text
-  passed to these functions. Add those msgids to the `.pot` by hand or keep
-  them in a Gettext `*_noop` macro.
+- Enum labels: `MyApp.Translator.enum_label(MyApp.Status, :awaiting_pickup, actor: user)`.
+  The argument is the `Ash.Type.Enum` module, not the attribute. The msgid is
+  the enum's own `label(value)`: "Awaiting pickup" by default, or the
+  `label:` set on the value. Do not invent per-attribute keys.
+  An unknown value or a non-enum module raises `ArgumentError`.
+- Attribute labels: `MyApp.Translator.attribute_label(MyApp.Order, :date_of_birth, actor: user)`.
+  The msgid is the name in words, "Date of birth"
+  (`AshGettext.attribute_msgid/1`). An unknown attribute raises
+  `ArgumentError`.
+- A lookup with no translation returns the msgid and sends the telemetry event
+  `[:ash_gettext, :translation, :missing]` with `backend`, `text_domain`,
+  `msgid` and `locale`. Attach a handler to log or count gaps. The
+  `_or_missing` functions send no event.
+- The pure layer is `AshGettext.translate/5` `(backend, text_domain, msgid,
+  bindings, locale)`, `translate_plural/7`, `enum_label/5` `(backend,
+  text_domain, enum_module, value, locale)` and `attribute_label/5`. Use it
+  only where a translator module does not fit.
+- `translate_or_missing/5`, `translate_plural_or_missing/7`,
+  `enum_label_or_missing/5` and `attribute_label_or_missing/5` return
+  `{:ok, string}` or `{:missing, string}`. They are not the `{:ok, v} | :error`
+  shape. A translation identical to its msgid in a non-source locale counts as
+  `:missing`.
+- `mix ash_gettext.extract` collects the enum labels and attribute names of
+  every resource in a translating domain. It does not find text passed to
+  `translate/3`. Add those msgids to the `.pot` by hand or keep them in a
+  Gettext `*_noop` macro.
 
 ## Picking the language
 
-- Pick the `locale` argument for text with
+- With a translator, pass `locale:` or `actor:`. For the pure functions, pick
+  the `locale` argument with
   `AshGettext.Locale.resolve(context, resolvers: [...], supported: AshGettext.known_locales(backend), default: "en")`.
   It cuts `"ru_RU"` to `"ru"` and falls back to `default` for a language
   with no catalog.
@@ -65,6 +97,9 @@ defaults; add options only when a requirement demands them.
   yourself if you still want it: `[MyApp.Localization, AshGettext.Locale.FromContext]`.
 - A resolver that needs the signed-in user's saved language belongs in the
   host app. Do not add actor lookups to the library or guess the field.
+- A resolver must be a pure function of its context. Read the locale off the
+  loaded actor. Never query the database in a resolver: it runs while an
+  action's error is being built, possibly inside a failed transaction.
 
 ## Translating errors
 
@@ -79,7 +114,7 @@ defaults; add options only when a requirement demands them.
   `use Ash.Resource, extensions: [AshGettext.Resource]` on each resource.
   The domain block alone changes no behavior.
 - Options on the `gettext` block: `backend` (required module);
-  `default_locale` (default `"en"`); `text_domain` (default `"ash_errors"`);
+  `default_locale` (default `"en"`); `text_domain` (default `"ash"`);
   `locale_resolvers` (default `[AshGettext.Locale.FromContext]`);
   `translate_errors?` (default `true`); `require_resource_extension?`
   (default `false`).
@@ -103,10 +138,12 @@ defaults; add options only when a requirement demands them.
 - Validation errors, builtin constraint errors and data layer errors all
   arrive at the same handler, so every transport (JSON:API, GraphQL) sees the
   translated text.
-- `text_domain` defaults to `"ash_errors"`, so catalogs live at
-  `priv/gettext/<locale>/LC_MESSAGES/ash_errors.po`.
+- `text_domain` defaults to `"ash"`, so catalogs live at
+  `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
+  attribute names share it.
 - Run `mix ash_gettext.extract` to write the template from every literal
-  `message:` in `lib`. Arguments: source paths and `--output PATH`. Run
+  `message:` in `lib`, plus the attribute names and enum labels of the
+  domains' resources. Arguments: source paths and `--output PATH`. Run
   `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
 - Without `--output` the task writes the file your own lookups read: the
   backend's `priv` directory holding `<text_domain>.pot`. Do not pass
@@ -180,6 +217,8 @@ defaults; add options only when a requirement demands them.
 - `AshGettext.Testing.assert_covered(backend, text_domain, msgid, locale, bindings \\ [])`
   fails when the locale's catalog has no entry for the msgid. Loop it over
   `AshGettext.known_locales(backend) -- [source_locale]` as a coverage sweep.
+  For labels, pass the enum's label or `AshGettext.attribute_msgid/1` as the
+  msgid, with the `"ash"` text domain.
   The source locale always passes.
 - Use these two helpers to test the translations themselves. In tests of
   application behavior, assert the text users read through your own API

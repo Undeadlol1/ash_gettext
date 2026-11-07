@@ -6,14 +6,20 @@ has.
 
 ## When you translate text
 
-`AshGettext.translate/5` runs Gettext's own `dgettext` with the backend, the
+A translator module (`use AshGettext.Translator`) works out the language from
+its resolvers, then calls `AshGettext.translate/5`. That function runs Gettext's own `dgettext` with the backend, the
 text domain, the text and the values you pass. It sets the language for that
 one call with `Gettext.with_locale/3`, so the process's own language is left
 as it was. `translate_plural/7` does the same with `dngettext`.
 
 Gettext returns the text unchanged when it has no translation. In any
-language but your own, AshGettext reports that as missing. That is how the
-`_or_missing` functions and `AshGettext.Testing` know.
+language but your own, AshGettext reports that as missing: the
+`_or_missing` functions and `AshGettext.Testing` use it, and the plain
+functions send a `[:ash_gettext, :translation, :missing]` telemetry event.
+
+Enum labels and attribute names are lookups like any other. The key is the
+enum's label for the value, or the attribute name in words, and the text
+domain defaults to `"ash"`.
 
 ## When a resource compiles
 
@@ -50,8 +56,8 @@ If it has none, the error comes back unchanged.
 
 ## Why transport does not matter
 
-The handler changes the error struct itself. JSON:API, GraphQL and LiveView
-all render that same struct, so each of them shows the translated message
+The handler changes the error struct itself. JSON:API and GraphQL
+both render that same struct, so each of them shows the translated message
 with no code of its own. An error with nested `errors`, such as an
 `Ash.Error.Invalid`, is translated inside as well as at the top.
 
@@ -83,15 +89,17 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Resolves the locale, then translates. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Locale` | Runs the resolvers, then normalizes. |
-| `AshGettext` | Looks text up in the backend: strings, plurals, enum values. |
+| `AshGettext.Translator` | `use` it for a module that picks the language and calls `AshGettext`. |
+| `AshGettext` | Looks text up in the backend: strings, plurals, enum labels, attribute names. |
 
 `AshGettext.ErrorTranslation.translate/2` and `AshGettext.Locale.resolve/2`
 take everything they need as arguments, so you can call them yourself.
 
 ## Limits
 
-- **Text passed to `AshGettext.translate/5` is not extracted.** Neither
-  extract task sees it. Add it to the template by hand.
+- **Text passed to `translate/3` is not extracted.** Neither extract task
+  sees it. Add it to the template by hand. Enum labels and attribute names
+  are extracted.
 - **Only write actions are translated.** Ash has no `error_handler` for reads
   or generic actions. Their errors reach the caller as written.
 - **A handler you wrote is kept.** If an action declares its own
