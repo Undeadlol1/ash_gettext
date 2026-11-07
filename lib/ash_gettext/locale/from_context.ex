@@ -15,6 +15,12 @@ defmodule AshGettext.Locale.FromContext do
 
   @behaviour AshGettext.Locale.Resolver
 
+  @doc """
+  Return the locale on `context`, or `nil` when it has none.
+
+  Reads the `:locale` atom key first, then the `"locale"` string key. A value
+  that is not a string counts as no answer, so the next resolver gets its turn.
+  """
   @impl true
   def resolve(%{locale: locale}) when is_binary(locale), do: locale
   def resolve(%{"locale" => locale}) when is_binary(locale), do: locale

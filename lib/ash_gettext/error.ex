@@ -45,6 +45,14 @@ defmodule AshGettext.Error do
 
   use Splode.Error, fields: [:code, :field, :message], class: :invalid
 
+  @doc """
+  Build the error from `opts`, which must include a `:code`.
+
+  Raises `ArgumentError` when `:code` is missing or `nil`. The other fields
+  are `:message`, `:field` and `:vars`, all optional here.
+
+      AshGettext.Error.exception(code: :weight_too_low, message: "weight_too_low")
+  """
   @impl true
   def exception(opts) do
     if is_nil(Keyword.get(opts, :code)) do
@@ -54,6 +62,12 @@ defmodule AshGettext.Error do
     super(opts)
   end
 
+  @doc """
+  Return the error's `:message`, which is the gettext msgid.
+
+  Ash and Elixir call this when they print the error, so an untranslated error
+  reads as its msgid.
+  """
   @impl true
   def message(%{message: message}), do: message
 end

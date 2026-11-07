@@ -18,9 +18,9 @@ defmodule AshGettext.Locale do
       )
       #=> "ru"
 
-  Once the domain DSL lands (`AshGettext.Domain`, step 2), the host will declare
-  its resolvers once per domain and these options will be read from there via
-  `AshGettext.Info` — still not from global config.
+  In a domain, you declare the resolvers once in the `gettext` block of
+  `AshGettext.Domain`. `AshGettext.Info` reads those options and passes them
+  here, so nothing comes from global config.
   """
 
   alias AshGettext.Locale.Normalizer

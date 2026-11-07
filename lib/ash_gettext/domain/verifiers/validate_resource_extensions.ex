@@ -9,6 +9,11 @@ defmodule AshGettext.Domain.Verifiers.ValidateResourceExtensions do
   It checks the extension, not each action's `error_handler`: an action that
   declares its own handler is a deliberate choice the transformer already
   respects.
+
+  The verifier runs while the domain compiles, and only when you set
+  `require_resource_extension?` to `true` in the `gettext` block. With the
+  option off, which is the default, it does nothing. You turn it on once every
+  resource in the domain is ready, so a new resource cannot ship untranslated.
   """
 
   use Spark.Dsl.Verifier

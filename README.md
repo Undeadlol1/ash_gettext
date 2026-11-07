@@ -155,6 +155,8 @@ the file is out of date. See
   lookup works, but the `.pot` has no entry until you add it by hand.
 - **A message built with `#{...}` cannot be a msgid.** The extract task lists
   each one so you can rewrite it with `%{name}` and `vars`.
+- **`mix ash_gettext.extract` always writes `priv/gettext/ash_errors.pot`.** A
+  custom `text_domain` needs `--output priv/gettext/<domain>.pot`.
 - **An action's own `error_handler` is kept.** AshGettext does not replace a
   handler you wrote.
 

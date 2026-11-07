@@ -1,25 +1,29 @@
 # Changelog
 
-## 0.2.0
+## 0.1.0 — 2026-11-07
 
-- `AshGettext.Error`: a user-facing error with a required `code`, a translatable
-  `message`, an optional `field` and `vars`, rendered for JSON:API when
-  `:ash_json_api` is present (optional dependency).
+First packaged release.
 
-## 0.1.0 — unreleased
+### Changes
 
-- `AshGettext.Domain` and `AshGettext.Resource` extensions: a `gettext do`
-  block on a domain translates the errors of every write action on its
-  resources, in the locale its resolvers pick.
-- `mix ash_gettext.extract` writes every Ash `message:` to a `.pot` template;
-  `--check` fails in CI when the template is out of date.
+- `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
+  block on a domain translates the errors of every create, update and destroy
+  action on its resources, in the locale its resolvers pick.
 - `text_domain` defaults to `ash_errors`, the file the extractor writes.
-- `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` for strings
-  outside errors, with the locale passed as an argument.
-- `mix ash_gettext.install` previews, and with `--apply` writes, the domain and
-  resource extensions and `gettext` block for an existing app.
-- `require_resource_extension?` on the domain `gettext` block: opt-in compile-time check
-  that every resource in the domain carries `AshGettext.Resource`.
-- `translate_or_missing/5`, `translate_plural_or_missing/7` and `enum_label_or_missing/5` never report `:missing`
-  in the source locale (the backend's default locale): the msgid is the text,
-  so the source language needs no catalog.
+- `mix ash_gettext.extract` writes every Ash `message:` to a `.pot` template.
+  `--check` fails in CI when the template is out of date.
+- `mix ash_gettext.install` previews, and with `--apply` writes, the domain
+  and resource extensions and the `gettext` block for an existing app.
+- `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` translate
+  strings outside errors, with the locale passed as an argument.
+- `translate_or_missing/5`, `translate_plural_or_missing/7` and
+  `enum_label_or_missing/5` never report `:missing` in the source locale (the
+  backend's default locale). The msgid is the text, so the source language
+  needs no catalog.
+- `require_resource_extension?` on the `gettext` block is an opt-in compile
+  time check that every resource in the domain carries `AshGettext.Resource`.
+- `AshGettext.Error` is a user-facing error with a required `code`, a
+  translatable `message`, and an optional `field` and `vars`. It renders for
+  JSON:API when `:ash_json_api` is present, which is an optional dependency.
+- `AshGettext.Testing` has `assert_translates/6` and `assert_covered/5` for
+  checking a message and a catalog in your own tests.
