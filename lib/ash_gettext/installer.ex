@@ -42,7 +42,7 @@ defmodule AshGettext.Installer do
   ## Options
 
     * `:backend` — required; the host's Gettext backend module, as a string.
-    * `:text_domain` — the gettext text domain. Defaults to `"ash_errors"`, and
+    * `:text_domain` — the gettext text domain. Defaults to `"ash"`, and
       is then left out of the block.
     * `:resolver` — a locale resolver module name to place ahead of the generic
       context resolver. Omitted when absent.
@@ -106,7 +106,7 @@ defmodule AshGettext.Installer do
   The `gettext do` block for a domain, as source text.
 
   Only what differs from the DSL defaults is written: `backend` always,
-  `text_domain` when it is not `"ash_errors"`, and `locale_resolvers` when a
+  `text_domain` when it is not `"ash"`, and `locale_resolvers` when a
   `:resolver` was given. Repeating a default would pin it, so a later change to
   the library's default would silently skip every installed domain.
   """
@@ -156,7 +156,7 @@ defmodule AshGettext.Installer do
     """
   end
 
-  defp text_domain_line(text_domain) when text_domain in [nil, "ash_errors"], do: []
+  defp text_domain_line(text_domain) when text_domain in [nil, "ash"], do: []
   defp text_domain_line(text_domain), do: [~s|text_domain "#{text_domain}"|]
 
   defp resolver_line(nil), do: []

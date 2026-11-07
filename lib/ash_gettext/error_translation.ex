@@ -33,7 +33,7 @@ defmodule AshGettext.ErrorTranslation do
 
       AshGettext.ErrorTranslation.translate(error,
         backend: MyApp.Gettext,
-        text_domain: "ash_errors",
+        text_domain: "ash",
         locale: "ru"
       )
 

@@ -194,7 +194,7 @@ defmodule AshGettext.InstallerTest do
     end
 
     test "leaves out a text domain that is the default" do
-      refute Installer.gettext_block(backend: "MyApp.Gettext", text_domain: "ash_errors") =~
+      refute Installer.gettext_block(backend: "MyApp.Gettext", text_domain: "ash") =~
                "text_domain"
     end
 

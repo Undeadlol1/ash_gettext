@@ -18,8 +18,8 @@ defmodule Mix.Tasks.AshGettext.Extract do
     * `--output` — where to write the template. Defaults to the file your own
       errors are looked up in: the `priv` directory of the backend your domains
       name, holding `<text_domain>.pot`. A domain with the default
-      `text_domain` of `ash_errors` and a backend on the default `priv` gives
-      `priv/gettext/ash_errors.pot`. When the app's domains translate into more
+      `text_domain` of `ash` and a backend on the default `priv` gives
+      `priv/gettext/ash.pot`. When the app's domains translate into more
       than one template, there is no single answer and this option becomes
       required.
     * `--check` — write nothing; exit non-zero if the file on disk is not what
@@ -35,7 +35,7 @@ defmodule Mix.Tasks.AshGettext.Extract do
 
   alias AshGettext.Extractor
 
-  @fallback_output "priv/gettext/ash_errors.pot"
+  @fallback_output "priv/gettext/ash.pot"
   @default_paths ["lib"]
 
   @impl Mix.Task
@@ -59,7 +59,7 @@ defmodule Mix.Tasks.AshGettext.Extract do
 
   # Where the template goes when nobody says. It has to be the file the lookups
   # read, which is the backend's priv directory holding `<text_domain>.pot`. A
-  # fixed `ash_errors.pot` left anyone who set a custom `text_domain` with a
+  # fixed `ash.pot` left anyone who set a custom `text_domain` with a
   # template their own errors never consult.
   defp default_output do
     case configured_templates() do

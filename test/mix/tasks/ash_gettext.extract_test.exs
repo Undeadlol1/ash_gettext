@@ -36,7 +36,7 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
     end
     """)
 
-    %{src: Path.join(dir, "lib"), pot: Path.join(dir, "priv/gettext/ash_errors.pot")}
+    %{src: Path.join(dir, "lib"), pot: Path.join(dir, "priv/gettext/ash.pot")}
   end
 
   test "writes every Ash message into the template", %{src: src, pot: pot} do
@@ -92,7 +92,7 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
       assert File.read!(Path.join(dir, "priv/test_gettext/fixture.pot")) =~
                ~s(msgid "is too heavy")
 
-      refute File.exists?(Path.join(dir, "priv/gettext/ash_errors.pot"))
+      refute File.exists?(Path.join(dir, "priv/gettext/ash.pot"))
     end
 
     test "asks which template when the domains disagree", %{tmp_dir: dir, src: src} do
@@ -111,12 +111,12 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
       assert error.message =~ "priv/test_gettext/other.pot"
     end
 
-    test "falls back to ash_errors.pot when no domain translates", %{tmp_dir: dir, src: src} do
+    test "falls back to ash.pot when no domain translates", %{tmp_dir: dir, src: src} do
       Application.put_env(:ash_gettext, :ash_domains, [AshGettextFixture.SwitchedOff])
 
       File.cd!(dir, fn -> Extract.run([src]) end)
 
-      assert File.read!(Path.join(dir, "priv/gettext/ash_errors.pot")) =~
+      assert File.read!(Path.join(dir, "priv/gettext/ash.pot")) =~
                ~s(msgid "is too heavy")
     end
   end

@@ -8,7 +8,7 @@ defmodule AshGettext.Domain do
         gettext do
           backend MyApp.Gettext
           default_locale "en"
-          text_domain "ash_errors"
+          text_domain "ash"
           locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
         end
 
@@ -39,7 +39,7 @@ defmodule AshGettext.Domain do
       gettext do
         backend MyApp.Gettext
         default_locale "en"
-        text_domain "ash_errors"
+        text_domain "ash"
       end
       """
     ],
@@ -56,8 +56,9 @@ defmodule AshGettext.Domain do
       ],
       text_domain: [
         type: :string,
-        default: "ash_errors",
-        doc: "The gettext text domain error messages are looked up in."
+        default: "ash",
+        doc:
+          "The gettext text domain for everything Ash-derived: errors, enum labels, attribute names."
       ],
       locale_resolvers: [
         type: {:list, {:behaviour, AshGettext.Locale.Resolver}},

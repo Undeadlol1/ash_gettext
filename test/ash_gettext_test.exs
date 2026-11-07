@@ -198,6 +198,17 @@ defmodule AshGettextTest do
                "Ожидает выдачи"
     end
 
+    test "casts a string value" do
+      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, "awaiting_pickup", "ru") ==
+               "Ожидает выдачи"
+    end
+
+    test "raises for a value the enum does not have" do
+      assert_raise ArgumentError, ~r/ParcelStatus.*"nope"/, fn ->
+        AshGettext.enum_label(Backend, @text_domain, ParcelStatus, "nope", "ru")
+      end
+    end
+
     test "translates a custom label: by that label" do
       assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :shipped, "ru") ==
                "В пути"

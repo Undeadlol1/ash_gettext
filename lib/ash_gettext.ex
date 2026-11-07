@@ -249,7 +249,13 @@ defmodule AshGettext do
       raise ArgumentError, "#{inspect(enum_module)} is not an Ash.Type.Enum"
     end
 
-    enum_module.label(value)
+    case enum_module.match(value) do
+      {:ok, cast} ->
+        enum_module.label(cast)
+
+      :error ->
+        raise ArgumentError, "#{inspect(enum_module)} has no value #{inspect(value)}"
+    end
   end
 
   defp attribute_msgid!(resource, attribute) do
