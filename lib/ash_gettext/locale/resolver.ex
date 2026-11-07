@@ -3,7 +3,7 @@ defmodule AshGettext.Locale.Resolver do
   How a host application answers "what language is this request in?".
 
   The library ships only resolvers that can work without knowing anything about
-  the host — `AshGettext.Locale.Context` reads a locale someone already put on
+  the host — `AshGettext.Locale.FromContext` reads a locale someone already put on
   the action context. Anything that needs to know what a *user* is, or where
   their preference is stored, is the host's job: implement this behaviour in the
   host application and name the module in the domain DSL.

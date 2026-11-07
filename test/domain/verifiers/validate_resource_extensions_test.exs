@@ -1,4 +1,4 @@
-defmodule AshGettext.Domain.Verifiers.ResourcesOptInTest do
+defmodule AshGettext.Domain.Verifiers.ValidateResourceExtensionsTest do
   @moduledoc """
   The check is opt-in: a domain that does not ask for it must keep compiling
   with resources that never joined the extension.
@@ -31,7 +31,7 @@ defmodule AshGettext.Domain.Verifiers.ResourcesOptInTest do
 
       gettext do
         backend AshGettextFixture.Gettext
-        verify_resources? #{verify?}
+        require_resource_extension? #{verify?}
       end
 
       resources do
@@ -52,15 +52,15 @@ defmodule AshGettext.Domain.Verifiers.ResourcesOptInTest do
     capture_io(:stderr, fn -> compile_domain(verify?, extensions) end)
   end
 
-  test "off, a resource without the extension compiles" do
+  test "with the check off, a resource without the extension compiles" do
     refute stderr_of(false, []) =~ "AshGettext.Resource"
   end
 
-  test "on, every resource opted in compiles" do
+  test "with the check on, a resource that has the extension compiles" do
     refute stderr_of(true, [AshGettext.Resource]) =~ "AshGettext.Resource"
   end
 
-  test "on, a resource lacking the extension fails compilation and is named" do
+  test "with the check on, a resource lacking the extension fails compilation and is named" do
     output = stderr_of(true, [])
 
     assert output =~ "Spark.Error.DslError"

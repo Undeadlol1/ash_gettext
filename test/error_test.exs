@@ -2,7 +2,7 @@ defmodule AshGettext.ErrorTest do
   use ExUnit.Case, async: true
 
   alias AshGettext.Error
-  alias AshGettext.Errors
+  alias AshGettext.ErrorTranslation
   alias AshGettextFixture.Gettext, as: Backend
 
   defp weight_error(opts \\ []) do
@@ -11,7 +11,7 @@ defmodule AshGettext.ErrorTest do
     )
   end
 
-  describe "exception/1" do
+  describe "building a coded error" do
     test "raises when no code is given" do
       assert_raise ArgumentError, ~r/code/, fn -> Error.exception(message: "weight_too_low") end
     end
@@ -20,21 +20,25 @@ defmodule AshGettext.ErrorTest do
       assert weight_error().class == :invalid
     end
 
-    test "message/1 returns the message untranslated" do
+    test "reading the message gives it untranslated" do
       assert Exception.message(weight_error()) == "weight_too_low"
     end
   end
 
-  describe "translation" do
+  describe "translating a coded error" do
     test "translates the message and keeps the code" do
       translated =
-        Errors.translate(weight_error(), backend: Backend, text_domain: "fixture", locale: "ru")
+        ErrorTranslation.translate(weight_error(),
+          backend: Backend,
+          text_domain: "fixture",
+          locale: "ru"
+        )
 
       assert %{message: "Вес должен быть не менее 30 кг", code: :weight_too_low} = translated
     end
   end
 
-  describe "AshJsonApi rendering" do
+  describe "rendering as a JSON:API error" do
     test "renders code, detail, meta and status" do
       rendered = AshJsonApi.ToJsonApiError.to_json_api_error(weight_error(field: :weight))
 

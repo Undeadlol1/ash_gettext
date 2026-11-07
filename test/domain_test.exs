@@ -34,7 +34,7 @@ defmodule AshGettext.DomainTest do
   end
 
   test "locale resolvers default to reading the action context" do
-    assert option(:locale_resolvers)[:default] == [AshGettext.Locale.Context]
+    assert option(:locale_resolvers)[:default] == [AshGettext.Locale.FromContext]
   end
 
   test "locale resolvers must implement the resolver behaviour" do

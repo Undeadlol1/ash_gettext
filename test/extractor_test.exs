@@ -3,12 +3,12 @@ defmodule AshGettext.ExtractorTest do
 
   alias AshGettext.Extractor
 
-  defp scan(source), do: Extractor.scan([{"lib/sample.ex", source}])
+  defp find_messages(source), do: Extractor.find_messages([{"lib/sample.ex", source}])
 
-  describe "scan/1 on keyword-style messages" do
+  describe "finding messages written as keyword options" do
     test "finds a message given as a keyword option" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           def validate(_), do: {:error, field: :weight, message: "must be at least 30 kg"}
         end
@@ -19,7 +19,7 @@ defmodule AshGettext.ExtractorTest do
 
     test "records where the message was found" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           def validate(_) do
             {:error, message: "not allowed"}
@@ -32,7 +32,7 @@ defmodule AshGettext.ExtractorTest do
 
     test "finds a message nested inside a DSL block" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           identities do
             identity :one_per_type, [:user_id] do
@@ -46,10 +46,10 @@ defmodule AshGettext.ExtractorTest do
     end
   end
 
-  describe "scan/1 deduplication" do
+  describe "merging repeated messages" do
     test "collapses the same msgid into one entry with every reference" do
       result =
-        Extractor.scan([
+        Extractor.find_messages([
           {"lib/a.ex", ~s|def a, do: [message: "cannot be blank"]|},
           {"lib/b.ex", ~s|def b, do: [message: "cannot be blank"]|}
         ])
@@ -60,7 +60,7 @@ defmodule AshGettext.ExtractorTest do
 
     test "sorts messages by msgid so the template is stable across runs" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           def a, do: [message: "zebra"]
           def b, do: [message: "apple"]
@@ -71,10 +71,10 @@ defmodule AshGettext.ExtractorTest do
     end
   end
 
-  describe "scan/1 on messages that cannot be msgids" do
+  describe "skipping messages that cannot be msgids" do
     test "reports an interpolated message instead of extracting it" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           def a(value), do: [message: "Unable to parse: \#{inspect(value)}"]
         end
@@ -86,7 +86,7 @@ defmodule AshGettext.ExtractorTest do
 
     test "ignores a message whose value is a variable" do
       result =
-        scan("""
+        find_messages("""
         defmodule Sample do
           def a(text), do: [message: text]
         end
@@ -97,24 +97,24 @@ defmodule AshGettext.ExtractorTest do
     end
   end
 
-  describe "scan/1 robustness" do
+  describe "surviving files that do not parse" do
     test "skips a file that does not parse rather than crashing the run" do
-      result = Extractor.scan([{"lib/broken.ex", "defmodule Broken do def ("}])
+      result = Extractor.find_messages([{"lib/broken.ex", "defmodule Broken do def ("}])
 
       assert result.messages == []
     end
 
     test "returns nothing for a file with no messages" do
-      result = scan("defmodule Sample do\n  def a, do: :ok\nend\n")
+      result = find_messages("defmodule Sample do\n  def a, do: :ok\nend\n")
 
       assert result.messages == []
     end
   end
 
-  describe "to_pot/1" do
+  describe "writing the template" do
     test "renders a msgid with the file it comes from" do
       pot =
-        Extractor.to_pot([
+        Extractor.to_template([
           %{msgid: "cannot be blank", references: [%{path: "lib/a.ex", line: 7}]}
         ])
 
@@ -125,12 +125,12 @@ defmodule AshGettext.ExtractorTest do
 
     test "leaves the line number out, so an edit above a message does not move the template" do
       early =
-        Extractor.to_pot([
+        Extractor.to_template([
           %{msgid: "cannot be blank", references: [%{path: "lib/a.ex", line: 7}]}
         ])
 
       later =
-        Extractor.to_pot([
+        Extractor.to_template([
           %{msgid: "cannot be blank", references: [%{path: "lib/a.ex", line: 991}]}
         ])
 
@@ -139,7 +139,7 @@ defmodule AshGettext.ExtractorTest do
 
     test "names a file once even when it declares the same message twice" do
       pot =
-        Extractor.to_pot([
+        Extractor.to_template([
           %{
             msgid: "cannot be blank",
             references: [%{path: "lib/a.ex", line: 7}, %{path: "lib/a.ex", line: 42}]
@@ -150,19 +150,19 @@ defmodule AshGettext.ExtractorTest do
     end
 
     test "escapes quotes so the template stays parseable" do
-      pot = Extractor.to_pot([%{msgid: ~s|say "hi"|, references: []}])
+      pot = Extractor.to_template([%{msgid: ~s|say "hi"|, references: []}])
 
       assert pot =~ ~S|msgid "say \"hi\""|
     end
 
     test "escapes newlines rather than breaking the entry across lines" do
-      pot = Extractor.to_pot([%{msgid: "line one\nline two", references: []}])
+      pot = Extractor.to_template([%{msgid: "line one\nline two", references: []}])
 
       assert pot =~ ~S|msgid "line one\nline two"|
     end
 
     test "starts with a PO template header" do
-      assert Extractor.to_pot([]) =~ ~s|msgid ""|
+      assert Extractor.to_template([]) =~ ~s|msgid ""|
     end
   end
 end

@@ -23,7 +23,7 @@ defmodule AshGettext.Extractor do
 
   Interpolated messages are skipped on purpose: `message: "Bad frequency:
   \#{inspect(value)}"` cannot be a msgid, because the msgid has to be a constant
-  the catalog can key on. Those are reported separately by `scan/1` so they can
+  the catalog can key on. Those are reported separately by `find_messages/1` so they can
   be found and rewritten with gettext bindings rather than silently ignored.
 
   Pure: give it source text, get back results. No compilation, no app state.
@@ -32,7 +32,7 @@ defmodule AshGettext.Extractor do
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
   @type message :: %{msgid: String.t(), references: [reference_entry()]}
   @type interpolated :: %{path: String.t(), line: pos_integer()}
-  @type scan_result :: %{messages: [message()], interpolated: [interpolated()]}
+  @type find_result :: %{messages: [message()], interpolated: [interpolated()]}
 
   @doc """
   Scan `sources` — a list of `{path, contents}` — for translatable messages.
@@ -40,9 +40,9 @@ defmodule AshGettext.Extractor do
   Returns the extractable msgids with every place they appear, and separately
   the interpolated messages that cannot become msgids as written.
   """
-  @spec scan([{String.t(), String.t()}]) :: scan_result()
-  def scan(sources) do
-    found = Enum.flat_map(sources, fn {path, contents} -> scan_source(path, contents) end)
+  @spec find_messages([{String.t(), String.t()}]) :: find_result()
+  def find_messages(sources) do
+    found = Enum.flat_map(sources, fn {path, contents} -> read_source(path, contents) end)
 
     %{
       messages: found |> Enum.filter(&(&1.kind == :literal)) |> group_by_msgid(),
@@ -57,14 +57,14 @@ defmodule AshGettext.Extractor do
   @doc """
   Render extracted messages as the contents of a `.pot` file.
   """
-  @spec to_pot([message()]) :: String.t()
-  def to_pot(messages) do
-    Enum.join([header() | Enum.map(messages, &entry/1)], "\n")
+  @spec to_template([message()]) :: String.t()
+  def to_template(messages) do
+    Enum.join([template_header() | Enum.map(messages, &entry/1)], "\n")
   end
 
-  defp scan_source(path, contents) do
+  defp read_source(path, contents) do
     case parse(contents) do
-      {:ok, ast} -> collect(ast, path)
+      {:ok, ast} -> find_message_nodes(ast, path)
       :error -> []
     end
   end
@@ -86,36 +86,36 @@ defmodule AshGettext.Extractor do
     end
   end
 
-  defp collect(ast, path) do
-    {_ast, found} = Macro.prewalk(ast, [], &collect_node(&1, &2, path))
+  defp find_message_nodes(ast, path) do
+    {_ast, found} = Macro.prewalk(ast, [], &find_message_nodes(&1, &2, path))
     Enum.reverse(found)
   end
 
   # `message: "..."` as a keyword pair, wherever it appears.
-  defp collect_node({{:__block__, _key_meta, [:message]}, value} = node, found, path) do
-    {node, prepend(classify(value, path), found)}
+  defp find_message_nodes({{:__block__, _key_meta, [:message]}, value} = node, found, path) do
+    {node, prepend(message_kind(value, path), found)}
   end
 
   # `message "..."` as a DSL call, the form Ash's identity and validation blocks use.
-  defp collect_node({:message, _meta, [value]} = node, found, path) do
-    {node, prepend(classify(value, path), found)}
+  defp find_message_nodes({:message, _meta, [value]} = node, found, path) do
+    {node, prepend(message_kind(value, path), found)}
   end
 
-  defp collect_node(node, found, _path), do: {node, found}
+  defp find_message_nodes(node, found, _path), do: {node, found}
 
   defp prepend(nil, found), do: found
   defp prepend(entry, found), do: [entry | found]
 
-  defp classify({:__block__, meta, [value]}, path) when is_binary(value) do
+  defp message_kind({:__block__, meta, [value]}, path) when is_binary(value) do
     %{kind: :literal, msgid: value, path: path, line: meta[:line] || 0}
   end
 
   # An interpolated string parses as a `<<>>` construction, never a binary.
-  defp classify({:<<>>, meta, _parts}, path) do
+  defp message_kind({:<<>>, meta, _parts}, path) do
     %{kind: :interpolated, path: path, line: meta[:line] || 0}
   end
 
-  defp classify(_other, _path), do: nil
+  defp message_kind(_other, _path), do: nil
 
   defp group_by_msgid(entries) do
     entries
@@ -133,7 +133,7 @@ defmodule AshGettext.Extractor do
     |> Enum.sort_by(& &1.msgid)
   end
 
-  defp header do
+  defp template_header do
     """
     ## This file is a PO Template file.
     ##

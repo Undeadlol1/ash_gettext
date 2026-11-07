@@ -23,7 +23,7 @@ defmodule AshGettext.Locale.Normalizer do
   def normalize(nil, _supported, default), do: default
 
   def normalize(locale, supported, default) when is_binary(locale) do
-    language = language_subtag(locale)
+    language = language_code(locale)
 
     if language in supported, do: language, else: default
   end
@@ -31,11 +31,11 @@ defmodule AshGettext.Locale.Normalizer do
   @doc """
   Strip the region and script from `locale`, leaving the language subtag.
 
-      iex> AshGettext.Locale.Normalizer.language_subtag("en-US")
+      iex> AshGettext.Locale.Normalizer.language_code("en-US")
       "en"
   """
-  @spec language_subtag(String.t()) :: String.t()
-  def language_subtag(locale) when is_binary(locale) do
+  @spec language_code(String.t()) :: String.t()
+  def language_code(locale) when is_binary(locale) do
     locale
     |> String.split(["-", "_"], parts: 2)
     |> List.first()

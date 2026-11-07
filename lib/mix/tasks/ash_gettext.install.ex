@@ -26,10 +26,10 @@ defmodule Mix.Tasks.AshGettext.Install do
 
   Translating to *the signed-in user's saved language* needs a resolver that
   knows where this app stores that, and a generic library must not assume it.
-  Without `--resolver` the domains are wired to `AshGettext.Locale.Context`,
+  Without `--resolver` the domains are wired to `AshGettext.Locale.FromContext`,
   which reads `context[:locale]` — enough to translate whatever locale a
   request carries. For the rest, implement `AshGettext.Locale.Resolver`
-  yourself; `AshGettext.Installer.resolver_stub/1` returns a starting point.
+  yourself; `AshGettext.Installer.resolver_template/1` returns a starting point.
   """
 
   use Mix.Task
@@ -46,18 +46,21 @@ defmodule Mix.Tasks.AshGettext.Install do
     searched = search_roots(roots)
 
     domains =
-      wire(domain_paths(searched), &Installer.install_domain(&1, install_opts(opts, backend)))
+      add_extensions(
+        domain_paths(searched),
+        &Installer.install_domain(&1, install_opts(opts, backend))
+      )
 
-    resources = wire(resource_paths(searched), &Installer.install_resource/1)
+    resources = add_extensions(resource_paths(searched), &Installer.install_resource/1)
 
-    report(domains, resources, backend, apply?(opts))
-    write_changes(domains ++ resources, apply?(opts))
+    report(domains, resources, backend, applying?(opts))
+    write_changes(domains ++ resources, applying?(opts))
   end
 
-  defp wire(paths, install), do: Enum.map(paths, &{&1, install.(File.read!(&1))})
+  defp add_extensions(paths, install), do: Enum.map(paths, &{&1, install.(File.read!(&1))})
 
   defp backend(opts), do: opts[:backend] || detect_backend()
-  defp apply?(opts), do: Keyword.get(opts, :apply, false)
+  defp applying?(opts), do: Keyword.get(opts, :apply, false)
 
   defp search_roots([]), do: ["lib"]
   defp search_roots(roots), do: roots
@@ -131,13 +134,13 @@ defmodule Mix.Tasks.AshGettext.Install do
         do: module
   end
 
-  defp report(domains, resources, backend, apply?) do
+  defp report(domains, resources, backend, applying?) do
     Mix.shell().info("Backend: #{backend}")
     report_group("Domains", domains)
     report_group("Resources", resources)
     report_unrecognised(unrecognised(domains) ++ unrecognised(resources))
 
-    if !apply? do
+    if !applying? do
       Mix.shell().info("\nNothing written. Re-run with --apply to make these changes.")
     end
   end

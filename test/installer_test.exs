@@ -5,7 +5,7 @@ defmodule AshGettext.InstallerTest do
 
   @opts [backend: "MyApp.Gettext"]
 
-  describe "install_domain/2 on a domain with an extensions list" do
+  describe "adding the extension to a domain that lists extensions" do
     setup do
       %{
         source: """
@@ -44,7 +44,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "install_resource/1" do
+  describe "adding the extension to a resource" do
     test "adds the extension alongside the ones a resource already has" do
       source = """
       defmodule MyApp.Shop.Order do
@@ -117,7 +117,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "already_installed?/1" do
+  describe "detecting a domain that already has the extension" do
     test "is true once the extension is declared" do
       assert Installer.already_installed?("use Ash.Domain, extensions: [AshGettext.Domain]")
     end
@@ -127,7 +127,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "install_domain/2 status" do
+  describe "reporting what the domain edit did" do
     test "says already_installed rather than just unchanged" do
       source = """
       defmodule MyApp.Shop do
@@ -155,7 +155,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "install_domain/2 on a bare domain" do
+  describe "adding the extension to a domain with none" do
     test "gives it an extensions list" do
       source = """
       defmodule MyApp.Shop do
@@ -170,7 +170,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "install_domain/2 run twice" do
+  describe "running the domain edit twice" do
     test "makes no further change, so the installer is safe to re-run" do
       source = """
       defmodule MyApp.Shop do
@@ -184,7 +184,7 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
-  describe "gettext_block/1" do
+  describe "writing the gettext block" do
     test "writes only the backend when everything else is a default" do
       block = Installer.gettext_block(@opts)
 
@@ -206,24 +206,24 @@ defmodule AshGettext.InstallerTest do
     test "puts a host resolver after the context resolver, so an explicit locale still wins" do
       block = Installer.gettext_block(backend: "MyApp.Gettext", resolver: "MyApp.Localization")
 
-      assert block =~ "locale_resolvers [AshGettext.Locale.Context, MyApp.Localization]"
+      assert block =~ "locale_resolvers [AshGettext.Locale.FromContext, MyApp.Localization]"
     end
   end
 
-  describe "resolver_stub/1" do
+  describe "generating a starting resolver" do
     test "implements the resolver behaviour" do
-      assert Installer.resolver_stub("MyApp.Localization") =~
+      assert Installer.resolver_template("MyApp.Localization") =~
                "@behaviour AshGettext.Locale.Resolver"
     end
 
     test "compiles as written, so a host can install and run before filling it in" do
-      stub = Installer.resolver_stub("AshGettextInstallerStubTest.Localization")
+      stub = Installer.resolver_template("AshGettextInstallerStubTest.Localization")
 
       assert {:ok, _ast} = Code.string_to_quoted(stub)
     end
 
     test "declines by default rather than guessing where a locale is stored" do
-      stub = Installer.resolver_stub("MyApp.Localization")
+      stub = Installer.resolver_template("MyApp.Localization")
 
       assert stub =~ "TODO"
       assert stub =~ "nil"

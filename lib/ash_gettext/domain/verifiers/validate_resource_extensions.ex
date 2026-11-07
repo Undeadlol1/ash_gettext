@@ -1,4 +1,4 @@
-defmodule AshGettext.Domain.Verifiers.ResourcesOptIn do
+defmodule AshGettext.Domain.Verifiers.ValidateResourceExtensions do
   @moduledoc """
   Reports, at compile time, every resource of a domain that asked for it which
   never added `AshGettext.Resource`.
@@ -17,7 +17,7 @@ defmodule AshGettext.Domain.Verifiers.ResourcesOptIn do
 
   @impl true
   def verify(dsl) do
-    if Verifier.get_option(dsl, [:gettext], :verify_resources?) do
+    if Verifier.get_option(dsl, [:gettext], :require_resource_extension?) do
       dsl
       |> Verifier.get_entities([:resources])
       |> Enum.map(& &1.resource)
@@ -34,7 +34,7 @@ defmodule AshGettext.Domain.Verifiers.ResourcesOptIn do
   defp error(dsl, missing) do
     Spark.Error.DslError.exception(
       module: Verifier.get_persisted(dsl, :module),
-      path: [:gettext, :verify_resources?],
+      path: [:gettext, :require_resource_extension?],
       message: """
       These resources do not use the AshGettext.Resource extension, so their errors would not be translated:
 

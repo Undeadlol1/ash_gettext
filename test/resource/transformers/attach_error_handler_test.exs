@@ -1,9 +1,9 @@
-defmodule AshGettext.Resource.Transformers.InstallErrorHandlerTest do
+defmodule AshGettext.Resource.Transformers.AttachErrorHandlerTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Info
-  alias AshGettext.Errors.Handler
-  alias AshGettext.Resource.Transformers.InstallErrorHandler
+  alias AshGettext.ErrorTranslation.ActionHandler
+  alias AshGettext.Resource.Transformers.AttachErrorHandler
   alias AshGettextFixture.Opinionated
   alias AshGettextFixture.Parcel
 
@@ -11,18 +11,18 @@ defmodule AshGettext.Resource.Transformers.InstallErrorHandlerTest do
     Info.action(resource, action).error_handler
   end
 
-  describe "installing the handler" do
+  describe "attaching the error handler" do
     test "points a create action at the library's handler" do
-      assert handler_for(Parcel, :create) == {Handler, :handle, []}
+      assert handler_for(Parcel, :create) == {ActionHandler, :translate_error, []}
     end
 
     test "points an update action at it too" do
-      assert handler_for(Parcel, :relabel) == {Handler, :handle, []}
+      assert handler_for(Parcel, :relabel) == {ActionHandler, :translate_error, []}
     end
 
     test "installs it on a resource whose domain switched translation off, so the flag stays runtime" do
       assert handler_for(AshGettextFixture.SwitchedOff.Parcel, :create) ==
-               {Handler, :handle, []}
+               {ActionHandler, :translate_error, []}
     end
   end
 
@@ -45,18 +45,18 @@ defmodule AshGettext.Resource.Transformers.InstallErrorHandlerTest do
     end
   end
 
-  describe "transform/1" do
+  describe "running the transformer" do
     test "is idempotent, so recompiling never stacks handlers" do
-      {:ok, once} = InstallErrorHandler.transform(Parcel.spark_dsl_config())
-      {:ok, twice} = InstallErrorHandler.transform(once)
+      {:ok, once} = AttachErrorHandler.transform(Parcel.spark_dsl_config())
+      {:ok, twice} = AttachErrorHandler.transform(once)
 
       assert twice == once
     end
   end
 
-  describe "after?/1" do
+  describe "ordering against other transformers" do
     test "runs last, so it sees actions other transformers added" do
-      assert InstallErrorHandler.after?(Ash.Resource.Transformers.CacheActionInputs)
+      assert AttachErrorHandler.after?(Ash.Resource.Transformers.CacheActionInputs)
     end
   end
 end

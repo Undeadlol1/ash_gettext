@@ -257,10 +257,10 @@ The `gettext` DSL block on an `Ash.Domain` accepts:
   `mix ash_gettext.extract` writes.
 - `locale_resolvers([Module, ...])` — modules implementing
   `AshGettext.Locale.Resolver`, tried in order until one picks a locale.
-  Defaults to `AshGettext.Locale.Context`, which reads `context[:locale]`.
+  Defaults to `AshGettext.Locale.FromContext`, which reads `context[:locale]`.
 - `translate_errors?(false)` — keep a domain's `gettext` config without
   translating its errors (mostly for a staged rollout).
-- `verify_resources?(false)` — when `true`, compiling the domain reports every
+- `require_resource_extension?(false)` — when `true`, compiling the domain reports every
   resource that lacks the `AshGettext.Resource` extension, as a compiler
   warning naming each one (an error under `--warnings-as-errors`, the way any
   Spark verifier reports). Off by default: extensions are opted into, never
@@ -272,7 +272,7 @@ actions have no error hook in Ash, so their errors pass through as written.
 
 ## Testing your own use of this library
 
-`AshGettext.Test.assert_translates/6` and `assert_covered/5` are for this
+`AshGettext.Testing.assert_translates/6` and `assert_covered/5` are for this
 library's own suite and for auditing catalog coverage — not for a host
 app's tests, which should assert the text through their own API instead.
 

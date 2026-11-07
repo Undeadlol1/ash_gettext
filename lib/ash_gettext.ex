@@ -9,15 +9,15 @@ defmodule AshGettext do
 
   ## Missing translations are observable
 
-  `fetch/5` reports `{:missing, fallback}` rather than silently handing back the
+  `translate_or_missing/5` reports `{:missing, fallback}` rather than silently handing back the
   msgid, so a test can assert that a string really *is* covered in a locale:
 
-      assert {:ok, _} = AshGettext.fetch(MyApp.Gettext, "errors", "must weigh at least %{min} kg", [], "ru")
+      assert {:ok, _} = AshGettext.translate_or_missing(MyApp.Gettext, "errors", "must weigh at least %{min} kg", [], "ru")
 
   The detection is gettext's own signal — a lookup that misses returns the msgid
   unchanged. The one exception is the *source locale* (the backend's configured
   `:default_locale`, else the global `:gettext` one, else `"en"`): there the
-  msgid is the text, no catalog is needed, and `fetch/5` always reports `:ok`.
+  msgid is the text, no catalog is needed, and `translate_or_missing/5` always reports `:ok`.
   In a translated locale, an *identity* translation (a catalog mapping a msgid
   to itself) is indistinguishable from a miss and is reported as `:missing`.
   Use `translate/5` when you only want the string.
@@ -35,22 +35,22 @@ defmodule AshGettext do
   @spec translate(backend(), text_domain(), msgid(), bindings(), locale()) :: String.t()
   def translate(backend, text_domain, msgid, bindings, locale) do
     backend
-    |> fetch(text_domain, msgid, bindings, locale)
-    |> string()
+    |> translate_or_missing(text_domain, msgid, bindings, locale)
+    |> text_of()
   end
 
   @doc """
   Translate `msgid`, reporting whether the catalog actually covered it.
   """
-  @spec fetch(backend(), text_domain(), msgid(), bindings(), locale()) ::
+  @spec translate_or_missing(backend(), text_domain(), msgid(), bindings(), locale()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def fetch(backend, text_domain, msgid, bindings, locale) do
+  def translate_or_missing(backend, text_domain, msgid, bindings, locale) do
     msgid = to_msgid(msgid)
 
     Gettext.with_locale(backend, locale, fn ->
       :dgettext
-      |> lookup([backend, text_domain, msgid, to_bindings(bindings)])
-      |> classify(backend, locale, [msgid])
+      |> lookup_in_backend([backend, text_domain, msgid, to_bindings(bindings)])
+      |> mark_covered_or_missing(backend, locale, [msgid])
     end)
   end
 
@@ -72,14 +72,14 @@ defmodule AshGettext do
         ) :: String.t()
   def translate_plural(backend, text_domain, msgid, msgid_plural, count, bindings, locale) do
     backend
-    |> fetch_plural(text_domain, msgid, msgid_plural, count, bindings, locale)
-    |> string()
+    |> translate_plural_or_missing(text_domain, msgid, msgid_plural, count, bindings, locale)
+    |> text_of()
   end
 
   @doc """
   Translate a pluralised `msgid`, reporting whether the catalog covered it.
   """
-  @spec fetch_plural(
+  @spec translate_plural_or_missing(
           backend(),
           text_domain(),
           msgid(),
@@ -88,15 +88,23 @@ defmodule AshGettext do
           bindings(),
           locale()
         ) :: {:ok, String.t()} | {:missing, String.t()}
-  def fetch_plural(backend, text_domain, msgid, msgid_plural, count, bindings, locale) do
+  def translate_plural_or_missing(
+        backend,
+        text_domain,
+        msgid,
+        msgid_plural,
+        count,
+        bindings,
+        locale
+      ) do
     msgid = to_msgid(msgid)
     msgid_plural = to_msgid(msgid_plural)
     bindings = bindings |> to_bindings() |> Keyword.put_new(:count, count)
 
     Gettext.with_locale(backend, locale, fn ->
       :dngettext
-      |> lookup([backend, text_domain, msgid, msgid_plural, count, bindings])
-      |> classify(backend, locale, [msgid, msgid_plural])
+      |> lookup_in_backend([backend, text_domain, msgid, msgid_plural, count, bindings])
+      |> mark_covered_or_missing(backend, locale, [msgid, msgid_plural])
     end)
   end
 
@@ -107,7 +115,7 @@ defmodule AshGettext do
   falls back to a humanized form of the value itself (`:awaiting_pickup` reads
   as `"Awaiting pickup"`), because the alternative is putting `status.awaiting_pickup`
   in front of a user. The fallback is a stopgap that keeps a screen readable, not
-  a substitute for the catalog entry — use `fetch_enum_label/5` to assert coverage.
+  a substitute for the catalog entry — use `enum_label_or_missing/5` to assert coverage.
 
   Nothing here touches the attribute or its `Ash.Type.Enum`: this is a function
   a caller uses where they already render, not a change to a resource.
@@ -115,19 +123,19 @@ defmodule AshGettext do
   @spec enum_label(backend(), text_domain(), msgid(), msgid(), locale()) :: String.t()
   def enum_label(backend, text_domain, attribute, value, locale) do
     backend
-    |> fetch_enum_label(text_domain, attribute, value, locale)
-    |> string()
+    |> enum_label_or_missing(text_domain, attribute, value, locale)
+    |> text_of()
   end
 
   @doc """
   The label for an enum value, reporting whether the catalog covered it.
   """
-  @spec fetch_enum_label(backend(), text_domain(), msgid(), msgid(), locale()) ::
+  @spec enum_label_or_missing(backend(), text_domain(), msgid(), msgid(), locale()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def fetch_enum_label(backend, text_domain, attribute, value, locale) do
+  def enum_label_or_missing(backend, text_domain, attribute, value, locale) do
     msgid = enum_msgid(attribute, value)
 
-    case fetch(backend, text_domain, msgid, [], locale) do
+    case translate_or_missing(backend, text_domain, msgid, [], locale) do
       # The source locale echoes an uncovered msgid as a hit; a label must still read as a word.
       {:ok, ^msgid} -> {:ok, humanize(value)}
       {:ok, label} -> {:ok, label}
@@ -153,10 +161,10 @@ defmodule AshGettext do
   @spec known_locales(backend()) :: [locale()]
   def known_locales(backend), do: Gettext.known_locales(backend)
 
-  defp string({:ok, translated}), do: translated
-  defp string({:missing, fallback}), do: fallback
+  defp text_of({:ok, translated}), do: translated
+  defp text_of({:missing, fallback}), do: fallback
 
-  defp classify(translated, backend, locale, msgids) do
+  defp mark_covered_or_missing(translated, backend, locale, msgids) do
     if translated in msgids and not source_locale?(backend, locale),
       do: {:missing, translated},
       else: {:ok, translated}
@@ -177,7 +185,7 @@ defmodule AshGettext do
   # Gettext's runtime entry points are reached through apply/3 so the compiler
   # treats the msgid as data. Calling them directly makes gettext's extraction
   # macros try to record a msgid that is only known at runtime.
-  defp lookup(entry_point, args) do
+  defp lookup_in_backend(entry_point, args) do
     # credo:disable-for-next-line Credo.Check.Refactor.Apply
     apply(Gettext, entry_point, args)
   end

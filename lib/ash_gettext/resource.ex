@@ -23,5 +23,5 @@ defmodule AshGettext.Resource do
   """
 
   use Spark.Dsl.Extension,
-    transformers: [AshGettext.Resource.Transformers.InstallErrorHandler]
+    transformers: [AshGettext.Resource.Transformers.AttachErrorHandler]
 end

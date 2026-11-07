@@ -159,7 +159,7 @@ defmodule AshGettextFixture.Shipping do
     backend(AshGettextFixture.Gettext)
     default_locale("en")
     text_domain("fixture")
-    locale_resolvers([AshGettext.Locale.Context])
+    locale_resolvers([AshGettext.Locale.FromContext])
   end
 
   resources do

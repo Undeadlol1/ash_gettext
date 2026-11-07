@@ -2,10 +2,10 @@ defmodule AshGettext.InfoTest do
   use ExUnit.Case, async: true
 
   alias AshGettext.Info
-  alias AshGettext.Locale.Context
+  alias AshGettext.Locale.FromContext
   alias AshGettextFixture.Gettext, as: Backend
 
-  describe "settings/1 for a translating domain" do
+  describe "reading the settings of a translating domain" do
     test "reports the declared backend and text domain" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Shipping)
       assert settings.backend == Backend
@@ -15,7 +15,7 @@ defmodule AshGettext.InfoTest do
     test "reports the declared default locale and resolvers" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Shipping)
       assert settings.default_locale == "en"
-      assert settings.locale_resolvers == [Context]
+      assert settings.locale_resolvers == [FromContext]
     end
 
     test "derives supported locales from the backend rather than a declared list" do
@@ -26,11 +26,11 @@ defmodule AshGettext.InfoTest do
     test "applies the defaults a domain does not state" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Opinionated)
       assert settings.default_locale == "en"
-      assert settings.locale_resolvers == [Context]
+      assert settings.locale_resolvers == [FromContext]
     end
   end
 
-  describe "settings/1 for a domain that does not translate" do
+  describe "reading the settings of a domain that does not translate" do
     test "reports :error for a domain without the extension" do
       assert Info.settings(AshGettextFixture.Untranslated) == :error
     end

@@ -1,4 +1,4 @@
-defmodule AshGettext.Errors.HandlerTest do
+defmodule AshGettext.ErrorTranslation.ActionHandlerTest do
   @moduledoc """
   End-to-end proof that running a real Ash action returns translated errors.
 
@@ -10,7 +10,7 @@ defmodule AshGettext.Errors.HandlerTest do
   use ExUnit.Case, async: true
 
   alias Ash.Error.Changes.InvalidAttribute
-  alias AshGettext.Errors.Handler
+  alias AshGettext.ErrorTranslation.ActionHandler
   alias AshGettextFixture.Parcel
   alias AshGettextFixture.Untranslated
 
@@ -66,7 +66,7 @@ defmodule AshGettext.Errors.HandlerTest do
     end
   end
 
-  describe "handle/2 called directly" do
+  describe "translating an error without running an action" do
     test "translates the error using the locale on the changeset context" do
       changeset =
         Parcel
@@ -75,14 +75,15 @@ defmodule AshGettext.Errors.HandlerTest do
 
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
-      assert %{message: "Вес должен быть не менее 30 кг"} = Handler.handle(changeset, error)
+      assert %{message: "Вес должен быть не менее 30 кг"} =
+               ActionHandler.translate_error(changeset, error)
     end
 
     test "passes the error through for a domain that does not translate" do
       changeset = Ash.Changeset.for_create(Untranslated.Parcel, :create, %{weight: 5})
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
-      assert %{message: "weight_too_low"} = Handler.handle(changeset, error)
+      assert %{message: "weight_too_low"} = ActionHandler.translate_error(changeset, error)
     end
   end
 

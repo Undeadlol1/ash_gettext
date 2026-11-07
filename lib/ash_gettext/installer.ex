@@ -14,10 +14,10 @@ defmodule AshGettext.Installer do
   ## What cannot be generated
 
   `locale_resolver` is deliberately left pointing at the library's generic
-  `AshGettext.Locale.Context`, which reads a locale someone already put on the
+  `AshGettext.Locale.FromContext`, which reads a locale someone already put on the
   action context. Resolving "the signed-in user's saved language" needs to know
   where the host stores that, which is exactly what a generic library must not
-  assume. `resolver_stub/1` generates a module with the
+  assume. `resolver_template/1` generates a module with the
   behaviour and a `TODO` instead of guessing.
   """
 
@@ -125,8 +125,8 @@ defmodule AshGettext.Installer do
   Generated rather than inferred: the library cannot know where an application
   keeps a user's language, and guessing wrong is worse than an obvious `TODO`.
   """
-  @spec resolver_stub(String.t()) :: String.t()
-  def resolver_stub(module) do
+  @spec resolver_template(String.t()) :: String.t()
+  def resolver_template(module) do
     """
     defmodule #{module} do
       @moduledoc \"\"\"
@@ -160,7 +160,9 @@ defmodule AshGettext.Installer do
   defp text_domain_line(text_domain), do: [~s|text_domain "#{text_domain}"|]
 
   defp resolver_line(nil), do: []
-  defp resolver_line(resolver), do: ["locale_resolvers [AshGettext.Locale.Context, #{resolver}]"]
+
+  defp resolver_line(resolver),
+    do: ["locale_resolvers [AshGettext.Locale.FromContext, #{resolver}]"]
 
   # `use Ash.Domain` appears with an extensions list, or bare. Both are common.
   defp add_extension(content) do
@@ -233,7 +235,7 @@ defmodule AshGettext.Installer do
   # the block into the middle of the list. Four of this app's thirteen domains
   # look like that, and every one produced source that would not parse.
   defp insert_gettext_block(content, opts) do
-    case use_call_last_line(content) do
+    case last_line_of_use_call(content) do
       nil -> content
       line -> insert_after_line(content, line, String.trim_trailing(gettext_block(opts)))
     end
@@ -243,7 +245,7 @@ defmodule AshGettext.Installer do
   # a bare Elixir list in quoted form, not a `{form, meta, args}` tuple, so it
   # carries no metadata at all — and the `]` of a multi-line extensions list is
   # exactly the position we need. Wrapping literals in blocks gives them meta.
-  defp use_call_last_line(content) do
+  defp last_line_of_use_call(content) do
     parsed =
       Code.string_to_quoted(content,
         token_metadata: true,
