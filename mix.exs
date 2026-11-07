@@ -2,7 +2,7 @@ defmodule AshGettext.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/Undeadlol1/ash_gettext"
-  @version "0.1.0"
+  @version "0.2.0"
 
   def project do
     [
@@ -32,6 +32,7 @@ defmodule AshGettext.MixProject do
       {:ash, "~> 3.32"},
       {:spark, "~> 2.3"},
       {:gettext, "~> 1.0"},
+      {:ash_json_api, "~> 1.4", optional: true},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end

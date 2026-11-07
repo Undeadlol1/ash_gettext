@@ -125,6 +125,32 @@ mix ash_gettext.extract --check  # in CI: fails when the template is out of date
 It reads your resources and writes the template. In CI, `--check` fails the
 build when someone adds a message without its entry.
 
+## Coded errors
+
+Ash has no concept of an error code, and AshJsonApi hardcodes `code` per error
+type, so a client can only tell rules apart by reading a sentence.
+`AshGettext.Error` carries both a stable `code` the client branches on and a
+`message` msgid that is translated into the sentence the person reads:
+
+```elixir
+{:error,
+ AshGettext.Error.exception(
+   code: :weight_too_low,
+   field: :weight,
+   message: "weight_too_low",
+   vars: [min: 30]
+ )}
+```
+
+`code` is required. With `:ash_json_api` installed the error renders `code` as
+a string, the message as `detail`, `vars` as `meta`, and `source.pointer` only
+when `field` is set.
+
+Two limits: translation only runs for create, update and destroy actions (the
+only actions Ash lets us attach an `error_handler` to), and a `message:` given
+as a module attribute instead of a literal string is silently skipped by
+`mix ash_gettext.extract`, so add its msgid to the template by hand.
+
 ## Installation
 
 Not on Hex yet:
