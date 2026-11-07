@@ -5,11 +5,13 @@ English and in Russian. It assumes an app that already uses Ash and Gettext.
 
 ## Add the dependency
 
+AshGettext is not on Hex yet, so take it from GitHub:
+
 ```elixir
 # mix.exs
 def deps do
   [
-    {:ash_gettext, "~> 0.1"}
+    {:ash_gettext, github: "Undeadlol1/ash_gettext"}
   ]
 end
 ```

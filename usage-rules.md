@@ -6,10 +6,11 @@ options only when a requirement demands them.
 
 ## Setup
 
-- Add `{:ash_gettext, "~> 0.1"}` to deps. It needs `:ash`, `:spark` and
-  `:gettext` (a Gettext backend, `use Gettext.Backend`, must already exist in
-  the app). `{:ash_json_api, "~> 1.4"}` is optional: add it only if the app
-  serves JSON:API.
+- AshGettext is not on Hex yet. Add
+  `{:ash_gettext, github: "Undeadlol1/ash_gettext"}` to deps. It needs `:ash`,
+  `:spark` and `:gettext` (a Gettext backend, `use Gettext.Backend`, must
+  already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
+  only if the app serves JSON:API.
 - Run `mix ash_gettext.install` to preview the edits, then
   `mix ash_gettext.install --apply` to write them. It adds the
   `AshGettext.Domain` extension and a `gettext do` block to every domain, and

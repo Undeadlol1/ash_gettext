@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 — 2026-11-07
+## 0.1.0 — unreleased
 
-First packaged release.
+The first packaged version. Not published to Hex yet.
 
 ### Changes
 
