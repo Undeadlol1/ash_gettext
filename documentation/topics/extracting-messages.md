@@ -130,3 +130,7 @@ InvalidAttribute.exception(field: :weight, message: @too_light, vars: [min: 30])
 
 The task does not report it. Write the string in place, or add its msgid to
 the `.pot` and `.po` files by hand.
+
+Text you pass to `AshGettext.translate/5` and the other functions is not a
+`message:`, so the task does not find it either. See
+[Translating text](translating-text.md#add-the-text-to-the-template).

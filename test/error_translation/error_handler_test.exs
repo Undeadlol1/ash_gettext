@@ -1,4 +1,4 @@
-defmodule AshGettext.ErrorTranslation.ActionHandlerTest do
+defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
   @moduledoc """
   End-to-end proof that running a real Ash action returns translated errors.
 
@@ -10,7 +10,7 @@ defmodule AshGettext.ErrorTranslation.ActionHandlerTest do
   use ExUnit.Case, async: true
 
   alias Ash.Error.Changes.InvalidAttribute
-  alias AshGettext.ErrorTranslation.ActionHandler
+  alias AshGettext.ErrorTranslation.ErrorHandler
   alias AshGettextFixture.Parcel
   alias AshGettextFixture.Untranslated
 
@@ -21,6 +21,13 @@ defmodule AshGettext.ErrorTranslation.ActionHandlerTest do
       result = Ash.create(Parcel, %{weight: 5}, context: %{locale: "ru"})
 
       assert message_of(result) == "Вес должен быть не менее 30 кг"
+    end
+
+    test "translates the message of a validation Ash ships, with its own placeholder" do
+      result =
+        Ash.create(AshGettextFixture.ComparedParcel, %{weight: 5}, context: %{locale: "ru"})
+
+      assert message_of(result) == "должен весить не меньше 30 кг"
     end
 
     test "returns the error in English when English is asked for" do
@@ -76,14 +83,14 @@ defmodule AshGettext.ErrorTranslation.ActionHandlerTest do
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
       assert %{message: "Вес должен быть не менее 30 кг"} =
-               ActionHandler.translate_error(changeset, error)
+               ErrorHandler.translate_error(changeset, error)
     end
 
     test "passes the error through for a domain that does not translate" do
       changeset = Ash.Changeset.for_create(Untranslated.Parcel, :create, %{weight: 5})
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
-      assert %{message: "weight_too_low"} = ActionHandler.translate_error(changeset, error)
+      assert %{message: "weight_too_low"} = ErrorHandler.translate_error(changeset, error)
     end
   end
 

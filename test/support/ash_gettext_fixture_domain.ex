@@ -150,6 +150,40 @@ defmodule AshGettextFixture.Parcel do
   end
 end
 
+defmodule AshGettextFixture.ComparedParcel do
+  @moduledoc "A resource whose only rule is a validation Ash ships, `compare`."
+
+  use Ash.Resource,
+    domain: AshGettextFixture.Shipping,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  ets do
+    private?(true)
+  end
+
+  actions do
+    defaults([:read])
+
+    create :create do
+      primary?(true)
+      accept([:weight])
+
+      validate(compare(:weight, greater_than_or_equal_to: 30),
+        message: "must weigh at least %{greater_than_or_equal_to} kg"
+      )
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :weight, :integer do
+      public?(true)
+    end
+  end
+end
+
 defmodule AshGettextFixture.Shipping do
   @moduledoc "A domain that translates, for the library's own suite."
 
@@ -164,6 +198,7 @@ defmodule AshGettextFixture.Shipping do
 
   resources do
     resource(AshGettextFixture.Parcel)
+    resource(AshGettextFixture.ComparedParcel)
   end
 end
 

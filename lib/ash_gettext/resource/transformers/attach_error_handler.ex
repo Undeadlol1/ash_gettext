@@ -1,6 +1,6 @@
 defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
   @moduledoc """
-  Point every write action's `error_handler` at `AshGettext.ErrorTranslation.ActionHandler`.
+  Point every write action's `error_handler` at `AshGettext.ErrorTranslation.ErrorHandler`.
 
   Doing this at compile time is what makes translation a property of the resource
   rather than a thing each action has to remember. Adding an action to a resource
@@ -21,7 +21,7 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
   alias Spark.Dsl.Transformer
 
   @writes [:create, :update, :destroy]
-  @handler {AshGettext.ErrorTranslation.ActionHandler, :translate_error, []}
+  @handler {AshGettext.ErrorTranslation.ErrorHandler, :translate_error, []}
 
   @doc false
   def after?(_transformer), do: true

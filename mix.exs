@@ -53,9 +53,9 @@ defmodule AshGettext.MixProject do
       source_ref: "v#{@version}",
       extras: [
         {"README.md", title: "Home"},
-        "documentation/topics/getting-started.md",
-        "documentation/topics/translating-errors.md",
+        "documentation/topics/translating-text.md",
         "documentation/topics/locales.md",
+        "documentation/topics/translating-errors.md",
         "documentation/topics/extracting-messages.md",
         "documentation/topics/testing.md",
         "documentation/topics/how-it-works.md",
@@ -85,7 +85,7 @@ defmodule AshGettext.MixProject do
         "How it works": [
           AshGettext.Info,
           AshGettext.ErrorTranslation,
-          AshGettext.ErrorTranslation.ActionHandler,
+          AshGettext.ErrorTranslation.ErrorHandler,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
@@ -97,7 +97,8 @@ defmodule AshGettext.MixProject do
   end
 
   defp description do
-    "Gettext translation for Ash validation and error messages, opted into per domain."
+    "Translations for Ash apps, with Gettext. Your text, your enum values and " <>
+      "Ash's error messages come out in each user's language."
   end
 
   defp package do

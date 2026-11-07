@@ -1,7 +1,9 @@
 # Rules for working with AshGettext
 
-AshGettext translates the error messages of Ash write actions with Gettext.
-Read these rules before writing code that uses it. Prefer the defaults; add
+AshGettext translates Ash apps with Gettext. It translates text, plurals
+and enum values through `AshGettext.translate/5` and its siblings, picks the
+user's language, and translates the errors of create, update and destroy
+actions. Read these rules before writing code that uses it. Prefer the defaults; add
 options only when a requirement demands them.
 
 ## Setup
@@ -20,7 +22,8 @@ options only when a requirement demands them.
 - To wire by hand: `use Ash.Domain, extensions: [AshGettext.Domain]` with a
   `gettext do backend MyApp.Gettext end` block, and
   `use Ash.Resource, extensions: [AshGettext.Resource]` on each resource.
-  Both extensions are required: the domain block alone changes no behavior.
+  Both are needed only for translating errors; the domain block alone
+  changes no behavior. Translating text needs neither.
 - Options on the `gettext` block: `backend` (required module);
   `default_locale` (default `"en"`); `text_domain` (default `"ash_errors"`);
   `locale_resolvers` (default `[AshGettext.Locale.FromContext]`);
@@ -31,6 +34,34 @@ options only when a requirement demands them.
 - Keep `default_locale` equal to the backend's source language. The supported
   locales are never an option: they are the locale folders under the
   backend's `priv`, read through `AshGettext.known_locales/1`.
+
+## Translating text
+
+- Translate a string with `AshGettext.translate/5`:
+  `(backend, text_domain, msgid, bindings, locale)`. It needs only a Gettext
+  backend: no domain block, no resource extension, no `Gettext.put_locale`.
+- The msgid is the plain sentence in the source language, with `%{var}`
+  placeholders filled from `bindings`. Do not invent keys like
+  `"orders.shipped"`. The source language needs no catalog.
+- For plurals use `AshGettext.translate_plural/7` with
+  `(backend, text_domain, msgid, msgid_plural, count, bindings, locale)`;
+  `count` is always available as `%{count}`.
+- To label an enum value use `AshGettext.enum_label/5` with
+  `(backend, text_domain, attribute, value, locale)`. The msgid is
+  `"<attribute>.<value>"` (`AshGettext.enum_msgid/2`). An uncovered value
+  falls back to a humanized form (`:awaiting_pickup` becomes
+  `"Awaiting pickup"`).
+- `translate_or_missing/5`, `translate_plural_or_missing/7` and
+  `enum_label_or_missing/5` return `{:ok, string}` or `{:missing, string}`.
+  They are not the `{:ok, v} | :error` shape. A translation identical to its
+  msgid in a non-source locale counts as `:missing`.
+- Pick the `locale` argument with
+  `AshGettext.Locale.resolve(context, resolvers: [...], supported: AshGettext.known_locales(backend), default: "en")`.
+  It cuts `"ru_RU"` to `"ru"` and falls back to `default` for a language
+  with no catalog.
+- Neither `mix gettext.extract` nor `mix ash_gettext.extract` finds text
+  passed to these functions. Add those msgids to the `.pot` by hand or keep
+  them in a Gettext `*_noop` macro.
 
 ## Translating errors
 
@@ -124,20 +155,6 @@ options only when a requirement demands them.
 - Do not call `Gettext.put_locale` per process or request to pick the error
   language. Pass `context: %{locale: "ru"}` or use a resolver.
 - Do not hand-write `.pot` entries that the extractor produces.
-- To translate text outside an action error, call `AshGettext.translate/5`
-  with `(backend, text_domain, msgid, bindings, locale)`. For plurals use
-  `AshGettext.translate_plural/7` with
-  `(backend, text_domain, msgid, msgid_plural, count, bindings, locale)`;
-  `count` is always available as `%{count}`.
-- To label an enum value use `AshGettext.enum_label/5` with
-  `(backend, text_domain, attribute, value, locale)`. The msgid is
-  `"<attribute>.<value>"` (`AshGettext.enum_msgid/2`). An uncovered value
-  falls back to a humanized form (`:awaiting_pickup` becomes
-  `"Awaiting pickup"`).
-- `translate_or_missing/5`, `translate_plural_or_missing/7` and
-  `enum_label_or_missing/5` return `{:ok, string}` or `{:missing, string}`.
-  They are not the `{:ok, v} | :error` shape. A translation identical to its
-  msgid in a non-source locale counts as `:missing`.
 - Configuration lives in the domain DSL and is read through `AshGettext.Info`.
   Do not read it from `Application.get_env`.
 - To share one `gettext` block across domains, put it in a base domain macro

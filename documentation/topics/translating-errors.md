@@ -1,11 +1,77 @@
 # Translating errors
 
-This page covers what AshGettext translates, how a message becomes a msgid,
-and how to roll translation out one domain at a time.
+Ash builds its error messages inside the action, so you cannot wrap them in
+a Gettext call yourself. This page shows how AshGettext translates them for
+you, which errors it covers, and how to turn it on one domain at a time.
 
-## Replace a per-action error handler
+## Turn it on
 
-Without AshGettext, each write action needs its own handler:
+Add the `AshGettext.Domain` extension and a `gettext` block to the domain:
+
+```elixir
+defmodule MyApp.Shipping do
+  use Ash.Domain, extensions: [AshGettext.Domain]
+
+  gettext do
+    backend(MyApp.Gettext)
+  end
+
+  resources do
+    resource MyApp.Shipping.Parcel
+  end
+end
+```
+
+`backend` is the only required option. See the
+[DSL reference](DSL-AshGettext.Domain.md) for the rest.
+
+Add the `AshGettext.Resource` extension to each resource:
+
+```elixir
+use Ash.Resource,
+  domain: MyApp.Shipping,
+  extensions: [AshGettext.Resource]
+```
+
+The domain block says how to translate. The resource extension turns it on
+for that resource's create, update and destroy actions.
+
+`mix ash_gettext.install` makes both edits in every domain and resource. Run
+it alone to see the edits, and with `--apply` to write them. If the app has
+more than one Gettext backend, name one with `--backend MyApp.Gettext`.
+
+## See one error in two languages
+
+```elixir
+create :create do
+  accept [:weight]
+  validate compare(:weight, greater_than_or_equal_to: 30),
+    message: "must weigh at least %{greater_than_or_equal_to} kg"
+end
+```
+
+```po
+# priv/gettext/ru/LC_MESSAGES/ash_errors.po
+msgid "must weigh at least %{greater_than_or_equal_to} kg"
+msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
+```
+
+Pass the language in the action context:
+
+```elixir
+MyApp.Shipping.Parcel
+|> Ash.Changeset.for_create(:create, %{weight: 5}, context: %{locale: "ru"})
+|> Ash.create()
+# {:error, %Ash.Error.Invalid{errors: [%{message: "должен весить не меньше 30 кг"}]}}
+```
+
+Without `locale`, the message stays in English. To take the language from
+the signed-in user, see [Locales](locales.md).
+
+## No handler on each action
+
+Without AshGettext, each write action needs its own handler, and a new
+action ships untranslated if someone forgets it:
 
 ```elixir
 create :register do
@@ -14,16 +80,9 @@ create :register do
 end
 ```
 
-With the `AshGettext.Resource` extension, delete the handler. The extension
-adds it to every create, update and destroy action, including actions you add
-later:
-
-```elixir
-use Ash.Resource, extensions: [AshGettext.Resource]
-```
-
-An action that declares its own `error_handler` keeps it. AshGettext does not
-replace it.
+The resource extension adds the handler to every create, update and destroy
+action, including actions you add later. An action that declares its own
+`error_handler` keeps it, and is not translated.
 
 ## The message is the msgid
 
@@ -37,8 +96,8 @@ If the catalog for the reader's locale has an entry, the entry replaces the
 message. If it has none, the message is left as it was. Adding AshGettext can
 add translations. It never changes a message that has no entry.
 
-The source language needs no catalog. The `.po` files hold only the other
-languages. See [Getting started](getting-started.md#write-a-message-in-your-own-language).
+Your own language needs no catalog, because the message is already the
+text. The `.po` files hold only the other languages.
 
 ## Put values in a message
 
@@ -145,36 +204,3 @@ With `:ash_json_api` installed, this error renders as:
 
 `code` is the atom as a string, `detail` is the translated message and `meta`
 holds `vars`. `source.pointer` appears only when `field` is set.
-
-## Translate a string outside an error
-
-Three functions translate text that is not an error. The locale is an
-argument, so they need no process setup:
-
-```elixir
-AshGettext.translate(MyApp.Gettext, "ash_errors", "Saved", [], "ru")
-#=> "Сохранено"
-
-AshGettext.translate_plural(
-  MyApp.Gettext,
-  "ash_errors",
-  "%{count} parcel",
-  "%{count} parcels",
-  3,
-  [],
-  "ru"
-)
-#=> "3 посылки"
-
-AshGettext.enum_label(MyApp.Gettext, "ash_errors", :status, :awaiting_pickup, "ru")
-#=> "Ожидает выдачи"
-```
-
-`enum_label/5` looks up the msgid `status.awaiting_pickup`. If the catalog has
-no entry, it returns `"Awaiting pickup"`, so a screen never shows a raw key.
-`translate_plural/7` takes the same arguments as Gettext's `dngettext`, with
-the backend and the locale added.
-
-Each function has an `_or_missing` twin that returns `{:ok, string}` or
-`{:missing, string}`. Use it when you need to know whether the catalog covered
-the string; `AshGettext.Testing` is built on it.

@@ -6,6 +6,10 @@ The first packaged version. Not published to Hex yet.
 
 ### Changes
 
+- `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` translate
+  text, plurals and enum values, with the language passed as an argument.
+- `AshGettext.Locale.resolve/2` picks a language your catalogs have from
+  resolvers, such as one that reads the signed-in user.
 - `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
   block on a domain translates the errors of every create, update and destroy
   action on its resources, in the locale its resolvers pick.
@@ -18,8 +22,6 @@ The first packaged version. Not published to Hex yet.
   asks for `--output`.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain
   and resource extensions and the `gettext` block for an existing app.
-- `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` translate
-  strings outside errors, with the locale passed as an argument.
 - `translate_or_missing/5`, `translate_plural_or_missing/7` and
   `enum_label_or_missing/5` never report `:missing` in the source locale (the
   backend's default locale). The msgid is the text, so the source language

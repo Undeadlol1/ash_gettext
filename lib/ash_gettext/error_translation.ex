@@ -14,7 +14,7 @@ defmodule AshGettext.ErrorTranslation do
   Pure by construction: backend, text domain and locale are all arguments, so a
   test is one assertion over one struct — no action run, no database, no actor.
 
-  `AshGettext.ErrorTranslation.ActionHandler` calls this each time a create,
+  `AshGettext.ErrorTranslation.ErrorHandler` calls this each time a create,
   update or destroy action fails on a resource that uses `AshGettext.Resource`.
   You can also call it yourself on any error you already hold.
   """
