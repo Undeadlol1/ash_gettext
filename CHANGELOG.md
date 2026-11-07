@@ -18,8 +18,8 @@
   outside errors, with the locale passed as an argument.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain and
   resource extensions and `gettext` block for an existing app.
-- `verify_resources?` on the domain `gettext` block: opt-in compile-time check
+- `require_resource_extension?` on the domain `gettext` block: opt-in compile-time check
   that every resource in the domain carries `AshGettext.Resource`.
-- `fetch/5`, `fetch_plural/7` and `fetch_enum_label/5` never report `:missing`
+- `translate_or_missing/5`, `translate_plural_or_missing/7` and `enum_label_or_missing/5` never report `:missing`
   in the source locale (the backend's default locale): the msgid is the text,
   so the source language needs no catalog.

@@ -40,8 +40,8 @@ defmodule Mix.Tasks.AshGettext.Extract do
     output = Keyword.get(opts, :output, @default_output)
     paths = if paths == [], do: @default_paths, else: paths
 
-    result = paths |> sources() |> Extractor.scan()
-    pot = Extractor.to_pot(result.messages)
+    result = paths |> sources() |> Extractor.find_messages()
+    pot = Extractor.to_template(result.messages)
 
     report(result, paths)
 

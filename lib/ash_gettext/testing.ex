@@ -1,4 +1,4 @@
-defmodule AshGettext.Test do
+defmodule AshGettext.Testing do
   @moduledoc """
   One-line assertions about translated text, for the library's own suite and for
   consumers writing their own.
@@ -9,7 +9,7 @@ defmodule AshGettext.Test do
   > own API, so they keep passing whether `ash_gettext` sits behind that API or
   > not. Reaching for these helpers in host tests couples the suite to this
   > library and throws that property away. A host can enforce this with its
-  > own static-analysis rule against reaching for `AshGettext.Test` outside
+  > own static-analysis rule against reaching for `AshGettext.Testing` outside
   > this library's own suite.
 
   These helpers exist for the cases where the library *is* the subject: the
@@ -61,7 +61,7 @@ defmodule AshGettext.Test do
           AshGettext.bindings()
         ) :: String.t()
   def assert_covered(backend, text_domain, msgid, locale, bindings \\ []) do
-    case AshGettext.fetch(backend, text_domain, msgid, bindings, locale) do
+    case AshGettext.translate_or_missing(backend, text_domain, msgid, bindings, locale) do
       {:ok, translated} ->
         translated
 

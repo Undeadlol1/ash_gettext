@@ -1,13 +1,13 @@
-defmodule AshGettext.TestTest do
+defmodule AshGettext.TestingTest do
   use ExUnit.Case, async: true
 
-  import AshGettext.Test
+  import AshGettext.Testing
 
   alias AshGettextFixture.Gettext, as: Backend
 
   @text_domain "fixture"
 
-  describe "assert_translates/6" do
+  describe "asserting a message renders as expected" do
     test "passes and returns the string when the rendering matches" do
       assert assert_translates(Backend, @text_domain, "greeting", "ru", "Привет") == "Привет"
     end
@@ -35,7 +35,7 @@ defmodule AshGettext.TestTest do
     end
   end
 
-  describe "assert_covered/5" do
+  describe "asserting a catalog covers a message" do
     test "passes for a msgid the locale's catalog covers" do
       assert assert_covered(Backend, @text_domain, "greeting", "ru") == "Привет"
     end

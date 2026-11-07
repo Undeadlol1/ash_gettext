@@ -1,11 +1,11 @@
-defmodule AshGettext.Errors.Handler do
+defmodule AshGettext.ErrorTranslation.ActionHandler do
   @moduledoc """
   The `error_handler` that `AshGettext.Resource` installs on write actions.
 
   Ash calls this with the changeset and each error it collects, and takes the
   return value as the error to keep. Two things happen here and nowhere else:
   the locale is resolved from the changeset, and the error is handed to
-  `AshGettext.Errors`.
+  `AshGettext.ErrorTranslation`.
 
   It sits below every transport by design. It also sits
   below every *validation* — an error raised by a custom validation, a builtin
@@ -14,18 +14,21 @@ defmodule AshGettext.Errors.Handler do
   If the domain does not configure `gettext`, the error passes through untouched.
   """
 
-  alias AshGettext.Errors
+  alias AshGettext.ErrorTranslation
   alias AshGettext.Info
   alias AshGettext.Locale
 
   @doc """
   Translate `error` into the locale `changeset` implies.
   """
-  @spec handle(Ash.Changeset.t(), term()) :: term()
-  def handle(changeset, error) do
+  @spec translate_error(Ash.Changeset.t(), term()) :: term()
+  def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
-      {:ok, settings} -> Errors.translate(error, translation_options(changeset, settings))
-      :error -> error
+      {:ok, settings} ->
+        ErrorTranslation.translate(error, translation_options(changeset, settings))
+
+      :error ->
+        error
     end
   end
 

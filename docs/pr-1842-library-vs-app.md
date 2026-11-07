@@ -27,7 +27,7 @@ domains exist, how resources are grouped).
   miss (the app test currently flags it).
 - [x] **Template freshness test** —
   `test/ash_gettext/extracted_template_is_current_test.exs` re-implements
-  `mix ash_gettext.extract --check` (scan + `to_pot` + compare). Keep one: the
+  `mix ash_gettext.extract --check` (scan + `to_template` + compare). Keep one: the
   test should call the task, or CI should run `--check`.
 
 ## Stays in the app (correct as is)
@@ -51,7 +51,7 @@ domains exist, how resources are grouped).
 
 - [x] `TranslatingBase` repeats two library defaults: `default_locale "en"` and
   `text_domain("ash_errors")`. Delete both lines.
-- [x] The resolver list `[AshGettext.Locale.Context, AshGettextAdapter]` is
+- [x] The resolver list `[AshGettext.Locale.FromContext, AshGettextAdapter]` is
   written in `TranslatingBase` and again in `Translator.resolve_locale/1`.
   One definition.
 - [x] Default locale: `"en"` literal in `TranslatingBase`,

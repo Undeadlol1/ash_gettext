@@ -9,7 +9,7 @@ defmodule AshGettext.Domain do
           backend MyApp.Gettext
           default_locale "en"
           text_domain "ash_errors"
-          locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.Context]
+          locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
         end
 
         resources do
@@ -61,7 +61,7 @@ defmodule AshGettext.Domain do
       ],
       locale_resolvers: [
         type: {:list, {:behaviour, AshGettext.Locale.Resolver}},
-        default: [AshGettext.Locale.Context],
+        default: [AshGettext.Locale.FromContext],
         doc: """
         Modules implementing `AshGettext.Locale.Resolver`, tried in order until one
         answers. Host-specific resolvers (\"read the user's stored locale\") belong
@@ -73,7 +73,7 @@ defmodule AshGettext.Domain do
         default: true,
         doc: "Whether resources in this domain translate their action errors."
       ],
-      verify_resources?: [
+      require_resource_extension?: [
         type: :boolean,
         default: false,
         doc: """
@@ -87,5 +87,5 @@ defmodule AshGettext.Domain do
   }
   use Spark.Dsl.Extension,
     sections: [@gettext],
-    verifiers: [AshGettext.Domain.Verifiers.ResourcesOptIn]
+    verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions]
 end

@@ -12,7 +12,7 @@ defmodule AshGettext.Locale do
   `async: true`.
 
       AshGettext.Locale.resolve(%{locale: "ru_RU"},
-        resolvers: [AshGettext.Locale.Context],
+        resolvers: [AshGettext.Locale.FromContext],
         supported: ["en", "ru"],
         default: "en"
       )
@@ -37,22 +37,22 @@ defmodule AshGettext.Locale do
 
     * `:default` — required; the locale to use when nothing else answers.
     * `:resolvers` — modules implementing `AshGettext.Locale.Resolver`, tried in
-      order. Defaults to `[AshGettext.Locale.Context]`.
+      order. Defaults to `[AshGettext.Locale.FromContext]`.
     * `:supported` — the locales the catalogs cover. Defaults to `[default]`.
       Pass `AshGettext.known_locales(backend)` to derive it from the backend.
   """
   @spec resolve(map(), [option()]) :: String.t()
   def resolve(context, opts) when is_map(context) do
     default = Keyword.fetch!(opts, :default)
-    resolvers = Keyword.get(opts, :resolvers, [AshGettext.Locale.Context])
+    resolvers = Keyword.get(opts, :resolvers, [AshGettext.Locale.FromContext])
     supported = Keyword.get(opts, :supported, [default])
 
     resolvers
-    |> first_opinion(context)
+    |> first_resolver_answer(context)
     |> Normalizer.normalize(supported, default)
   end
 
-  defp first_opinion(resolvers, context) do
+  defp first_resolver_answer(resolvers, context) do
     Enum.find_value(resolvers, fn resolver -> resolver.resolve(context) end)
   end
 end

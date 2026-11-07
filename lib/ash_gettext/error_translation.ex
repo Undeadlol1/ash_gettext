@@ -1,4 +1,4 @@
-defmodule AshGettext.Errors do
+defmodule AshGettext.ErrorTranslation do
   @moduledoc """
   Turn an Ash error's message into the reader's language.
 
@@ -52,7 +52,7 @@ defmodule AshGettext.Errors do
     text_domain = Keyword.fetch!(opts, :text_domain)
     locale = Keyword.fetch!(opts, :locale)
 
-    case AshGettext.fetch(backend, text_domain, message, bindings(error), locale) do
+    case AshGettext.translate_or_missing(backend, text_domain, message, bindings(error), locale) do
       {:ok, translated} -> %{error | message: translated}
       {:missing, _untranslated} -> error
     end

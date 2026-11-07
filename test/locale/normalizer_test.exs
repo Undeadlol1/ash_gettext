@@ -7,7 +7,7 @@ defmodule AshGettext.Locale.NormalizerTest do
 
   @supported ["en", "ru"]
 
-  describe "normalize/3" do
+  describe "matching a locale to one the backend knows" do
     test "keeps a locale the catalogs cover" do
       assert Normalizer.normalize("ru", @supported, "en") == "ru"
     end
@@ -33,13 +33,13 @@ defmodule AshGettext.Locale.NormalizerTest do
     end
   end
 
-  describe "language_subtag/1" do
+  describe "taking the language out of a locale" do
     test "returns the language when there is no region" do
-      assert Normalizer.language_subtag("ru") == "ru"
+      assert Normalizer.language_code("ru") == "ru"
     end
 
     test "drops everything after the first separator" do
-      assert Normalizer.language_subtag("zh_Hans_CN") == "zh"
+      assert Normalizer.language_code("zh_Hans_CN") == "zh"
     end
   end
 end

@@ -22,7 +22,7 @@ defmodule AshGettext.LocaleTest do
 
   @supported ["en", "ru"]
 
-  describe "resolve/2" do
+  describe "choosing a locale" do
     test "reads a locale placed on the context" do
       assert Locale.resolve(%{locale: "ru"}, default: "en", supported: @supported) == "ru"
     end

@@ -1,4 +1,4 @@
-defmodule AshGettext.Locale.Context do
+defmodule AshGettext.Locale.FromContext do
   @moduledoc """
   Read a locale that was already decided and placed on the action context.
 
