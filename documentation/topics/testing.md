@@ -1,26 +1,19 @@
 # How to test with AshGettext
 
 This page shows how to check that your translations exist and that an Ash
-action returns them. The examples below use this domain and a Russian
-catalog. Swap in your own.
-
-```elixir
-gettext do
-  backend(MyApp.Gettext)
-  text_domain("shipping")
-end
-```
+action returns them. The examples below use this Russian catalog. Swap in
+your own.
 
 ```po
-# priv/gettext/ru/LC_MESSAGES/shipping.po
-msgid "must weigh at least %{min} kg"
-msgstr "должен весить не меньше %{min} кг"
+# priv/gettext/ru/LC_MESSAGES/default.po
+msgid "Hello, %{name}"
+msgstr "Привет, %{name}"
 ```
 
 ## Keep tests parallel
 
 Nothing here needs setup. AshGettext keeps no global state: the locale is an
-argument or part of the action context, and the settings are read from the
+argument or part of the action context, and any settings are read from the
 domain. So tests that use it can all be `async: true`. Never call
 `Gettext.put_locale/2` in a test to choose a language.
 
@@ -31,20 +24,13 @@ the text domain, the msgid, the locale and the text you expect. A map or
 keyword list of values goes last.
 
 ```elixir
-defmodule MyApp.ShippingTranslationsTest do
+defmodule MyApp.TranslationsTest do
   use ExUnit.Case, async: true
 
   import AshGettext.Testing
 
-  test "the minimum weight message is translated to Russian" do
-    assert_translates(
-      MyApp.Gettext,
-      "shipping",
-      "must weigh at least %{min} kg",
-      "ru",
-      "должен весить не меньше 30 кг",
-      min: 30
-    )
+  test "the greeting is translated to Russian" do
+    assert_translates(MyApp.Gettext, "default", "Hello, %{name}", "ru", "Привет, Ann", name: "Ann")
   end
 end
 ```
@@ -58,8 +44,8 @@ When you only need to know that a translator did the work, use
 `AshGettext.Testing.assert_covered/5`. It does not pin the wording:
 
 ```elixir
-test "the minimum weight message has a Russian translation" do
-  assert_covered(MyApp.Gettext, "shipping", "must weigh at least %{min} kg", "ru", min: 30)
+test "the greeting has a Russian translation" do
+  assert_covered(MyApp.Gettext, "default", "Hello, %{name}", "ru", name: "Ann")
 end
 ```
 
@@ -72,8 +58,8 @@ Loop over the locales the backend ships:
 
 ```elixir
 for locale <- AshGettext.known_locales(MyApp.Gettext), locale != "en" do
-  test "the weight message is covered in #{locale}" do
-    assert_covered(MyApp.Gettext, "shipping", "must weigh at least %{min} kg", unquote(locale), min: 30)
+  test "the greeting is covered in #{locale}" do
+    assert_covered(MyApp.Gettext, "default", "Hello, %{name}", unquote(locale), name: "Ann")
   end
 end
 ```
@@ -83,7 +69,16 @@ test.
 
 ## Check that an action returns the translated error
 
-Run the action with a locale on the context and read the message:
+For a domain with a `gettext do backend(MyApp.Gettext) text_domain("shipping")
+end` block and this catalog entry:
+
+```po
+# priv/gettext/ru/LC_MESSAGES/shipping.po
+msgid "must weigh at least %{min} kg"
+msgstr "должен весить не меньше %{min} кг"
+```
+
+run the action with a locale on the context and read the message:
 
 ```elixir
 test "creating a light parcel fails in Russian" do

@@ -1,26 +1,33 @@
 defmodule AshGettext do
   @moduledoc """
-  Gettext, made ergonomic for Ash — the pure translation core.
+  Translate the text an Ash app shows: strings, plurals and enum values.
 
-  This module is the whole library's foundation and it is deliberately boring:
-  every input is an argument, nothing is read from global state, and the result
-  depends only on what the caller passed in. That makes a translation test a
-  single assertion with no setup, no actor, and no database.
+      AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
+      #=> "Заказ отправлен"
+
+  Every input is an argument, including the language, and nothing is read
+  from global state. So a translation works the same from any process, and a
+  test of one is a single assertion with no setup.
+
+  The text you write is the msgid. In the source language (the backend's
+  configured `:default_locale`, else the global `:gettext` one, else `"en"`)
+  it is also the translation, so that language needs no catalog.
 
   ## Missing translations are observable
 
-  `translate_or_missing/5` reports `{:missing, fallback}` rather than silently handing back the
-  msgid, so a test can assert that a string really *is* covered in a locale:
+  `translate_or_missing/5` reports `{:missing, fallback}` rather than silently
+  handing back the msgid, so a test can assert that a string really *is*
+  covered in a locale:
 
-      assert {:ok, _} = AshGettext.translate_or_missing(MyApp.Gettext, "errors", "must weigh at least %{min} kg", [], "ru")
+      assert {:ok, _} = AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order shipped", [], "ru")
 
-  The detection is gettext's own signal — a lookup that misses returns the msgid
-  unchanged. The one exception is the *source locale* (the backend's configured
-  `:default_locale`, else the global `:gettext` one, else `"en"`): there the
-  msgid is the text, no catalog is needed, and `translate_or_missing/5` always reports `:ok`.
-  In a translated locale, an *identity* translation (a catalog mapping a msgid
-  to itself) is indistinguishable from a miss and is reported as `:missing`.
-  Use `translate/5` when you only want the string.
+  The detection is gettext's own signal: a lookup that misses returns the msgid
+  unchanged. In the source locale `translate_or_missing/5` always reports
+  `:ok`. In a translated locale, an *identity* translation (a catalog mapping a
+  msgid to itself) is indistinguishable from a miss and is reported as
+  `:missing`. Use `translate/5` when you only want the string.
+
+  To translate Ash's error messages as well, see `AshGettext.Domain`.
   """
 
   @type backend :: module()
