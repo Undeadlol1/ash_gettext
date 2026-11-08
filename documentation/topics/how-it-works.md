@@ -108,17 +108,18 @@ take everything they need as arguments, so you can call them yourself.
 
 ## Limits
 
-- **Text passed to `translate/5` is not extracted.** Neither extract task
-  sees it. Add it to the template by hand. Enum labels and attribute labels
+- **Text passed to `translate/5` is not extracted.** `mix gettext.extract`
+  does not see it. Add it to the template by hand. Enum labels and attribute labels
   are extracted.
 - **Only write actions are translated.** Ash has no `error_handler` for reads
   or generic actions. Their errors reach the caller as written.
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`
-  has no stable msgid. `mix ash_gettext.extract` lists these.
-- **A module attribute as `message:` is not extracted.** The lookup works, but
-  the template has no entry until you add it by hand.
+  has no stable msgid. `mix gettext.extract` warns about these.
+- **A message in a module no resource uses is not extracted,** nor a module
+  attribute as `message:` in a validation module. Mark it with
+  `dgettext_noop("ash", "...")`.
 - **An entry that equals its msgid counts as missing.** In a non-source
   locale, a translation that is identical to the msgid cannot be told apart
   from a miss.

@@ -16,7 +16,7 @@ defmodule MyApp.Order.Status do
     values: [placed: [label: "Order placed"], awaiting_pickup: [label: "Ready for pickup"]]
 end
 
-# `mix ash_gettext.extract` collects the labels you wrote into your template.
+# `mix gettext.extract` collects the labels you wrote into your template.
 
 # The user reads Russian. Load an order as that user:
 order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
@@ -172,7 +172,7 @@ hd(error.errors).message
 #=> "обязательное поле"   (Ash says "attribute delivery_date is required")
 ```
 
-The English sentence is "is required". `mix ash_gettext.extract` adds it and
+The English sentence is "is required". `mix gettext.extract` adds it and
 the other sentences for Ash's errors to your template.
 
 Your own messages work the same way. Write them in your own language:
@@ -192,14 +192,16 @@ No code on the action. Create, update and destroy errors are translated.
 ### 7. Hand the texts to translators
 
 ```
-mix ash_gettext.extract          # writes priv/gettext/ash.pot
-mix ash_gettext.extract --check  # in CI: fails when the template is stale
+mix gettext.extract --merge              # Gettext's own command
+mix gettext.extract --check-up-to-date   # in CI: fails when a template is stale
 ```
 
-It collects your enum labels and descriptions, attribute labels and error
-messages, plus the sentences for Ash's own errors, into one template,
-`ash.pot`. Translators fill in `ash.po` per
-language.
+AshGettext makes your enum labels, attribute labels, messages and Ash's error
+sentences visible to it, so they land in `ash.pot`. Translators fill in
+`ash.po` per language.
+
+A message in a module no resource uses, such as a helper that builds errors,
+is not found. Mark it there with `dgettext_noop("ash", "...")`.
 
 ### 8. Catch missing translations
 
@@ -238,9 +240,8 @@ end
   from, and how it is matched to your catalogs.
 - [Translating errors](documentation/topics/translating-errors.md): which
   errors are translated, coded errors, and turning it on one domain at a time.
-- [Extracting messages](documentation/topics/extracting-messages.md): put
-  Ash's `message:` strings, enum labels and attribute labels in a `.pot`
-  template, and check it in CI.
+- [Extracting messages](documentation/topics/extracting-messages.md): what
+  `mix gettext.extract` finds, and checking it in CI.
 - [How to test with AshGettext](documentation/topics/testing.md): check that
   a translation exists and that an action returns it.
 - [How AshGettext works](documentation/topics/how-it-works.md): the path of a
@@ -252,8 +253,8 @@ end
 
 - **Only create, update and destroy errors are translated.** Ash gives read
   and generic actions no error handler, so their errors arrive as written.
-- **Text passed to `AshGettext.translate/5` is not extracted.** Neither
-  `mix gettext.extract` nor `mix ash_gettext.extract` sees it. Add it to the
+- **Text passed to `AshGettext.translate/5` is not extracted.** `mix gettext.extract`
+  does not see it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute
   labels and `message:` strings are extracted.
 - **A message built with `#{...}` cannot be translated.** Write `%{name}` in

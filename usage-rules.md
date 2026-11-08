@@ -67,10 +67,9 @@ defaults; add options only when a requirement demands them.
   `{:ok, string}` or `{:missing, string}`. They are not the `{:ok, v} | :error`
   shape. A translation identical to its msgid in a non-source locale counts as
   `:missing`.
-- `mix ash_gettext.extract` collects the written enum labels and attribute
+- `mix gettext.extract` collects the written enum labels and attribute
   labels of every resource in a translating domain. It does not find text passed to
-  `AshGettext.translate/5`. Add those msgids to the `.pot` by hand or keep them in a
-  Gettext `*_noop` macro.
+  `AshGettext.translate/5`. Keep that text in a Gettext `*_noop` macro.
 
 ## Picking the language
 
@@ -141,21 +140,18 @@ defaults; add options only when a requirement demands them.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.
-- Run `mix ash_gettext.extract` to write the template from every literal
-  `message:` in `lib`, plus the written attribute labels and enum labels of the
-  domains' resources, and the sentences for Ash's own errors. Arguments: source paths and `--output PATH`. Run
-  `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
-- Without `--output` the task writes the file your own lookups read: the
-  backend's `priv` directory holding `<text_domain>.pot`. Do not pass
-  `--output` to correct the path; it is already right.
-- One run writes one template. When the app's domains name different text
-  domains, the task refuses to guess and `--output` becomes required, along
-  with the source paths belonging to that domain.
-- Extraction only sees `message:` written as a literal string. A message in a
-  module attribute or any other expression is skipped silently: add its
-  msgid to the `.pot` by hand. An interpolated string (`"... #{x}"`) is
-  reported and cannot be a msgid: use a constant msgid with `%{var}` and
-  `vars:`.
+- Run Gettext's own `mix gettext.extract --merge`. AshGettext makes every
+  enum label, attribute label, literal `message` (in resources and in the
+  validation, change and preparation modules they use) and Ash's error
+  sentences visible to it. Run `mix gettext.extract --check-up-to-date` in CI.
+  There is no `ash_gettext` extract task.
+- A message in a module no resource uses, such as a helper that builds
+  errors, is not found. Wrap it in `dgettext_noop("ash", "...")`.
+- In a validation or change module, only a `message:` written as a literal
+  string is found. A module attribute or other expression is skipped: wrap it
+  in `dgettext_noop`. An interpolated string (`"... #{x}"`) is a compile
+  warning during extraction and cannot be a msgid: use a constant msgid with
+  `%{var}` and `vars:`.
 - Do not edit the generated `.pot`. Translations go in the `.po` files.
 - Set `translate_errors? false` on a domain to switch translation off for
   all its resources. Set `require_resource_extension? true` to get a

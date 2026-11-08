@@ -211,9 +211,8 @@ signed-in user into a language your catalogs have, see [Locales](locales.md).
 ## Add the text to the template
 
 `mix gettext.extract` finds only Gettext macro calls. Text you pass to
-`translate/5` is not one, and `mix ash_gettext.extract` does not see it
-either. Add it to your `.pot` file by hand, or keep the text in a Gettext
-macro such as `dgettext_noop/2`.
+`translate/5` is not one, so keep the text in a Gettext macro such as
+`dgettext_noop/2`.
 
-Enum labels, enum descriptions and attribute labels are different: `mix ash_gettext.extract`
-collects them. See [Extracting messages](extracting-messages.md).
+Enum labels, enum descriptions and attribute labels are different:
+AshGettext shows them to `mix gettext.extract`, so they are collected. See [Extracting messages](extracting-messages.md).

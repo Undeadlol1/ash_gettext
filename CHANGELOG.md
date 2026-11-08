@@ -37,12 +37,11 @@ The first packaged version. Not published to Hex yet.
   action on its resources, in Gettext's current language.
 - `text_domain` defaults to `"ash"`: one catalog for Ash's errors, enum labels
   and attribute names. Text from `translate/3` uses Gettext's `"default"`.
-- `mix ash_gettext.extract` writes every Ash `message:`, every written
-  attribute label and every enum value's label and description to a `.pot` template,
-  into the file the lookups read: the backend's `priv` directory holding
-  `<text_domain>.pot`. `--check` fails in CI when the template is out of date.
-  When an app's domains name different text domains, the task lists them and
-  asks for `--output`.
+- Gettext's own `mix gettext.extract` finds every text AshGettext translates:
+  enum labels and descriptions, attribute labels, the `message`s in a
+  resource's DSL and in the validation, change and preparation modules it
+  uses, and Ash's own error sentences. Each goes to its domain's backend and
+  `text_domain`. There is no extract task of AshGettext's own.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain
   and resource extensions and the `gettext` block for an existing app.
 - `translate_or_missing/5`, `translate_plural_or_missing/7`
@@ -55,7 +54,7 @@ The first packaged version. Not published to Hex yet.
   that does not cast, a failed policy) come back with a written sentence in
   the user's language, such as "is required", not text built from a field
   name. The sentences live in `AshGettext.AshMessages`, and
-  `mix ash_gettext.extract` always adds them to the template.
+  `mix gettext.extract` adds them to the template.
 - `AshGettext.Error` is a user-facing error with a required `code`, a
   translatable `message`, and an optional `field` and `vars`. It renders for
   JSON:API, with no English `title`, when `:ash_json_api` is present, which is an optional dependency.

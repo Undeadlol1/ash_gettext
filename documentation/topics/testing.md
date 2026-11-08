@@ -139,12 +139,10 @@ def forward(_event, _measurements, meta, test_pid), do: send(test_pid, {:missing
 Run the check in CI, next to `mix test`:
 
 ```
-mix ash_gettext.extract --check
+mix gettext.extract --check-up-to-date
 ```
 
-It fails when a `message:` was added without regenerating the `.pot`. To run
-it inside a test, call `Mix.Tasks.AshGettext.Extract.run(["--check"])`; it
-raises when the file is stale.
+It fails when a text was added without regenerating the `.pot`.
 
 ## Check that every resource is wired
 

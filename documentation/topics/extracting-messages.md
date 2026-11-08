@@ -1,122 +1,73 @@
 # Extracting messages
 
-This page shows how to turn the `message:` strings, enum labels and attribute
-names of your resources into a `.pot` template, and how to keep that template
-current.
+This page shows how to put every text AshGettext translates into your `.pot`
+templates, and how to keep them current. You use Gettext's own command.
 
-## Stop keeping a list of messages by hand
-
-`mix gettext.extract` only finds calls to Gettext macros. Ash messages are
-`message:` options, so it cannot see them. Without help, you keep a file like
-this in step by hand:
-
-```elixir
-defmodule MyApp.AshMessages do
-  use Gettext, backend: MyApp.Gettext
-
-  def noop do
-    dgettext_noop("errors", "This email is already registered")
-    dgettext_noop("errors", "must be greater than or equal to %{min}")
-  end
-end
-```
-
-Delete it. `mix ash_gettext.extract` reads your source files and finds the
-messages itself.
-
-## Write the template
+## Run Gettext's command
 
 ```
-mix ash_gettext.extract
+mix gettext.extract --merge
 ```
 
-The task reads `lib` and writes `priv/gettext/ash.pot`:
+AshGettext makes your enum labels, attribute labels, `message:` strings and
+Ash's error sentences visible to it, so they land in your templates with
+everything else. There is no list to keep by hand and no second command.
 
-```
-Scanned lib: 12 translatable messages.
-Wrote 12 messages to priv/gettext/ash.pot.
-```
-
-It finds `message: "..."` in keyword options and `message "..."` in DSL
-blocks, such as an `identity`. Each entry lists the files it came from.
-
-It also adds, for every resource in a domain with a `gettext` block, the
-attribute labels you wrote in its `gettext` block ("Date of birth") and the
-label and description you wrote on each value of an enum attribute,
-`{:array, MyEnum}` included. These are the keys `attribute_label/2` and the
-enum's `label/1` and `description/1` look up, so they are in the template
-without any call to find. Nothing is made from a code name. Their entries name the attribute they came from,
-such as `MyApp.Parcel.weight`, in place of a file.
-
-## Fail CI when the template is stale
-
-```
-mix ash_gettext.extract --check
-```
-
-`--check` writes nothing. It exits with an error if the file on disk is not
-what a fresh run would write, so a new `message:` cannot be merged without its
-template entry. Run it in CI next to your tests.
-
-## Where the template lands
-
-Gettext reads the catalog named by `text_domain`, so the template carries that
-name. The task works the path out from your own domains: the `priv` directory
-of the backend they name, holding `<text_domain>.pot`. Set another text domain
-and the file moves with it, with nothing to pass:
-
-```elixir
-gettext do
-  backend(MyApp.Gettext)
-  text_domain("shipping")
-end
-```
-
-```
-mix ash_gettext.extract
-# Wrote 12 messages to priv/gettext/shipping.pot.
-```
-
-One run writes one template. If your domains name different text domains there
-is no single answer, so the task lists them and asks you to name the one you
-mean, along with the sources that belong to it:
-
-```
-mix ash_gettext.extract lib/my_app/shipping --output priv/gettext/shipping.pot
-```
-
-To scan more than `lib`, list the paths: `mix ash_gettext.extract lib apps/other/lib`.
-
-## Add the other languages
-
-Create each language's `.po` file from the template with Gettext's own task:
-
-```
-mix gettext.merge priv/gettext --locale ru
-```
-
-Then fill in the `msgstr` lines in `priv/gettext/ru/LC_MESSAGES/ash.po`:
+`--merge` also updates each language's `.po` file. Translators fill in the
+`msgstr` lines, for example in `priv/gettext/ru/LC_MESSAGES/ash.po`:
 
 ```po
 msgid "This email is already registered"
 msgstr "Этот email уже зарегистрирован"
 ```
 
-Do not edit the `.pot` file. The next extraction overwrites it. The source
-language gets no `.po` file, because its sentence is already the text.
+Each text goes to the backend and `text_domain` of its domain's `gettext`
+block (an enum uses its own `backend:` and `text_domain:`). With the default
+text domain that is `priv/gettext/ash.pot`.
+
+## What it finds
+
+- Every `label` and `description` you wrote on an `AshGettext.Enum` value.
+- Every `label` in a resource's `gettext` block.
+- Every `message` in a resource's DSL: validations, identities and the rest.
+- Every literal `message:` in the validation, change and preparation modules
+  a resource uses. Their source files are read.
+- The sentences for Ash's own errors (`AshGettext.AshMessages`), such as
+  "is required".
+
+Resources count when they use `AshGettext.Resource` and their domain has a
+`gettext` block. A domain without one adds nothing. With
+`translate_errors? false`, only the labels are added.
+
+## Fail CI when a template is stale
+
+```
+mix gettext.extract --check-up-to-date
+```
+
+It writes nothing and fails when a template is out of date, so a new message
+cannot be merged without its entry.
+
+## Mark a message no resource uses
+
+A message in a module no resource references, such as a helper that builds
+errors, is not found. Mark it with Gettext's macro:
+
+```elixir
+use Gettext, backend: MyApp.Gettext
+
+message = dgettext_noop("ash", "This email is already registered")
+```
+
+The same goes for a `message:` in a module that is not a plain string, such as
+a module attribute, and for text you pass to `AshGettext.translate/5`. See
+[Translating text](translating-text.md#add-the-text-to-the-template).
 
 ## Fix a message with a variable in it
 
 A message written with `#{...}` is not a constant, so it cannot be a msgid.
-The task lists each one:
-
-```
-1 interpolated messages cannot be msgids as written:
-
-  lib/my_app/shop/order.ex:31
-```
-
-Rewrite it with a placeholder and pass the value in `vars`:
+`mix gettext.extract` prints a warning with its file and line. Rewrite it with
+a placeholder and pass the value in `vars`:
 
 ```elixir
 # before
@@ -125,21 +76,3 @@ message: "must be at most #{max}"
 # after
 message: "must be at most %{max}", vars: [max: max]
 ```
-
-## Know what extraction skips
-
-A `message:` that is not a plain string is not found. This includes a module
-attribute:
-
-```elixir
-@too_light "must weigh at least %{min} kg"
-
-InvalidAttribute.exception(field: :weight, message: @too_light, vars: [min: 30])
-```
-
-The task does not report it. Write the string in place, or add its msgid to
-the `.pot` and `.po` files by hand.
-
-Text you pass to `translate/3` and the other functions is not a `message:`,
-so the task does not find it either. See
-[Translating text](translating-text.md#add-the-text-to-the-template).

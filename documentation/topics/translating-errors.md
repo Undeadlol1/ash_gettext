@@ -129,7 +129,7 @@ The error comes back as an `AshGettext.AshMessages.Translated`. It keeps
 Ash's error in `original`, with its field and class. JSON:API renders the
 original error with the translated sentence as `detail`.
 
-`mix ash_gettext.extract` always adds these sentences to the template. A
+`mix gettext.extract` adds these sentences to the template. A
 policy with its own message keeps it, and that message is its msgid. A stale
 record error comes from the data layer after the handler, so it is not
 translated.
@@ -152,7 +152,7 @@ msgstr "должен весить не меньше %{min} кг"
 ```
 
 A message built with `#{...}` cannot be a msgid, because the catalog needs a
-constant key. `mix ash_gettext.extract` lists each one so you can rewrite it
+constant key. `mix gettext.extract` warns about each one so you can rewrite it
 with `%{name}` and `vars`.
 
 ## Know which actions are translated
