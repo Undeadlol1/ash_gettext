@@ -25,25 +25,31 @@ defmodule AshGettext.SetLanguage do
 
   @doc false
   def set(%{domain: domain, context: context} = subject) do
-    with {:ok, settings} <- Info.locale_settings(domain),
-         answer when is_binary(answer) <- first_answer(settings, subject, context) do
-      locale = Normalizer.normalize(answer, settings.supported_locales, settings.default_locale)
-      Gettext.put_locale(settings.backend, locale)
+    context = context || %{}
+
+    case resolve(domain, %{
+           locale: context[:locale],
+           actor: get_in(context, [:private, :actor]),
+           changeset: subject
+         }) do
+      {backend, locale} -> Gettext.put_locale(backend, locale)
+      nil -> :ok
     end
 
     subject
   end
 
-  defp first_answer(settings, subject, context) do
-    context = context || %{}
-
-    resolution = %{
-      locale: context[:locale],
-      actor: get_in(context, [:private, :actor]),
-      changeset: subject
-    }
-
-    Enum.find_value(settings.locale_resolvers, & &1.resolve(resolution))
+  @doc false
+  # `{backend, locale}` when a resolver of `domain` answers for `resolution`, else nil.
+  def resolve(domain, resolution) do
+    with {:ok, settings} <- Info.locale_settings(domain),
+         answer when is_binary(answer) <-
+           Enum.find_value(settings.locale_resolvers, & &1.resolve(resolution)) do
+      {settings.backend,
+       Normalizer.normalize(answer, settings.supported_locales, settings.default_locale)}
+    else
+      _no_answer -> nil
+    end
   end
 end
 

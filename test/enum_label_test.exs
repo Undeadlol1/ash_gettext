@@ -20,6 +20,11 @@ defmodule AshGettext.EnumLabelTest do
              "Размещён"
   end
 
+  test "Ash.load on a record in hand uses the actor's language" do
+    parcel = parcel(status: :placed)
+    assert Ash.load!(parcel, :status_label, actor: @ru).status_label == "Размещён"
+  end
+
   test "the source language gives the English label" do
     parcel = parcel(status: :shipped)
     assert Ash.get!(Parcel, parcel.id, load: [:status_label]).status_label == "On its way"
