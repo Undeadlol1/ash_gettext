@@ -17,8 +17,9 @@ defmodule MyApp.Order.Status do
 end
 
 # `mix gettext.extract` collects the labels you wrote into your template.
+# You translate them in `priv/gettext/ru/LC_MESSAGES/ash.po`.
 
-# The user reads Russian. Load an order as that user:
+# The user's language is Russian. Load an order as that user:
 order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
 
 order.status        #=> :awaiting_pickup
