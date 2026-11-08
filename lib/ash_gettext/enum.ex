@@ -16,7 +16,8 @@ defmodule AshGettext.Enum do
 
   It calls `use Ash.Type.Enum` for you with the same `values:`, so the module
   is an ordinary Ash enum. The text you write is the msgid, so the source
-  language needs no catalog.
+  language needs no catalog, and `mix gettext.extract` finds every label and
+  description.
 
   Every value needs a `label:` you wrote. The library never makes one from the
   value's name, so a value without one is a compile error. Descriptions are
@@ -47,6 +48,13 @@ defmodule AshGettext.Enum do
 
     quote do
       AshGettext.Enum.verify_labels!(__MODULE__, unquote(values), __ENV__)
+
+      AshGettext.Extractor.mark(
+        __ENV__,
+        unquote(backend),
+        unquote(text_domain),
+        AshGettext.Enum.texts(unquote(values))
+      )
 
       use Ash.Type.Enum, values: unquote(values)
 
@@ -79,6 +87,15 @@ defmodule AshGettext.Enum do
           "#{inspect(module)} has values without a written label: #{Enum.join(missing, ", ")}. " <>
             "Give each one `label: \"...\"`; AshGettext never makes labels from value names."
     end
+  end
+
+  @doc false
+  # The labels and descriptions as written, for `mix gettext.extract`.
+  def texts(values) do
+    for {_value, details} when is_list(details) <- values,
+        text <- [details[:label], details[:description]],
+        is_binary(text),
+        do: text
   end
 
   defp written_label?({_value, details}) when is_list(details),

@@ -18,8 +18,7 @@ defmodule Mix.Tasks.AshGettext.Install do
       project when there is exactly one `use Gettext.Backend`.
     * `--resolver` — a module implementing `AshGettext.Locale.Resolver`, placed
       after the generic context resolver so an explicit locale still wins.
-    * `--text-domain` — defaults to `ash`, which is what
-      `mix ash_gettext.extract` writes.
+    * `--text-domain` — defaults to `ash`, so the texts go to `ash.pot`.
     * `--apply` — write the changes. Without it, nothing is written.
 
   ## What this cannot do for you

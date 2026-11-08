@@ -29,7 +29,7 @@ defmodule AshGettext.DomainTest do
     assert option(:default_locale)[:default] == "en"
   end
 
-  test "the text domain defaults to ash, the file mix ash_gettext.extract writes" do
+  test "the text domain defaults to ash" do
     assert option(:text_domain)[:default] == "ash"
   end
 

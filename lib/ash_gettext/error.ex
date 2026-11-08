@@ -34,9 +34,10 @@ defmodule AshGettext.Error do
 
   ## Extraction
 
-  `mix ash_gettext.extract` finds `message:` given as a literal string. A
-  message passed as a module attribute or other expression is silently
-  skipped, so add its msgid to the template by hand.
+  `mix gettext.extract` finds `message:` given as a literal string in a
+  resource or in a validation or change module it uses. A message built
+  anywhere else, or passed as a module attribute or other expression, is not
+  found: mark it with `dgettext_noop("ash", "...")`.
 
   ## JSON:API
 

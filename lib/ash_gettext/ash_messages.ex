@@ -12,7 +12,7 @@ defmodule AshGettext.AshMessages do
   Ash builds the text of these errors from code names: a missing
   `delivery_date` prints as "attribute delivery_date is required". So each one
   gets a written English sentence here. It is the msgid, and
-  `mix ash_gettext.extract` always adds it to the template.
+  `mix gettext.extract` finds it for every domain with a `gettext` block.
 
   | Error | Sentence |
   | --- | --- |

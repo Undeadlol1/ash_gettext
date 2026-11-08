@@ -88,5 +88,6 @@ defmodule AshGettext.Domain do
   }
   use Spark.Dsl.Extension,
     sections: [@gettext],
-    verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions]
+    verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions],
+    transformers: [AshGettext.Domain.Transformers.MarkTexts]
 end

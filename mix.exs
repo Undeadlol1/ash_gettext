@@ -96,9 +96,10 @@ defmodule AshGettext.MixProject do
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
+          AshGettext.Domain.Transformers.MarkTexts,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
         ],
-        "Mix tasks": [Mix.Tasks.AshGettext.Extract, Mix.Tasks.AshGettext.Install]
+        "Mix tasks": [Mix.Tasks.AshGettext.Install]
       ]
     ]
   end
