@@ -11,7 +11,11 @@ The first packaged version. Not published to Hex yet.
   text, in Gettext's current locale. There is no wrapper to call.
 - `AshGettext.translate/5` and `translate_plural/7` are the pure functions
   underneath, with the language passed as an argument.
-- `attribute_label/5` looks up an attribute's name in words (`:date_of_birth` is "Date of
+- Running an action with `actor:` (or `context: %{locale: "ru"}`) sets
+  Gettext's language for that process, once, when the action starts, using the
+  domain's `locale_resolvers`. Enum labels, error messages and attribute names
+  all come out in it. With no actor and no locale the language is left alone.
+- `attribute_label/2` looks up an attribute's name in words (`:date_of_birth` is "Date of
   birth") and raises for an attribute the resource does not have.
 - A lookup with no translation sends the telemetry event
   `[:ash_gettext, :translation, :missing]`, with `backend`, `text_domain`,
@@ -22,7 +26,7 @@ The first packaged version. Not published to Hex yet.
   pure function of its context and must not query the database.
 - `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
   block on a domain translates the errors of every create, update and destroy
-  action on its resources, in the locale its resolvers pick.
+  action on its resources, in Gettext's current language.
 - `text_domain` defaults to `"ash"`: one catalog for Ash's errors, enum labels
   and attribute names. Text from `translate/3` uses Gettext's `"default"`.
 - `mix ash_gettext.extract` writes every Ash `message:`, every public
@@ -34,7 +38,7 @@ The first packaged version. Not published to Hex yet.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain
   and resource extensions and the `gettext` block for an existing app.
 - `translate_or_missing/5`, `translate_plural_or_missing/7`
-  and `attribute_label_or_missing/5` never report `:missing` in the source locale (the
+  and `attribute_label_or_missing/2` never report `:missing` in the source locale (the
   backend's default locale). The msgid is the text, so the source language
   needs no catalog.
 - `require_resource_extension?` on the `gettext` block is an opt-in compile

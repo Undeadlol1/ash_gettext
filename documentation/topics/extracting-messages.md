@@ -43,7 +43,7 @@ blocks, such as an `identity`. Each entry lists the files it came from.
 It also adds, for every resource in a domain with a `gettext` block, the name
 of each public attribute ("Date of birth") and the label and description of
 each value of an enum attribute, `{:array, MyEnum}` included. These are the keys
-`attribute_label/5` and the enum's `label/1` and `description/1` look up, so they are in the template
+`attribute_label/2` and the enum's `label/1` and `description/1` look up, so they are in the template
 without any call to find. Their entries name the attribute they came from,
 such as `MyApp.Parcel.weight`, in place of a file.
 

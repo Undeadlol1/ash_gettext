@@ -124,9 +124,14 @@ one.
 ## Show an attribute name
 
 ```elixir
-AshGettext.attribute_label(MyApp.Gettext, "ash", MyApp.Order, :date_of_birth, "ru")
+Gettext.with_locale(MyApp.Gettext, "ru", fn ->
+  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+end)
 #=> "Дата рождения"
 ```
+
+The language is Gettext's current one; the backend and text domain come from
+the resource's domain.
 
 ```po
 # priv/gettext/ru/LC_MESSAGES/ash.po
@@ -163,14 +168,16 @@ AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order lost", [], "ru"
 ```
 
 The twins are `translate_or_missing/5`, `translate_plural_or_missing/7`
-and `attribute_label_or_missing/5`. They send no
+and `attribute_label_or_missing/2`. They send no
 event. In your own language nothing is missing. In tests, use
 `AshGettext.Testing`. See [How to test with AshGettext](testing.md).
 
 ## Get the language from the user
 
-To turn what a browser sends, such as `ru_RU`, or the signed-in user into a
-language your catalogs have, see [Locales](locales.md).
+Run an action with `actor:` (or `context: %{locale: "ru"}`) and AshGettext
+sets Gettext's language for that process. Enums, errors and attribute names
+then come out in it. To turn what a browser sends, such as `ru_RU`, or the
+signed-in user into a language your catalogs have, see [Locales](locales.md).
 
 ## Add the text to the template
 

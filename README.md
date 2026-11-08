@@ -78,7 +78,8 @@ the translated text. The text you wrote is the key, and the key lives in
 
 The language is Gettext's current locale for the process. Set it the usual
 way with `Gettext.put_locale/2`, or for one block of code with
-`Gettext.with_locale/3`. The enum does not look at an actor or a context.
+`Gettext.with_locale/3`. Or run an action with `actor:` (or
+`context: %{locale: "ru"}`) and AshGettext sets it for you, see below.
 
 ### Translate text
 
@@ -97,17 +98,23 @@ AshGettext.translate_plural(MyApp.Gettext, "default", "%{count} parcel", "%{coun
 ### Show an attribute name
 
 ```elixir
-AshGettext.attribute_label(MyApp.Gettext, "ash", MyApp.Order, :date_of_birth, "ru")
+Gettext.with_locale(MyApp.Gettext, "ru", fn ->
+  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+end)
 #=> "Дата рождения"
 ```
 
-The key is the name in words: "Date of birth". An attribute the resource does
-not have raises `ArgumentError`.
+The language is Gettext's current one. The backend and text domain come from
+the resource's domain. The key is the name in words: "Date of birth". An
+attribute the resource does not have, or a resource whose domain has no
+`gettext` block, raises `ArgumentError`.
 
 ### Pick the user's language
 
-Errors need a language from the action, not from the process. A resolver
-reads it off the actor:
+Run an action with `actor:` (or `context: %{locale: "ru"}`) and AshGettext
+sets Gettext's language for that process, once, when the action starts.
+Enums, errors and attribute names then come out in it. A resolver reads the
+language off the actor:
 
 ```elixir
 defmodule MyApp.Locale.FromActor do
@@ -120,8 +127,9 @@ end
 ```
 
 A resolver must be a pure function of its context. Read the locale off the
-loaded actor and do not query the database: a resolver runs while an
-action's error is being built, possibly inside a failed transaction.
+loaded actor and do not query the database: a resolver runs once, when the
+action starts. With no actor and no `locale`, the process language is left
+alone.
 
 `ru_RU` and `en-US` are cut to the language, and a language with no catalog
 becomes `default_locale`. More in [Locales](documentation/topics/locales.md).
@@ -154,7 +162,8 @@ mix ash_gettext.install --apply
 ```
 
 An error's `message:` is now looked up like any other text, in the language
-from the action's actor or its `context: %{locale: "ru"}`:
+Gettext is set to, which an action's actor or its `context: %{locale: "ru"}`
+sets when it starts:
 
 ```elixir
 validate present(:email), message: "can't be blank"

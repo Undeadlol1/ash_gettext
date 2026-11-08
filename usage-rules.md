@@ -31,14 +31,17 @@ defaults; add options only when a requirement demands them.
   Options: `:backend` (required), `:text_domain` (default `"ash"`). The msgid
   is the enum's own label or description: "Awaiting pickup" by default, or the
   `label:` set on the value. Do not invent per-attribute keys.
-- The enum's language is Gettext's current locale. Set it with
-  `Gettext.put_locale/2`, or `Gettext.with_locale/3` for one block. It does
-  not read an actor.
+- One language for everything: Gettext's current locale. Running an action
+  with `actor:` or `context: %{locale: "ru"}` sets it once, when the action
+  starts (through the domain's `locale_resolvers`). Enums, errors and attribute
+  names all read it. With no actor and no locale it is left alone. Outside an
+  action, set it with `Gettext.put_locale/2` or `Gettext.with_locale/3`.
 - The msgid is the plain sentence in the source language, with `%{var}`
   placeholders filled from `bindings`. Do not invent keys like
   `"orders.shipped"`. The source language needs no catalog.
-- Attribute names: `AshGettext.attribute_label(backend, "ash", MyApp.Order,
-  :date_of_birth, locale)`. The msgid is the name in words, "Date of birth"
+- Attribute names: `AshGettext.attribute_label(MyApp.Order, :date_of_birth)`,
+  in Gettext's current locale; backend and text domain come from the
+  resource's domain. The msgid is the name in words, "Date of birth"
   (`AshGettext.attribute_msgid/1`). An unknown attribute raises
   `ArgumentError`.
 - A lookup with no translation returns the msgid and sends the telemetry event
@@ -46,10 +49,10 @@ defaults; add options only when a requirement demands them.
   `msgid` and `locale`. Attach a handler to log or count gaps. The
   `_or_missing` functions send no event.
 - The functions are `AshGettext.translate/5` `(backend, text_domain, msgid,
-  bindings, locale)`, `translate_plural/7` and `attribute_label/5`. The
+  bindings, locale)`, and `translate_plural/7`. The
   language is an argument.
 - `translate_or_missing/5`, `translate_plural_or_missing/7`,
-  and `attribute_label_or_missing/5` return
+  and `attribute_label_or_missing/2` return
   `{:ok, string}` or `{:missing, string}`. They are not the `{:ok, v} | :error`
   shape. A translation identical to its msgid in a non-source locale counts as
   `:missing`.
@@ -60,12 +63,12 @@ defaults; add options only when a requirement demands them.
 
 ## Picking the language
 
-- For the pure functions, pick the `locale` argument with
+- Actions set the language themselves. For the pure functions, pick the `locale` argument with
   `AshGettext.Locale.resolve(context, resolvers: [...], supported: AshGettext.known_locales(backend), default: "en")`.
   It cuts `"ru_RU"` to `"ru"` and falls back to `default` for a language
   with no catalog.
-- In a domain, the locale of an error comes from its `locale_resolvers`,
-  tried in order until one returns a string. A returned locale is cut to its
+- In a domain, an action's language comes from its `locale_resolvers`,
+  tried in order once when the action starts, until one returns a string. A returned locale is cut to its
   language (`"ru_RU"` and `"ru-RU"` become `"ru"`). If that language has no
   catalog directory, `default_locale` is used.
 - A resolver implements `@behaviour AshGettext.Locale.Resolver` with

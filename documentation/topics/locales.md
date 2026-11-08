@@ -46,9 +46,9 @@ end
 ```
 
 A resolver must be a pure function of its context. Read the locale off the
-loaded actor and do not query the database. Resolvers run while an action's
-error is being built, possibly inside a failed transaction, and a query there
-fails or recurses.
+loaded actor and do not query the database. Resolvers run once, when an
+action starts, before its transaction, and a query there is slow and hides
+work from the action.
 
 Pass your resolvers to `resolve/2`:
 
@@ -76,10 +76,10 @@ Here the user's language wins over an explicit `:locale`. Swap the two to let
 an explicit `:locale` win. Your list replaces the default one, so add
 `AshGettext.Locale.FromContext` yourself if you still want it.
 
-## Choose the language of Ash's errors
+## Choose the language of an action
 
-[Translated errors](translating-errors.md) run the same steps, with the
-settings from the domain's `gettext` block:
+Every action runs the same steps, with the settings from the domain's
+`gettext` block:
 
 ```elixir
 gettext do
@@ -90,9 +90,11 @@ end
 ```
 
 Each resolver gets a map with `:locale` from the action context, `:actor`
-and `:changeset`. So a background job no longer has to call
-`Gettext.put_locale/2` before it runs an action: the language comes from the
-action itself, in any process.
+and `:changeset`. When one answers, AshGettext calls `Gettext.put_locale/2`
+for that process. Enums, [errors](translating-errors.md) and attribute names
+then come out in that language. A background job no longer has to set it
+before it runs an action. With no actor and no `locale`, the process language
+is left alone.
 
 ```elixir
 Ash.create(changeset, context: %{locale: "ru"})
