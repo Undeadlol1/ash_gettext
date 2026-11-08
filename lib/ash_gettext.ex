@@ -120,33 +120,32 @@ defmodule AshGettext do
   end
 
   @doc """
-  The translated name of a resource attribute.
+  The translated name of a resource attribute, in Gettext's current language.
 
+  The backend and text domain come from the resource's domain (`AshGettext.Domain`).
   The msgid is `attribute_msgid/1`: the attribute name in sentence case
   (`:date_of_birth` is `"Date of birth"`). Misses fall back to it and are
-  reported through telemetry. Raises `ArgumentError` for an unknown attribute.
+  reported through telemetry. Raises `ArgumentError` for an unknown attribute or
+  a resource whose domain has no `gettext` block.
   """
-  @spec attribute_label(backend(), text_domain(), module(), atom(), locale()) :: String.t()
-  def attribute_label(backend, text_domain, resource, attribute, locale) do
+  @spec attribute_label(module(), atom()) :: String.t()
+  def attribute_label(resource, attribute) do
+    {backend, text_domain, msgid} = attribute_lookup!(resource, attribute)
+
     backend
-    |> attribute_label_or_missing(text_domain, resource, attribute, locale)
-    |> report_missing(backend, text_domain, attribute_msgid!(resource, attribute), locale)
+    |> translate_or_missing(text_domain, msgid, [], Gettext.get_locale(backend))
+    |> report_missing(backend, text_domain, msgid, Gettext.get_locale(backend))
     |> text_of()
   end
 
   @doc """
   The name of a resource attribute, reporting whether the catalog covered it.
   """
-  @spec attribute_label_or_missing(backend(), text_domain(), module(), atom(), locale()) ::
+  @spec attribute_label_or_missing(module(), atom()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def attribute_label_or_missing(backend, text_domain, resource, attribute, locale) do
-    translate_or_missing(
-      backend,
-      text_domain,
-      attribute_msgid!(resource, attribute),
-      [],
-      locale
-    )
+  def attribute_label_or_missing(resource, attribute) do
+    {backend, text_domain, msgid} = attribute_lookup!(resource, attribute)
+    translate_or_missing(backend, text_domain, msgid, [], Gettext.get_locale(backend))
   end
 
   @doc """
@@ -218,12 +217,18 @@ defmodule AshGettext do
     apply(Gettext, entry_point, args)
   end
 
-  defp attribute_msgid!(resource, attribute) do
+  defp attribute_lookup!(resource, attribute) do
     unless Ash.Resource.Info.attribute(resource, attribute) do
       raise ArgumentError, "#{inspect(resource)} has no attribute #{inspect(attribute)}"
     end
 
-    attribute_msgid(attribute)
+    case AshGettext.Info.locale_settings(Ash.Resource.Info.domain(resource)) do
+      {:ok, settings} ->
+        {settings.backend, settings.text_domain, attribute_msgid(attribute)}
+
+      :error ->
+        raise ArgumentError, "the domain of #{inspect(resource)} has no gettext block"
+    end
   end
 
   defp to_msgid(msgid) when is_atom(msgid), do: Atom.to_string(msgid)

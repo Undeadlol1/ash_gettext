@@ -190,22 +190,34 @@ defmodule AshGettextTest do
   describe "labelling an attribute" do
     alias AshGettextFixture.Parcel
 
-    test "translates the sentence-case attribute name" do
-      assert AshGettext.attribute_label(Backend, @text_domain, Parcel, :weight, "ru") == "Вес"
-      assert AshGettext.attribute_label(Backend, @text_domain, Parcel, :weight, "en") == "Weight"
+    test "translates the sentence-case attribute name in Gettext's current language" do
+      assert Gettext.with_locale(Backend, "ru", fn ->
+               AshGettext.attribute_label(Parcel, :weight)
+             end) ==
+               "Вес"
+
+      assert Gettext.with_locale(Backend, "en", fn ->
+               AshGettext.attribute_label(Parcel, :weight)
+             end) ==
+               "Weight"
     end
 
     test "reports coverage" do
-      assert {:ok, "Вес"} =
-               AshGettext.attribute_label_or_missing(Backend, @text_domain, Parcel, :weight, "ru")
-
-      assert {:missing, "Label"} =
-               AshGettext.attribute_label_or_missing(Backend, @text_domain, Parcel, :label, "ru")
+      Gettext.with_locale(Backend, "ru", fn ->
+        assert {:ok, "Вес"} = AshGettext.attribute_label_or_missing(Parcel, :weight)
+        assert {:missing, "Label"} = AshGettext.attribute_label_or_missing(Parcel, :label)
+      end)
     end
 
     test "raises for an unknown attribute" do
       assert_raise ArgumentError, ~r/no attribute :nope/, fn ->
-        AshGettext.attribute_label(Backend, @text_domain, Parcel, :nope, "ru")
+        AshGettext.attribute_label(Parcel, :nope)
+      end
+    end
+
+    test "raises for a resource whose domain has no gettext block" do
+      assert_raise ArgumentError, ~r/no gettext block/, fn ->
+        AshGettext.attribute_label(AshGettextFixture.Untranslated.Parcel, :weight)
       end
     end
 
@@ -230,7 +242,10 @@ defmodule AshGettextTest do
     end
 
     test "attribute_label fires on a miss" do
-      AshGettext.attribute_label(Backend, @text_domain, AshGettextFixture.Parcel, :label, "ru")
+      Gettext.with_locale(Backend, "ru", fn ->
+        AshGettext.attribute_label(AshGettextFixture.Parcel, :label)
+      end)
+
       assert_receive {:missing, %{msgid: "Label", locale: "ru"}}
     end
   end

@@ -34,19 +34,35 @@ defmodule AshGettext.Info do
   def settings(domain) do
     # `gettext_translate_errors?/1` is a predicate option, so Spark generates it
     # returning a bare boolean rather than the `{:ok, value}` the others use.
-    with true <- translating?(domain),
-         {:ok, backend} <- gettext_backend(domain) do
-      {:ok,
-       %{
-         backend: backend,
-         default_locale: gettext_default_locale!(domain),
-         text_domain: gettext_text_domain!(domain),
-         locale_resolvers: gettext_locale_resolvers!(domain),
-         supported_locales: AshGettext.known_locales(backend)
-       }}
-    else
-      _not_translating -> :error
+    if translating?(domain), do: locale_settings(domain), else: :error
+  end
+
+  @doc """
+  The domain's gettext settings, whether or not error translation is on.
+
+  `:error` only when the domain has no `gettext` block. Used to find the
+  backend, text domain and language rules for enums, attributes and the
+  action's language.
+  """
+  @spec locale_settings(module() | map()) :: {:ok, settings()} | :error
+  def locale_settings(domain) do
+    case gettext_backend(domain) do
+      {:ok, backend} ->
+        {:ok,
+         %{
+           backend: backend,
+           default_locale: gettext_default_locale!(domain),
+           text_domain: gettext_text_domain!(domain),
+           locale_resolvers: gettext_locale_resolvers!(domain),
+           supported_locales: AshGettext.known_locales(backend)
+         }}
+
+      :error ->
+        :error
     end
+  rescue
+    # A domain without the extension has no such option.
+    _no_extension -> :error
   end
 
   defp translating?(domain) do

@@ -120,7 +120,7 @@ defmodule AshGettextFixture.Parcel do
   end
 
   actions do
-    defaults([:read])
+    defaults([:read, :destroy])
 
     create :create do
       primary?(true)
@@ -194,6 +194,15 @@ defmodule AshGettextFixture.ComparedParcel do
   end
 end
 
+defmodule AshGettextFixture.ActorLanguage do
+  @moduledoc "A resolver that reads the language off the actor."
+  @behaviour AshGettext.Locale.Resolver
+
+  @impl true
+  def resolve(%{actor: %{language: language}}), do: language
+  def resolve(_context), do: nil
+end
+
 defmodule AshGettextFixture.Shipping do
   @moduledoc "A domain that translates, for the library's own suite."
 
@@ -203,7 +212,7 @@ defmodule AshGettextFixture.Shipping do
     backend(AshGettextFixture.Gettext)
     default_locale("en")
     text_domain("fixture")
-    locale_resolvers([AshGettext.Locale.FromContext])
+    locale_resolvers([AshGettextFixture.ActorLanguage, AshGettext.Locale.FromContext])
   end
 
   resources do

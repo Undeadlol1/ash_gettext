@@ -3,9 +3,8 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   The `error_handler` that `AshGettext.Resource` installs on write actions.
 
   Ash calls this with the changeset and each error it collects, and takes the
-  return value as the error to keep. Two things happen here and nowhere else:
-  the locale is resolved from the changeset, and the error is handed to
-  `AshGettext.ErrorTranslation`.
+  return value as the error to keep. The error is translated into Gettext's current language, which
+  `AshGettext.SetLanguage` set when the action started.
 
   It sits below every transport by design. It also sits
   below every *validation* — an error raised by a custom validation, a builtin
@@ -16,49 +15,27 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
 
   alias AshGettext.ErrorTranslation
   alias AshGettext.Info
-  alias AshGettext.Locale
 
   @doc """
-  Translate `error` into the locale `changeset` implies.
+  Translate `error` into Gettext's current language.
   """
   @spec translate_error(Ash.Changeset.t(), term()) :: term()
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->
-        ErrorTranslation.translate(error, translation_options(changeset, settings))
+        ErrorTranslation.translate(error, translation_options(settings))
 
       :error ->
         error
     end
   end
 
-  defp translation_options(changeset, settings) do
+  # The language was set once when the action started (`AshGettext.SetLanguage`).
+  defp translation_options(settings) do
     [
       backend: settings.backend,
       text_domain: settings.text_domain,
-      locale: locale(changeset, settings)
+      locale: Gettext.get_locale(settings.backend)
     ]
-  end
-
-  defp locale(changeset, settings) do
-    changeset
-    |> resolution_context()
-    |> Locale.resolve(
-      resolvers: settings.locale_resolvers,
-      supported: settings.supported_locales,
-      default: settings.default_locale
-    )
-  end
-
-  # The actor lives under `context.private` where Ash puts it; a resolver should
-  # not have to know that, so it is lifted alongside an explicitly passed locale.
-  defp resolution_context(changeset) do
-    context = changeset.context || %{}
-
-    %{
-      locale: context[:locale],
-      actor: get_in(context, [:private, :actor]),
-      changeset: changeset
-    }
   end
 end

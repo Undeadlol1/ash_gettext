@@ -1,6 +1,6 @@
 defmodule AshGettext.Resource do
   @moduledoc """
-  Opts a resource into translated action errors.
+  Opts a resource into translated action errors, enum labels and attribute names.
 
       defmodule MyApp.Shop.Order do
         use Ash.Resource,
@@ -14,6 +14,9 @@ defmodule AshGettext.Resource do
   Adopting `ash_gettext` never requires a change to a resource's
   `attributes do` block.
 
+  Every action also sets Gettext's language once, when it starts, from the
+  action's actor or `context: %{locale: ...}` (see `AshGettext.SetLanguage`).
+
   What to translate is read from the resource's **domain** (`AshGettext.Domain`).
   A resource whose domain does not configure `gettext`, or which sets
   `translate_errors? false`, keeps its messages exactly as they are.
@@ -23,5 +26,8 @@ defmodule AshGettext.Resource do
   """
 
   use Spark.Dsl.Extension,
-    transformers: [AshGettext.Resource.Transformers.AttachErrorHandler]
+    transformers: [
+      AshGettext.Resource.Transformers.AttachErrorHandler,
+      AshGettext.Resource.Transformers.AttachSetLanguage
+    ]
 end

@@ -15,7 +15,7 @@ defmodule AshGettext.InfoTest do
     test "reports the declared default locale and resolvers" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Shipping)
       assert settings.default_locale == "en"
-      assert settings.locale_resolvers == [FromContext]
+      assert settings.locale_resolvers == [AshGettextFixture.ActorLanguage, FromContext]
     end
 
     test "derives supported locales from the backend rather than a declared list" do

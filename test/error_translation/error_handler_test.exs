@@ -74,16 +74,14 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
   end
 
   describe "translating an error without running an action" do
-    test "translates the error using the locale on the changeset context" do
-      changeset =
-        Parcel
-        |> Ash.Changeset.for_create(:create, %{weight: 5})
-        |> Ash.Changeset.set_context(%{locale: "ru"})
-
+    test "translates the error into Gettext's current language" do
+      changeset = Ash.Changeset.for_create(Parcel, :create, %{weight: 5})
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
-      assert %{message: "Вес должен быть не менее 30 кг"} =
-               ErrorHandler.translate_error(changeset, error)
+      Gettext.with_locale(AshGettextFixture.Gettext, "ru", fn ->
+        assert %{message: "Вес должен быть не менее 30 кг"} =
+                 ErrorHandler.translate_error(changeset, error)
+      end)
     end
 
     test "passes the error through for a domain that does not translate" do
