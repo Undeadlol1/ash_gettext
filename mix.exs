@@ -55,6 +55,7 @@ defmodule AshGettext.MixProject do
       source_ref: "v#{@version}",
       extras: [
         {"README.md", title: "Home"},
+        "documentation/topics/set-up-once.md",
         "documentation/topics/translating-text.md",
         "documentation/topics/locales.md",
         "documentation/topics/translating-errors.md",

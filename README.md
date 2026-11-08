@@ -53,8 +53,7 @@ Your app needs a Gettext backend (`use Gettext.Backend, otp_app: :my_app`).
 
 ### Set it up once
 
-Add the extension and a `gettext` block to each domain. Put it in your base
-domain so you write it once:
+Add the extension and a `gettext` block to each domain:
 
 ```elixir
 defmodule MyApp.Shop do
@@ -90,6 +89,9 @@ command shows the edits, the second writes them:
 mix ash_gettext.install
 mix ash_gettext.install --apply
 ```
+
+To write all this once instead of in every domain and resource, see
+[Set it up once for the whole app](documentation/topics/set-up-once.md).
 
 ### Tell it the user's language
 
