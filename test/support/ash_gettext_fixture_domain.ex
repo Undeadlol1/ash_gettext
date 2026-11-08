@@ -194,6 +194,44 @@ defmodule AshGettextFixture.ComparedParcel do
   end
 end
 
+defmodule AshGettextFixture.PlainKind do
+  @moduledoc false
+  use Ash.Type.Enum, values: [:a, :b]
+end
+
+defmodule AshGettextFixture.Crate do
+  @moduledoc "Enum attributes: one translated and already labelled, one not translated."
+
+  use Ash.Resource,
+    domain: AshGettextFixture.Shipping,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  ets do
+    private?(true)
+  end
+
+  actions do
+    defaults([:read, create: [:status, :kind]])
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :status, AshGettextFixture.ParcelStatus do
+      public?(true)
+    end
+
+    attribute :kind, AshGettextFixture.PlainKind do
+      public?(true)
+    end
+  end
+
+  calculations do
+    calculate(:status_label, :string, expr("mine"), public?: true)
+  end
+end
+
 defmodule AshGettextFixture.ActorLanguage do
   @moduledoc "A resolver that reads the language off the actor."
   @behaviour AshGettext.Locale.Resolver
@@ -218,6 +256,7 @@ defmodule AshGettextFixture.Shipping do
   resources do
     resource(AshGettextFixture.Parcel)
     resource(AshGettextFixture.ComparedParcel)
+    resource(AshGettextFixture.Crate)
   end
 end
 

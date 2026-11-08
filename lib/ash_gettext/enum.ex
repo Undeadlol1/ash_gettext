@@ -42,6 +42,9 @@ defmodule AshGettext.Enum do
           description: "use AshGettext.Enum must come after use Ash.Type.Enum"
       end
 
+      @doc false
+      def __ash_gettext_enum__, do: true
+
       def label(value),
         do: AshGettext.Enum.translate(unquote(backend), unquote(text_domain), super(value))
 

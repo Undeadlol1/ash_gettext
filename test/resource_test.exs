@@ -19,8 +19,10 @@ defmodule AshGettext.ResourceTest do
     assert attributes == [:id, :label, :past_statuses, :secret_note, :status, :weight]
   end
 
-  test "adds no calculation" do
-    assert Info.calculations(Parcel) == []
+  test "adds only the enum label calculations" do
+    names = Parcel |> Info.calculations() |> Enum.map(& &1.name) |> Enum.sort()
+
+    assert names == [:past_statuses_label, :status_label]
   end
 
   test "adds no aggregate" do

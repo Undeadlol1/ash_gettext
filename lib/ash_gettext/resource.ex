@@ -8,11 +8,12 @@ defmodule AshGettext.Resource do
           extensions: [AshGettext.Resource]
       end
 
-  Adding this changes nothing about the resource's shape. No attribute is
-  rewritten, no enum is replaced, no field is injected into any payload — the
-  extension only points each write action's `error_handler` at the library.
-  Adopting `ash_gettext` never requires a change to a resource's
-  `attributes do` block.
+  No attribute is rewritten and no enum is replaced; the `attributes do` block
+  stays as it is. The extension points each write action's `error_handler` at
+  the library, and adds one public calculation, `<attribute>_label`, for each
+  attribute whose type is an `AshGettext.Enum` (see
+  `AshGettext.Resource.Transformers.AddEnumLabels`). Load it to get the label
+  on the record: `Ash.get!(Order, id, load: [:status_label])`.
 
   Every action also sets Gettext's language once, when it starts, from the
   action's actor or `context: %{locale: ...}` (see `AshGettext.SetLanguage`).
@@ -28,6 +29,7 @@ defmodule AshGettext.Resource do
   use Spark.Dsl.Extension,
     transformers: [
       AshGettext.Resource.Transformers.AttachErrorHandler,
-      AshGettext.Resource.Transformers.AttachSetLanguage
+      AshGettext.Resource.Transformers.AttachSetLanguage,
+      AshGettext.Resource.Transformers.AddEnumLabels
     ]
 end
