@@ -51,7 +51,7 @@ Your app needs a Gettext backend (`use Gettext.Backend, otp_app: :my_app`).
 
 ## Usage
 
-### 1. Set it up once
+### Set it up once
 
 Add the extension and a `gettext` block to each domain. Put it in your base
 domain so you write it once:
@@ -91,7 +91,7 @@ mix ash_gettext.install
 mix ash_gettext.install --apply
 ```
 
-### 2. Tell it the user's language
+### Tell it the user's language
 
 A resolver is your code. It gets the actor and returns its language. Here
 the user has a `:language` field:
@@ -118,7 +118,7 @@ loaded actor, do not query the database. `ru_RU` and `en-US` are cut to the
 language, and a language with no catalog becomes `default_locale`. More in
 [Locales](documentation/topics/locales.md).
 
-### 3. Translate an enum
+### Translate an enum
 
 Write a label for every value. AshGettext never makes a label from a code
 name, so a value without one fails the build. `use AshGettext.Enum` takes the
@@ -148,7 +148,7 @@ end)
 `label/1` and `description/1` are still Ash's own functions. They now return
 the translated text, in Gettext's current language. An empty value (`nil`) gives `nil`.
 
-### 4. Show an enum on a record
+### Show an enum on a record
 
 Every attribute whose type uses `AshGettext.Enum` gets a field named
 `<attribute>_label`. Load it like any calculation:
@@ -163,7 +163,7 @@ order.status_label  #=> "Ожидает выдачи"
 An empty value gives `nil`, a list attribute gives a list of labels, and a
 field you already named `status_label` is left alone.
 
-### 5. Show an attribute name
+### Show an attribute name
 
 Write the name in the resource:
 
@@ -183,7 +183,7 @@ end)
 An attribute with no written `label` raises `ArgumentError`. A `label` for an
 attribute the resource does not have fails the build.
 
-### 6. Errors
+### Errors
 
 Ash's own errors come back in the user's language. Leave out a required
 value and the user reads a sentence, not a field name:
@@ -211,7 +211,7 @@ hd(error.errors).message
 
 No code on the action. Create, update and destroy errors are translated.
 
-### 7. Hand the texts to translators
+### Hand the texts to translators
 
 ```
 mix gettext.extract --merge              # Gettext's own command
@@ -222,7 +222,7 @@ AshGettext makes your enum labels, attribute labels, messages and Ash's error
 sentences visible to it, so they land in `ash.pot`. Translators fill in
 `ash.po` per language.
 
-### 8. Catch missing translations
+### Catch missing translations
 
 A lookup with no translation returns the text as written and sends a
 telemetry event. Log it:
