@@ -1,6 +1,7 @@
 defmodule AshGettext.EnumTest do
   use ExUnit.Case, async: true
 
+  alias AshGettextFixture.CrateSize
   alias AshGettextFixture.Gettext, as: Backend
   alias AshGettextFixture.ParcelStatus
 
@@ -63,8 +64,15 @@ defmodule AshGettext.EnumTest do
     assert ParcelStatus.description(nil) == nil
   end
 
-  test "a value without a description stays nil" do
-    assert in_ru(fn -> ParcelStatus.description(:placed) end) == nil
+  test "an enum where no value has a description gives nil" do
+    assert in_ru(fn -> CrateSize.description(:small) end) == nil
+    assert CrateSize.description(:large) == nil
+  end
+
+  test "an unknown value fails the same way Ash's own enum does" do
+    # apply/3, so the compiler does not reject the unknown value up front.
+    assert_raise FunctionClauseError, fn -> apply(ParcelStatus, :label, [:unknown]) end
+    assert_raise FunctionClauseError, fn -> apply(ParcelStatus, :description, [:unknown]) end
   end
 
   describe "a miss" do
@@ -75,7 +83,9 @@ defmodule AshGettext.EnumTest do
       :telemetry.attach(
         id,
         [:ash_gettext, :translation, :missing],
-        fn _event, _measurements, metadata, _ -> send(test_pid, {:missing, metadata}) end,
+        fn _event, _measurements, metadata, _ ->
+          if self() == test_pid, do: send(test_pid, {:missing, metadata})
+        end,
         nil
       )
 
@@ -87,9 +97,33 @@ defmodule AshGettext.EnumTest do
       assert_receive {:missing, %{msgid: "Parcel lost", locale: "ru", text_domain: "fixture"}}
     end
 
+    test "a description with no translation falls back to the source text and emits telemetry" do
+      assert in_ru(fn -> ParcelStatus.description(:lost) end) == "Nobody knows where it is"
+      assert_receive {:missing, %{msgid: "Nobody knows where it is", locale: "ru"}}
+    end
+
     test "a hit emits nothing" do
       in_ru(fn -> ParcelStatus.label(:placed) end)
-      refute_receive {:missing, %{msgid: "Order placed"}}
+      in_ru(fn -> ParcelStatus.description(:awaiting_pickup) end)
+      refute_receive {:missing, _}
+    end
+
+    test "a value without a description gives nil in any language and emits nothing" do
+      assert in_ru(fn -> ParcelStatus.description(:placed) end) == nil
+
+      assert Gettext.with_locale(Backend, "en", fn -> ParcelStatus.description(:placed) end) ==
+               nil
+
+      refute_receive {:missing, _}
+    end
+
+    test "the source language emits nothing" do
+      Gettext.with_locale(Backend, "en", fn ->
+        assert ParcelStatus.label(:lost) == "Parcel lost"
+        assert ParcelStatus.description(:lost) == "Nobody knows where it is"
+      end)
+
+      refute_receive {:missing, _}
     end
   end
 
