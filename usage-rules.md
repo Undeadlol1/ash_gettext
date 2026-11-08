@@ -210,14 +210,6 @@ defaults; add options only when a requirement demands them.
 - Assert the text through the real action:
   `Gettext.with_locale(MyApp.Gettext, "ru", fn -> Ash.create(changeset) end)`,
   then check the error's message.
-- `AshGettext.Testing.assert_translates(backend, text_domain, msgid, locale, expected, bindings \\ [])`
-  asserts the exact rendering and returns the string.
-- `AshGettext.Testing.assert_covered(backend, text_domain, msgid, locale, bindings \\ [])`
-  fails when the locale's catalog has no entry for the msgid. Loop it over
-  `AshGettext.known_locales(backend) -- [source_locale]` as a coverage sweep.
-  For labels, pass the enum's label or description or an attribute label text as the
-  msgid, with the `"ash"` text domain.
-  The source locale always passes.
 - Use these two helpers to test the translations themselves. In tests of
   application behavior, assert the text users read through your own API
   instead.

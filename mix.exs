@@ -78,8 +78,7 @@ defmodule AshGettext.MixProject do
           AshGettext.Enum,
           AshGettext.Domain,
           AshGettext.Resource,
-          AshGettext.Error,
-          AshGettext.Testing
+          AshGettext.Error
         ],
         Locales: [
           AshGettext.Locale.Resolver,

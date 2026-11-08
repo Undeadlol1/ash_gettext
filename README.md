@@ -243,16 +243,6 @@ def log_missing(_event, _measurements, meta, _config),
 
 The metadata has `backend`, `text_domain`, `msgid` and `locale`.
 
-In tests, assert a text is covered:
-
-```elixir
-import AshGettext.Testing
-
-test "the status label has a Russian translation" do
-  assert_covered(MyApp.Gettext, "ash", "Ready for pickup", "ru")
-end
-```
-
 ## Learn more
 
 - [Translating text](documentation/topics/translating-text.md): enums,
@@ -264,7 +254,7 @@ end
 - [Extracting messages](documentation/topics/extracting-messages.md): what
   `mix gettext.extract` finds, and checking it in CI.
 - [How to test with AshGettext](documentation/topics/testing.md): check that
-  a translation exists and that an action returns it.
+  an action returns the translated text.
 - [How AshGettext works](documentation/topics/how-it-works.md): the path of a
   lookup, the path of an error, and the limits.
 - [DSL reference](documentation/dsls/DSL-AshGettext.Domain.md): every option

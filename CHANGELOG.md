@@ -60,5 +60,3 @@ The first packaged version. Not published to Hex yet.
 - `AshGettext.Error` is a user-facing error with a required `code`, a
   translatable `message`, and an optional `field` and `vars`. It renders for
   JSON:API, with no English `title`, when `:ash_json_api` is present, which is an optional dependency.
-- `AshGettext.Testing` has `assert_translates/6` and `assert_covered/5` for
-  checking a message and a catalog in your own tests.

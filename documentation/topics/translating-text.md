@@ -201,8 +201,8 @@ AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order lost", [], "ru"
 
 The twins are `translate_or_missing/5`, `translate_plural_or_missing/7`
 and `attribute_label_or_missing/2`. They send no
-event. In your own language nothing is missing. In tests, use
-`AshGettext.Testing`. See [How to test with AshGettext](testing.md).
+event. In your own language nothing is missing. To test, see
+[How to test with AshGettext](testing.md).
 
 ## Get the language from the user
 

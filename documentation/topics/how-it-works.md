@@ -13,7 +13,7 @@ as it was. `translate_plural/7` does the same with `dngettext`.
 
 Gettext returns the text unchanged when it has no translation. In any
 language but your own, AshGettext reports that as missing: the
-`_or_missing` functions and `AshGettext.Testing` use it, and the plain
+`_or_missing` functions use it, and the plain
 functions send a `[:ash_gettext, :translation, :missing]` telemetry event.
 
 Attribute labels are lookups like any other. The key is the text you wrote in
@@ -76,7 +76,7 @@ The backend has a source locale: its default locale, `en` unless you set
 another. In that locale the msgid is the text, so a lookup always counts as
 found, and you keep no catalog for it. In any other locale, an entry that is
 missing is reported as missing. `AshGettext.translate_or_missing/5` shows the
-difference, and `AshGettext.Testing` is built on it.
+difference.
 
 ## Why the settings live in the domain
 
