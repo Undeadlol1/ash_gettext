@@ -10,25 +10,26 @@ user's language.
 ## TL;DR
 
 ```elixir
-MyApp.Translator.enum_label(MyApp.Order.Status, :awaiting_pickup, actor: user)
-#=> "Ожидает выдачи"
+defmodule MyApp.Order.Status do
+  use Ash.Type.Enum, values: [:placed, awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]]
+  use AshGettext.Enum, backend: MyApp.Gettext
+end
 
-MyApp.Translator.attribute_label(MyApp.Order, :delivery_date, actor: user)
-#=> "Дата доставки"
+MyApp.Order.Status.label(:awaiting_pickup)
+#=> "Ожидает выдачи"
 
 MyApp.Shop.create_order(%{delivery_date: nil}, actor: user)
 #=> {:error, %Ash.Error.Invalid{errors: [%{message: "не может быть пустым"}]}}
 ```
 
-Each comes out in the user's own language. No keys to invent, no
-`dgettext` on every action. The English is the key, and `mix
-ash_gettext.extract` collects it for your translators. That's it.
+The enum's own `label/1` returns the user's language, and so does the message of a create that fails (the domain `gettext` block is further down). That's it.
 
 ## Features
 
 - **Translate any text.** Strings and plurals, in the user's language.
-- **Enum labels and attribute names.** Show `:awaiting_pickup` and
-  `:date_of_birth` as words, with no keys to invent.
+- **Enum labels and attribute names.** An enum's own `label/1` returns the
+  user's language. Attribute names come out as words too, with no keys to
+  invent.
 - **Ash's errors.** Add one block to a domain and its create, update and
   destroy errors are translated.
 
@@ -49,52 +50,54 @@ needs nothing else.
 
 ## Usage
 
-### Set up a translator
+### Translate an enum
 
-One module that knows your backend and how to find the user's language:
+Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
 
 ```elixir
-defmodule MyApp.Translator do
-  use AshGettext.Translator,
-    backend: MyApp.Gettext,
-    locale_resolvers: [MyApp.Locale.FromActor, AshGettext.Locale.FromContext],
-    default_locale: "en"
+defmodule MyApp.Order.Status do
+  use Ash.Type.Enum,
+    values: [
+      :placed,
+      awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]
+    ]
+
+  use AshGettext.Enum, backend: MyApp.Gettext
 end
+
+MyApp.Order.Status.label(:awaiting_pickup)
+#=> "Ожидает выдачи"
+
+MyApp.Order.Status.description(:awaiting_pickup)
+#=> "Готов к выдаче в пункте"
 ```
 
-Only `backend` is required. Without resolvers it reads `locale:` from the
-options you pass.
+`label/1` and `description/1` are still Ash's own functions. They now return
+the translated text. The text you wrote is the key, and the key lives in
+`ash.po` (`text_domain: "other"` picks another file).
+
+The language is Gettext's current locale for the process. Set it the usual
+way with `Gettext.put_locale/2`, or for one block of code with
+`Gettext.with_locale/3`. The enum does not look at an actor or a context.
 
 ### Translate text
 
 The text you write is the key. In your own language it is also the
-translation, so you keep catalogs only for the other languages:
+translation, so you keep catalogs only for the other languages. These
+functions take the backend and the language as arguments:
 
 ```elixir
-MyApp.Translator.translate("Hello, %{name}", [name: "Ann"], locale: "ru")
+AshGettext.translate(MyApp.Gettext, "default", "Hello, %{name}", [name: "Ann"], "ru")
 #=> "Привет, Ann"
 
-MyApp.Translator.translate_plural("%{count} parcel", "%{count} parcels", 3, [], locale: "ru")
+AshGettext.translate_plural(MyApp.Gettext, "default", "%{count} parcel", "%{count} parcels", 3, [], "ru")
 #=> "3 посылки"
 ```
-
-The pure functions behind it, such as `AshGettext.translate/5`, take the
-backend and language as arguments if you want no module.
-
-### Show an enum value
-
-```elixir
-MyApp.Translator.enum_label(MyApp.Status, :awaiting_pickup, actor: user)
-#=> "Ожидает выдачи"
-```
-
-The key is the enum's own label: "Awaiting pickup", or the `label:` you set on
-the value. Enum labels live in the `"ash"` catalog, `ash.po`.
 
 ### Show an attribute name
 
 ```elixir
-MyApp.Translator.attribute_label(MyApp.Order, :date_of_birth, actor: user)
+AshGettext.attribute_label(MyApp.Gettext, "ash", MyApp.Order, :date_of_birth, "ru")
 #=> "Дата рождения"
 ```
 
@@ -103,7 +106,8 @@ not have raises `ArgumentError`.
 
 ### Pick the user's language
 
-A resolver reads the language off the actor you pass:
+Errors need a language from the action, not from the process. A resolver
+reads it off the actor:
 
 ```elixir
 defmodule MyApp.Locale.FromActor do
@@ -119,9 +123,8 @@ A resolver must be a pure function of its context. Read the locale off the
 loaded actor and do not query the database: a resolver runs while an
 action's error is being built, possibly inside a failed transaction.
 
-An explicit `locale:` beats the resolvers. `ru_RU` and `en-US` are cut to the
-language, and a language with no catalog becomes `default_locale`. More in
-[Locales](documentation/topics/locales.md).
+`ru_RU` and `en-US` are cut to the language, and a language with no catalog
+becomes `default_locale`. More in [Locales](documentation/topics/locales.md).
 
 ### Translate Ash's errors
 
@@ -191,8 +194,8 @@ end
 
 ## Learn more
 
-- [Translating text](documentation/topics/translating-text.md): the
-  translator, strings, plurals, enum labels and attribute names.
+- [Translating text](documentation/topics/translating-text.md): enums,
+  strings, plurals and attribute names.
 - [Locales](documentation/topics/locales.md): where the user's language comes
   from, and how it is matched to your catalogs.
 - [Translating errors](documentation/topics/translating-errors.md): which
@@ -211,7 +214,7 @@ end
 
 - **Only create, update and destroy errors are translated.** Ash gives read
   and generic actions no error handler, so their errors arrive as written.
-- **Text passed to `translate/3` is not extracted.** Neither
+- **Text passed to `AshGettext.translate/5` is not extracted.** Neither
   `mix gettext.extract` nor `mix ash_gettext.extract` sees it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute
   names and `message:` strings are extracted.

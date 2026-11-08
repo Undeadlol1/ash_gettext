@@ -27,9 +27,8 @@ becomes the default. `AshGettext.known_locales/1` reads the languages from
 the backend's `priv` directory, so adding a language directory is all it
 takes to support one.
 
-A [translator](translating-text.md) does this for you on every call. Pass
-`locale: "ru_RU"` to `MyApp.Translator.translate/3` and it resolves to `"ru"`.
-Use `resolve/2` yourself when you call `AshGettext.translate/5` directly.
+Use `resolve/2` yourself when you call `AshGettext.translate/5`. [Enums](translating-text.md)
+do not need it: they use Gettext's current locale.
 
 ## Take the language from the signed-in user
 
@@ -60,18 +59,6 @@ AshGettext.Locale.resolve(%{actor: current_user},
   default: "en"
 )
 ```
-
-Or list them once on the translator, and pass the actor on each call:
-
-```elixir
-use AshGettext.Translator,
-  backend: MyApp.Gettext,
-  locale_resolvers: [MyApp.UserLocale, AshGettext.Locale.FromContext]
-
-MyApp.Translator.translate("Order shipped", [], actor: current_user)
-```
-
-An explicit `locale:` option skips the list and wins.
 
 The default resolver is `AshGettext.Locale.FromContext`. It reads
 `:locale` from the map, or `"locale"` for a value that came through JSON.

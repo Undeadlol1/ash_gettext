@@ -1,39 +1,63 @@
 # Translating text
 
-This page covers translating your own text: strings, placeholders, plurals,
-enum labels and attribute names. You call them through a translator module,
-so a call site says what to translate and nothing else.
+This page covers translating your own text: enum values, strings,
+placeholders, plurals and attribute names.
 
-## Set up a translator
+## Translate an enum
+
+Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
 
 ```elixir
-defmodule MyApp.Translator do
-  use AshGettext.Translator,
-    backend: MyApp.Gettext,
-    locale_resolvers: [MyApp.Locale.FromActor, AshGettext.Locale.FromContext],
-    default_locale: "en"
+defmodule MyApp.Order.Status do
+  use Ash.Type.Enum,
+    values: [
+      :placed,
+      awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]
+    ]
+
+  use AshGettext.Enum, backend: MyApp.Gettext
 end
+
+MyApp.Order.Status.label(:awaiting_pickup)
+#=> "Ожидает выдачи"
 ```
 
-`backend` is required. `locale_resolvers` defaults to
-`[AshGettext.Locale.FromContext]` and `default_locale` to the backend's own
-language. The module gets `translate/3`, `translate_plural/5`, `enum_label/3`,
-`attribute_label/3` and `locale/1`.
+`label/1` and `description/1` are Ash's own functions. They now return the
+translated text. `:backend` is required. `:text_domain` is the catalog file
+and defaults to `"ash"`.
 
-Every function takes options last:
+The key is the enum's own label for the value. By default that is the value in
+words, "Awaiting pickup". A `label:` on the value changes it. The key of a
+description is the description:
 
-- `locale:` is an explicit language. It beats the resolvers.
-- `actor:` is handed to the resolvers.
-- `context:` is a map merged into what the resolvers get.
-- `text_domain:` is the catalog file. Text defaults to `"default"`. Enum
-  labels and attribute names default to `"ash"`.
+```po
+# priv/gettext/ru/LC_MESSAGES/ash.po
+msgid "Awaiting pickup"
+msgstr "Ожидает выдачи"
+
+msgid "Ready at the pickup point"
+msgstr "Готов к выдаче в пункте"
+```
+
+The language is Gettext's current locale for the process. Set it with
+`Gettext.put_locale/2`, or for one block with `Gettext.with_locale/3`:
+
+```elixir
+Gettext.with_locale(MyApp.Gettext, "ru", fn ->
+  MyApp.Order.Status.label(:awaiting_pickup)
+end)
+```
+
+With no translation, you get the label as written. A value without a
+description still returns `nil`. `details/1` is Ash's own and is not
+translated.
 
 ## The text is the key
 
 Write the text in your app's own language. Gettext looks it up as written:
 
 ```elixir
-MyApp.Translator.translate("Order shipped", [], locale: "ru")
+AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
 #=> "Заказ отправлен"
 ```
 
@@ -47,15 +71,16 @@ In your own language the text is also the translation, so that language
 needs no `.po` file. Your own language is the backend's default locale, `en`
 unless you set another.
 
-With no translation, `translate/3` returns the text as you wrote it.
+With no translation, `translate/5` returns the text as you wrote it.
 
 ## Choose the catalog file
 
-The `text_domain` option is the name of the `.po` file. `"default"` reads
-`default.po`. Use another name to keep a part of the app in its own file:
+The text domain, the second argument, is the name of the `.po` file.
+`"default"` reads `default.po`. Use another name to keep a part of the app in
+its own file:
 
 ```elixir
-MyApp.Translator.translate("Order shipped", [], locale: "ru", text_domain: "shipping")
+AshGettext.translate(MyApp.Gettext, "shipping", "Order shipped", [], "ru")
 # reads priv/gettext/ru/LC_MESSAGES/shipping.po
 ```
 
@@ -64,7 +89,7 @@ MyApp.Translator.translate("Order shipped", [], locale: "ru", text_domain: "ship
 Write `%{name}` in the text and pass the values:
 
 ```elixir
-MyApp.Translator.translate("Hello, %{name}", [name: "Ann"], locale: "ru")
+AshGettext.translate(MyApp.Gettext, "default", "Hello, %{name}", [name: "Ann"], "ru")
 #=> "Привет, Ann"
 ```
 
@@ -77,11 +102,11 @@ Do not build the text with `#{...}`. The key has to be the same every time.
 
 ## Translate a count
 
-`translate_plural/5` takes the singular, the plural and the count. The count
+`translate_plural/7` takes the singular, the plural and the count. The count
 is always available as `%{count}`:
 
 ```elixir
-MyApp.Translator.translate_plural("%{count} parcel", "%{count} parcels", 3, [], locale: "ru")
+AshGettext.translate_plural(MyApp.Gettext, "default", "%{count} parcel", "%{count} parcels", 3, [], "ru")
 #=> "3 посылки"
 ```
 
@@ -96,42 +121,10 @@ msgstr[2] "%{count} посылок"
 Each language has its own number of plural forms. Gettext picks the right
 one.
 
-## Show an enum value
-
-An Ash enum value like `:awaiting_pickup` is not text a user should see.
-Pass the enum module and the value:
-
-```elixir
-MyApp.Translator.enum_label(MyApp.Status, :awaiting_pickup, actor: user)
-#=> "Ожидает выдачи"
-```
-
-The key is the enum's own label for the value. By default that is the value
-in words, "Awaiting pickup". A `label:` on the value changes it:
-
-```elixir
-defmodule MyApp.Status do
-  use Ash.Type.Enum,
-    values: [
-      pending: [],
-      awaiting_pickup: [label: "Ready to collect"]
-    ]
-end
-```
-
-```po
-# priv/gettext/ru/LC_MESSAGES/ash.po
-msgid "Ready to collect"
-msgstr "Ожидает выдачи"
-```
-
-With no translation, you get the label. A screen never shows the raw value.
-A value the enum does not have raises `ArgumentError`.
-
 ## Show an attribute name
 
 ```elixir
-MyApp.Translator.attribute_label(MyApp.Order, :date_of_birth, actor: user)
+AshGettext.attribute_label(MyApp.Gettext, "ash", MyApp.Order, :date_of_birth, "ru")
 #=> "Дата рождения"
 ```
 
@@ -146,7 +139,7 @@ it. An attribute the resource does not have raises `ArgumentError`.
 
 ## Know when a translation is missing
 
-`translate/3` falls back to the text, so a missing translation looks like a
+`translate/5` falls back to the text, so a missing translation looks like a
 working one. Two ways to find out.
 
 Every miss sends a telemetry event, `[:ash_gettext, :translation, :missing]`,
@@ -169,21 +162,10 @@ AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order lost", [], "ru"
 #=> {:missing, "Order lost"}
 ```
 
-The twins are `translate_or_missing/5`, `translate_plural_or_missing/7`,
-`enum_label_or_missing/5` and `attribute_label_or_missing/5`. They send no
+The twins are `translate_or_missing/5`, `translate_plural_or_missing/7`
+and `attribute_label_or_missing/5`. They send no
 event. In your own language nothing is missing. In tests, use
 `AshGettext.Testing`. See [How to test with AshGettext](testing.md).
-
-## Use the pure functions
-
-The translator is a thin layer over `AshGettext.translate/5` and its
-siblings. They take the backend, the text domain and the language as
-arguments, and read nothing from the process:
-
-```elixir
-AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
-#=> "Заказ отправлен"
-```
 
 ## Get the language from the user
 
@@ -193,9 +175,9 @@ language your catalogs have, see [Locales](locales.md).
 ## Add the text to the template
 
 `mix gettext.extract` finds only Gettext macro calls. Text you pass to
-`translate/3` is not one, and `mix ash_gettext.extract` does not see it
+`translate/5` is not one, and `mix ash_gettext.extract` does not see it
 either. Add it to your `.pot` file by hand, or keep the text in a Gettext
 macro such as `dgettext_noop/2`.
 
-Enum labels and attribute names are different: `mix ash_gettext.extract`
+Enum labels, enum descriptions and attribute names are different: `mix ash_gettext.extract`
 collects them. See [Extracting messages](extracting-messages.md).

@@ -40,7 +40,7 @@ is easy to find. It also returns the translated string.
 
 ## Check that a message is covered
 
-When you only need to know that a translator did the work, use
+When you only need to know that the translation did the work, use
 `AshGettext.Testing.assert_covered/5`. It does not pin the wording:
 
 ```elixir
@@ -69,13 +69,15 @@ test.
 
 ## Check enum labels and attribute names
 
-Both are looked up in the `"ash"` catalog under the enum's label and the
-attribute name in words:
+An enum returns its translation in Gettext's current locale. Use
+`Gettext.with_locale/3` so the test stays `async: true`. The attribute name is
+looked up in the `"ash"` catalog under the name in words:
 
 ```elixir
 test "the status and the attribute name are translated" do
-  assert {:ok, _} =
-           AshGettext.enum_label_or_missing(MyApp.Gettext, "ash", MyApp.Status, :awaiting_pickup, "ru")
+  assert Gettext.with_locale(MyApp.Gettext, "ru", fn ->
+           MyApp.Status.label(:awaiting_pickup)
+         end) == "Ожидает выдачи"
 
   assert_covered(MyApp.Gettext, "ash", AshGettext.attribute_msgid(:date_of_birth), "ru")
 end
@@ -124,7 +126,7 @@ test "the order page has no gaps in Russian" do
     self()
   )
 
-  MyApp.Translator.translate("Order shipped", [], locale: "ru")
+  AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
 
   refute_received {:missing, _meta}
 end
