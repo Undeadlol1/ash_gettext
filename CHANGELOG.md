@@ -18,8 +18,12 @@ The first packaged version. Not published to Hex yet.
   Gettext's language for that process, once, when the action starts, using the
   domain's `locale_resolvers`. Enum labels, error messages and attribute names
   all come out in it. With no actor and no locale the language is left alone.
-- `attribute_label/2` looks up an attribute's name in words (`:date_of_birth` is "Date of
-  birth") and raises for an attribute the resource does not have.
+- User-facing text is always written by a person. The library never makes it
+  from a code name. An enum value without a `label:` is a compile error.
+- A resource's `gettext` block holds written attribute labels
+  (`label :delivery_date, "Delivery date"`). `attribute_label/2` translates
+  one and raises for an attribute with no written label. A `label` for an
+  attribute the resource does not have fails the build.
 - A lookup with no translation sends the telemetry event
   `[:ash_gettext, :translation, :missing]`, with `backend`, `text_domain`,
   `msgid` and `locale`.
@@ -32,8 +36,8 @@ The first packaged version. Not published to Hex yet.
   action on its resources, in Gettext's current language.
 - `text_domain` defaults to `"ash"`: one catalog for Ash's errors, enum labels
   and attribute names. Text from `translate/3` uses Gettext's `"default"`.
-- `mix ash_gettext.extract` writes every Ash `message:`, every public
-  attribute's name and every enum value's label and description to a `.pot` template,
+- `mix ash_gettext.extract` writes every Ash `message:`, every written
+  attribute label and every enum value's label and description to a `.pot` template,
   into the file the lookups read: the backend's `priv` directory holding
   `<text_domain>.pot`. `--check` fails in CI when the template is out of date.
   When an app's domains name different text domains, the task lists them and

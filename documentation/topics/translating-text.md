@@ -3,6 +3,10 @@
 This page covers translating your own text: enum values, strings,
 placeholders, plurals and attribute names.
 
+The text a user reads is written by a person. AshGettext never makes it from
+a code name, so `:awaiting_pickup` is not turned into "Awaiting pickup" for
+you.
+
 ## Translate an enum
 
 Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
@@ -11,8 +15,8 @@ Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
 defmodule MyApp.Order.Status do
   use Ash.Type.Enum,
     values: [
-      :placed,
-      awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]
+      placed: [label: "Order placed"],
+      awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
     ]
 
   use AshGettext.Enum, backend: MyApp.Gettext
@@ -26,13 +30,13 @@ MyApp.Order.Status.label(:awaiting_pickup)
 translated text. `:backend` is required. `:text_domain` is the catalog file
 and defaults to `"ash"`.
 
-The key is the enum's own label for the value. By default that is the value in
-words, "Awaiting pickup". A `label:` on the value changes it. The key of a
-description is the description:
+The key is the `label:` you wrote on the value. Every value needs one: a value
+without it fails to compile, and the error lists those values. A description
+is optional, and its key is the description:
 
 ```po
 # priv/gettext/ru/LC_MESSAGES/ash.po
-msgid "Awaiting pickup"
+msgid "Ready for pickup"
 msgstr "Ожидает выдачи"
 
 msgid "Ready at the pickup point"
@@ -138,6 +142,16 @@ one.
 
 ## Show an attribute name
 
+Write the text in the resource's `gettext` block:
+
+```elixir
+gettext do
+  label :date_of_birth, "Date of birth"
+end
+```
+
+Then ask for it:
+
 ```elixir
 Gettext.with_locale(MyApp.Gettext, "ru", fn ->
   AshGettext.attribute_label(MyApp.Order, :date_of_birth)
@@ -154,8 +168,9 @@ msgid "Date of birth"
 msgstr "Дата рождения"
 ```
 
-The key is the attribute name in words. `AshGettext.attribute_msgid/1` gives
-it. An attribute the resource does not have raises `ArgumentError`.
+The key is the text you wrote. An attribute with no written `label` raises
+`ArgumentError`, and so does one the resource does not have. A `label` for an
+attribute the resource does not have fails the build.
 
 ## Know when a translation is missing
 
@@ -201,5 +216,5 @@ signed-in user into a language your catalogs have, see [Locales](locales.md).
 either. Add it to your `.pot` file by hand, or keep the text in a Gettext
 macro such as `dgettext_noop/2`.
 
-Enum labels, enum descriptions and attribute names are different: `mix ash_gettext.extract`
+Enum labels, enum descriptions and attribute labels are different: `mix ash_gettext.extract`
 collects them. See [Extracting messages](extracting-messages.md).

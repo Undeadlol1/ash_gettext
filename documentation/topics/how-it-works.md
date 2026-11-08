@@ -16,13 +16,14 @@ language but your own, AshGettext reports that as missing: the
 `_or_missing` functions and `AshGettext.Testing` use it, and the plain
 functions send a `[:ash_gettext, :translation, :missing]` telemetry event.
 
-Attribute names are lookups like any other. The key is the attribute name in
-words, and the text domain defaults to `"ash"`.
+Attribute labels are lookups like any other. The key is the text you wrote in
+the resource's `gettext` block, and the text domain defaults to `"ash"`.
 
 An enum with `use AshGettext.Enum` overrides Ash's `label/1` and
 `description/1`. It calls Ash's version for the source text, then looks that
 text up with `AshGettext.translate/5` in Gettext's current locale. The key is
-the label or description as written.
+the label or description as written. A value with no written label fails to
+compile.
 
 ## When a resource compiles
 
@@ -93,7 +94,7 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Locale` | Runs the resolvers, then normalizes. |
 | `AshGettext.Enum` | `use` it in an `Ash.Type.Enum` to translate its `label/1` and `description/1`. |
-| `AshGettext` | Looks text up in the backend: strings, plurals, attribute names. |
+| `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
 
 `AshGettext.ErrorTranslation.translate/2` and `AshGettext.Locale.resolve/2`
 take everything they need as arguments, so you can call them yourself.
@@ -101,7 +102,7 @@ take everything they need as arguments, so you can call them yourself.
 ## Limits
 
 - **Text passed to `translate/5` is not extracted.** Neither extract task
-  sees it. Add it to the template by hand. Enum labels and attribute names
+  sees it. Add it to the template by hand. Enum labels and attribute labels
   are extracted.
 - **Only write actions are translated.** Ash has no `error_handler` for reads
   or generic actions. Their errors reach the caller as written.

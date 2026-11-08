@@ -11,12 +11,13 @@ user's language.
 
 ```elixir
 defmodule MyApp.Order.Status do
-  use Ash.Type.Enum, values: [:placed, :awaiting_pickup]
+  use Ash.Type.Enum,
+    values: [placed: [label: "Order placed"], awaiting_pickup: [label: "Ready for pickup"]]
+
   use AshGettext.Enum, backend: MyApp.Gettext
 end
 
-# No labels written: Ash makes them "Placed" and "Awaiting pickup",
-# and `mix ash_gettext.extract` puts both in your template.
+# `mix ash_gettext.extract` collects the labels you wrote into your template.
 
 # The user reads Russian. Load an order as that user:
 order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
@@ -37,14 +38,15 @@ Every enum attribute gets a translated `_label` field that clients can load. Err
 
 ### Translate an enum
 
-Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
+Every value needs a label you write. AshGettext never makes a label from a
+code name, so a value without one is a compile error. Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
 
 ```elixir
 defmodule MyApp.Order.Status do
   use Ash.Type.Enum,
     values: [
-      :placed,
-      awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]
+      placed: [label: "Order placed"],
+      awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
     ]
 
   use AshGettext.Enum, backend: MyApp.Gettext
@@ -105,10 +107,18 @@ end)
 #=> "Дата рождения"
 ```
 
+You write the text in the resource, then it is translated:
+
+```elixir
+gettext do
+  label :date_of_birth, "Date of birth"
+end
+```
+
 The language is Gettext's current one. The backend and text domain come from
-the resource's domain. The key is the name in words: "Date of birth". An
-attribute the resource does not have, or a resource whose domain has no
-`gettext` block, raises `ArgumentError`.
+the resource's domain. An attribute with no written `label`, or a resource
+whose domain has no `gettext` block, raises `ArgumentError`. A `label` for an
+attribute the resource does not have fails the build.
 
 ### Pick the user's language
 
@@ -170,7 +180,7 @@ sets when it starts:
 validate present(:email), message: "can't be blank"
 ```
 
-Errors, enum labels and attribute names share one catalog, `ash.po`. Run
+Errors, enum labels and attribute labels share one catalog, `ash.po`. Run
 `mix ash_gettext.extract` to write all of them to `ash.pot`.
 
 ### Report missing translations
@@ -211,7 +221,7 @@ end
 - [Translating errors](documentation/topics/translating-errors.md): which
   errors are translated, coded errors, and turning it on one domain at a time.
 - [Extracting messages](documentation/topics/extracting-messages.md): put
-  Ash's `message:` strings, enum labels and attribute names in a `.pot`
+  Ash's `message:` strings, enum labels and attribute labels in a `.pot`
   template, and check it in CI.
 - [How to test with AshGettext](documentation/topics/testing.md): check that
   a translation exists and that an action returns it.
@@ -227,7 +237,7 @@ end
 - **Text passed to `AshGettext.translate/5` is not extracted.** Neither
   `mix gettext.extract` nor `mix ash_gettext.extract` sees it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute
-  names and `message:` strings are extracted.
+  labels and `message:` strings are extracted.
 - **A message built with `#{...}` cannot be translated.** Write `%{name}` in
   the text and pass the value instead.
 - **A handler you wrote is kept.** An action with its own `error_handler`

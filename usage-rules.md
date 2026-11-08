@@ -1,7 +1,7 @@
 # Rules for working with AshGettext
 
 AshGettext is a translation library for Ash. It translates the text an Ash
-app shows (strings, plurals, enum labels and descriptions, attribute names and Ash's own error
+app shows (strings, plurals, enum labels and descriptions, attribute labels and Ash's own error
 messages) in the user's language, through Gettext. Translating text needs only
 a Gettext backend. Translating Ash's errors is one feature on top, switched on
 per domain. Read these rules before writing code that uses it. Prefer the
@@ -29,8 +29,11 @@ defaults; add options only when a requirement demands them.
   `use Ash.Type.Enum`. Then `MyApp.Status.label(:awaiting_pickup)` and
   `description/1` return the translated text. Call those, never a wrapper.
   Options: `:backend` (required), `:text_domain` (default `"ash"`). The msgid
-  is the enum's own label or description: "Awaiting pickup" by default, or the
-  `label:` set on the value. Do not invent per-attribute keys.
+  is the `label:` or description you wrote on the value. Every value needs a
+  written `label:`; a value without one is a compile error. Do not invent
+  per-attribute keys.
+- Labels are written by a person. The library never makes one from a code
+  name. Never write code that turns `:awaiting_pickup` into "Awaiting pickup".
 - On a record: every attribute with an `AshGettext.Enum` type gets a public
   `<attribute>_label` calculation (a list for `{:array, enum}`). Load it with
   `load: [:status_label]`. Do not write your own. A field already named that is
@@ -43,11 +46,13 @@ defaults; add options only when a requirement demands them.
 - The msgid is the plain sentence in the source language, with `%{var}`
   placeholders filled from `bindings`. Do not invent keys like
   `"orders.shipped"`. The source language needs no catalog.
-- Attribute names: `AshGettext.attribute_label(MyApp.Order, :date_of_birth)`,
-  in Gettext's current locale; backend and text domain come from the
-  resource's domain. The msgid is the name in words, "Date of birth"
-  (`AshGettext.attribute_msgid/1`). An unknown attribute raises
-  `ArgumentError`.
+- Attribute labels: write `gettext do label :date_of_birth, "Date of birth" end`
+  in the resource (`AshGettext.Resource`), then call
+  `AshGettext.attribute_label(MyApp.Order, :date_of_birth)`. It reads
+  Gettext's current locale; backend and text domain come from the resource's
+  domain. The msgid is the text you wrote. An attribute with no written label,
+  or an unknown one, raises `ArgumentError`. A `label` for an attribute the
+  resource lacks fails the build.
 - A lookup with no translation returns the msgid and sends the telemetry event
   `[:ash_gettext, :translation, :missing]` with `backend`, `text_domain`,
   `msgid` and `locale`. Attach a handler to log or count gaps. The
@@ -60,8 +65,8 @@ defaults; add options only when a requirement demands them.
   `{:ok, string}` or `{:missing, string}`. They are not the `{:ok, v} | :error`
   shape. A translation identical to its msgid in a non-source locale counts as
   `:missing`.
-- `mix ash_gettext.extract` collects the enum labels and attribute names of
-  every resource in a translating domain. It does not find text passed to
+- `mix ash_gettext.extract` collects the written enum labels and attribute
+  labels of every resource in a translating domain. It does not find text passed to
   `AshGettext.translate/5`. Add those msgids to the `.pot` by hand or keep them in a
   Gettext `*_noop` macro.
 
@@ -126,9 +131,9 @@ defaults; add options only when a requirement demands them.
   translated text.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
-  attribute names share it.
+  attribute labels share it.
 - Run `mix ash_gettext.extract` to write the template from every literal
-  `message:` in `lib`, plus the attribute names and enum labels of the
+  `message:` in `lib`, plus the written attribute labels and enum labels of the
   domains' resources. Arguments: source paths and `--output PATH`. Run
   `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
 - Without `--output` the task writes the file your own lookups read: the
@@ -203,7 +208,7 @@ defaults; add options only when a requirement demands them.
 - `AshGettext.Testing.assert_covered(backend, text_domain, msgid, locale, bindings \\ [])`
   fails when the locale's catalog has no entry for the msgid. Loop it over
   `AshGettext.known_locales(backend) -- [source_locale]` as a coverage sweep.
-  For labels, pass the enum's label or description or `AshGettext.attribute_msgid/1` as the
+  For labels, pass the enum's label or description or an attribute label text as the
   msgid, with the `"ash"` text domain.
   The source locale always passes.
 - Use these two helpers to test the translations themselves. In tests of

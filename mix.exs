@@ -43,7 +43,8 @@ defmodule AshGettext.MixProject do
 
   defp aliases do
     [
-      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshGettext.Domain",
+      "spark.cheat_sheets":
+        "spark.cheat_sheets --extensions AshGettext.Domain,AshGettext.Resource",
       docs: ["spark.cheat_sheets", "docs"]
     ]
   end
@@ -62,6 +63,8 @@ defmodule AshGettext.MixProject do
         "documentation/topics/how-it-works.md",
         {"documentation/dsls/DSL-AshGettext.Domain.md",
          search_data: Spark.Docs.search_data_for(AshGettext.Domain)},
+        {"documentation/dsls/DSL-AshGettext.Resource.md",
+         search_data: Spark.Docs.search_data_for(AshGettext.Resource)},
         "CHANGELOG.md"
       ],
       groups_for_extras: [

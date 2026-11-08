@@ -67,11 +67,11 @@ end
 Add a new language directory and the loop checks it with no change to the
 test.
 
-## Check enum labels and attribute names
+## Check enum labels and attribute labels
 
 An enum returns its translation in Gettext's current locale. Use
-`Gettext.with_locale/3` so the test stays `async: true`. The attribute name is
-looked up in the `"ash"` catalog under the name in words:
+`Gettext.with_locale/3` so the test stays `async: true`. The attribute label is
+looked up in the `"ash"` catalog under the text you wrote in `label`:
 
 ```elixir
 test "the status and the attribute name are translated" do
@@ -79,7 +79,7 @@ test "the status and the attribute name are translated" do
            MyApp.Status.label(:awaiting_pickup)
          end) == "Ожидает выдачи"
 
-  assert_covered(MyApp.Gettext, "ash", AshGettext.attribute_msgid(:date_of_birth), "ru")
+  assert_covered(MyApp.Gettext, "ash", "Date of birth", "ru")
 end
 ```
 

@@ -91,7 +91,7 @@ end
 
 Each resolver gets a map with `:locale` from the action context, `:actor`
 and `:changeset`. When one answers, AshGettext calls `Gettext.put_locale/2`
-for that process. Enums, [errors](translating-errors.md) and attribute names
+for that process. Enums, [errors](translating-errors.md) and attribute labels
 then come out in that language. A background job no longer has to set it
 before it runs an action. With no actor and no `locale`, the process language
 is left alone.
