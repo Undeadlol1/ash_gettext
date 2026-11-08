@@ -2,6 +2,8 @@ defmodule AshGettext do
   @moduledoc """
   Translate the text an Ash app shows: strings, plurals, enum values and attribute names.
 
+  Enum values translate themselves: see `AshGettext.Enum`.
+
       AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
       #=> "Заказ отправлен"
 
@@ -118,34 +120,6 @@ defmodule AshGettext do
   end
 
   @doc """
-  The translated label of one value of an `Ash.Type.Enum`.
-
-  The msgid is `enum_module.label(value)`: the value's custom `label:` or, by
-  default, the humanized value (`:awaiting_pickup` is `"Awaiting pickup"`). A
-  value missing from the catalog falls back to that label, and the miss is
-  reported through telemetry like `translate/5`. Use `enum_label_or_missing/5`
-  to assert coverage.
-
-  Raises `ArgumentError` when `enum_module` is not an `Ash.Type.Enum`.
-  """
-  @spec enum_label(backend(), text_domain(), module(), msgid(), locale()) :: String.t()
-  def enum_label(backend, text_domain, enum_module, value, locale) do
-    backend
-    |> enum_label_or_missing(text_domain, enum_module, value, locale)
-    |> report_missing(backend, text_domain, label_msgid!(enum_module, value), locale)
-    |> text_of()
-  end
-
-  @doc """
-  The label for an enum value, reporting whether the catalog covered it.
-  """
-  @spec enum_label_or_missing(backend(), text_domain(), module(), msgid(), locale()) ::
-          {:ok, String.t()} | {:missing, String.t()}
-  def enum_label_or_missing(backend, text_domain, enum_module, value, locale) do
-    translate_or_missing(backend, text_domain, label_msgid!(enum_module, value), [], locale)
-  end
-
-  @doc """
   The translated name of a resource attribute.
 
   The msgid is `attribute_msgid/1`: the attribute name in sentence case
@@ -242,20 +216,6 @@ defmodule AshGettext do
   defp lookup_in_backend(entry_point, args) do
     # credo:disable-for-next-line Credo.Check.Refactor.Apply
     apply(Gettext, entry_point, args)
-  end
-
-  defp label_msgid!(enum_module, value) do
-    unless Code.ensure_loaded?(enum_module) and function_exported?(enum_module, :label, 1) do
-      raise ArgumentError, "#{inspect(enum_module)} is not an Ash.Type.Enum"
-    end
-
-    case enum_module.match(value) do
-      {:ok, cast} ->
-        enum_module.label(cast)
-
-      :error ->
-        raise ArgumentError, "#{inspect(enum_module)} has no value #{inspect(value)}"
-    end
   end
 
   defp attribute_msgid!(resource, attribute) do

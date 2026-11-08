@@ -187,55 +187,6 @@ defmodule AshGettextTest do
     end
   end
 
-  describe "labelling an enum value" do
-    alias AshGettextFixture.ParcelStatus
-
-    test "translates the default (humanized) label per locale" do
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :placed, "ru") ==
-               "Размещён"
-
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :awaiting_pickup, "ru") ==
-               "Ожидает выдачи"
-    end
-
-    test "casts a string value" do
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, "awaiting_pickup", "ru") ==
-               "Ожидает выдачи"
-    end
-
-    test "raises for a value the enum does not have" do
-      assert_raise ArgumentError, ~r/ParcelStatus.*"nope"/, fn ->
-        AshGettext.enum_label(Backend, @text_domain, ParcelStatus, "nope", "ru")
-      end
-    end
-
-    test "translates a custom label: by that label" do
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :shipped, "ru") ==
-               "В пути"
-    end
-
-    test "the source locale returns the label itself" do
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :shipped, "en") ==
-               "On its way"
-
-      assert {:ok, "Lost"} =
-               AshGettext.enum_label_or_missing(Backend, @text_domain, ParcelStatus, :lost, "en")
-    end
-
-    test "reports an uncovered value as :missing, with the label as fallback" do
-      assert {:missing, "Lost"} =
-               AshGettext.enum_label_or_missing(Backend, @text_domain, ParcelStatus, :lost, "ru")
-
-      assert AshGettext.enum_label(Backend, @text_domain, ParcelStatus, :lost, "ru") == "Lost"
-    end
-
-    test "raises for a module that is not an Ash.Type.Enum" do
-      assert_raise ArgumentError, ~r/not an Ash.Type.Enum/, fn ->
-        AshGettext.enum_label(Backend, @text_domain, String, :placed, "ru")
-      end
-    end
-  end
-
   describe "labelling an attribute" do
     alias AshGettextFixture.Parcel
 
@@ -276,14 +227,6 @@ defmodule AshGettextTest do
       )
 
       on_exit(fn -> :telemetry.detach(id) end)
-    end
-
-    test "enum_label fires on a miss, not on a hit" do
-      AshGettext.enum_label(Backend, @text_domain, AshGettextFixture.ParcelStatus, :placed, "ru")
-      refute_receive {:missing, %{msgid: "Placed"}}
-
-      AshGettext.enum_label(Backend, @text_domain, AshGettextFixture.ParcelStatus, :lost, "ru")
-      assert_receive {:missing, %{msgid: "Lost", locale: "ru", text_domain: "fixture"}}
     end
 
     test "attribute_label fires on a miss" do

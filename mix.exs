@@ -72,7 +72,7 @@ defmodule AshGettext.MixProject do
       groups_for_modules: [
         "Public API": [
           AshGettext,
-          AshGettext.Translator,
+          AshGettext.Enum,
           AshGettext.Domain,
           AshGettext.Resource,
           AshGettext.Error,

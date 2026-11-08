@@ -61,7 +61,7 @@ defmodule AshGettext.Extractor do
   @doc """
   The messages a list of resources contribute: every public attribute's name
   (`AshGettext.attribute_msgid/1`) and, for enum attributes (also
-  `{:array, enum}`), every value's label.
+  `{:array, enum}`), every value's label and description.
 
   Each message carries a `comments` entry like `MyApp.Parcel.weight` in place of
   file references. Pure: reads compiled resource modules only.
@@ -103,7 +103,7 @@ defmodule AshGettext.Extractor do
 
   defp attribute_messages(resource, %{name: name, type: type}) do
     source = "#{inspect(resource)}.#{name}"
-    labels = type |> enum_of() |> enum_labels()
+    labels = type |> enum_of() |> enum_texts()
 
     for msgid <- [AshGettext.attribute_msgid(name) | labels] do
       %{msgid: msgid, references: [], comments: [source]}
@@ -114,14 +114,20 @@ defmodule AshGettext.Extractor do
 
   defp enum_of(type) when is_atom(type) do
     if Code.ensure_loaded?(type) and function_exported?(type, :values, 0) and
-         function_exported?(type, :label, 1),
+         function_exported?(type, :label, 1) and function_exported?(type, :description, 1),
        do: type
   end
 
   defp enum_of(_type), do: nil
 
-  defp enum_labels(nil), do: []
-  defp enum_labels(enum), do: Enum.map(enum.values(), &enum.label/1)
+  defp enum_texts(nil), do: []
+
+  defp enum_texts(enum) do
+    for value <- enum.values(),
+        text <- [enum.label(value), enum.description(value)],
+        is_binary(text),
+        do: text
+  end
 
   @doc """
   Render extracted messages as the contents of a `.pot` file.

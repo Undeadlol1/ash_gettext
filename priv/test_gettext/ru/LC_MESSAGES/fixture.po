@@ -33,3 +33,6 @@ msgstr "В пути"
 
 msgid "Weight"
 msgstr "Вес"
+
+msgid "Ready at the pickup point"
+msgstr "Готов к выдаче в пункте"

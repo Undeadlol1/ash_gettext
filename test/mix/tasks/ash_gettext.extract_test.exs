@@ -106,6 +106,7 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
       pot = File.read!(Path.join(dir, "priv/test_gettext/fixture.pot"))
       assert pot =~ "#. AshGettextFixture.Parcel.weight\nmsgid \"Weight\""
       assert pot =~ ~s(msgid "On its way")
+      assert pot =~ ~s(msgid "Ready at the pickup point")
       assert pot =~ ~s(msgid "is too heavy")
 
       File.cd!(dir, fn -> Extract.run([src, "--check"]) end)

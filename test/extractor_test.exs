@@ -173,7 +173,14 @@ defmodule AshGettext.ExtractorTest do
       assert Enum.map(messages, & &1.msgid) ==
                Enum.sort(
                  ~w(Id Label Status Weight) ++
-                   ["Past statuses", "Awaiting pickup", "Lost", "On its way", "Placed"]
+                   [
+                     "Past statuses",
+                     "Awaiting pickup",
+                     "Ready at the pickup point",
+                     "Lost",
+                     "On its way",
+                     "Placed"
+                   ]
                )
 
       assert %{comments: ["AshGettextFixture.Parcel.weight"], references: []} =
