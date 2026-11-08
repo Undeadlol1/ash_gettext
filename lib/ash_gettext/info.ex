@@ -65,6 +65,26 @@ defmodule AshGettext.Info do
     _no_extension -> :error
   end
 
+  @doc """
+  The written label of a resource's attribute from its `gettext` block, or `nil`.
+  """
+  @spec attribute_label(module(), atom()) :: String.t() | nil
+  def attribute_label(resource, attribute) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:gettext])
+    |> Enum.find_value(&(&1.attribute == attribute && &1.text))
+  end
+
+  @doc """
+  Every written attribute label of a resource, as `{attribute, text}`.
+  """
+  @spec attribute_labels(module()) :: [{atom(), String.t()}]
+  def attribute_labels(resource) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:gettext])
+    |> Enum.map(&{&1.attribute, &1.text})
+  end
+
   defp translating?(domain) do
     gettext_translate_errors?(domain)
   rescue

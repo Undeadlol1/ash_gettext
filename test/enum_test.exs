@@ -7,7 +7,7 @@ defmodule AshGettext.EnumTest do
   defp in_ru(fun), do: Gettext.with_locale(Backend, "ru", fun)
 
   test "translates the default label" do
-    assert in_ru(fn -> ParcelStatus.label(:placed) end) == "Размещён"
+    assert in_ru(fn -> ParcelStatus.label(:placed) end) == "Заказ размещён"
   end
 
   test "translates a custom label" do
@@ -24,6 +24,23 @@ defmodule AshGettext.EnumTest do
       assert ParcelStatus.label(:shipped) == "On its way"
       assert ParcelStatus.description(:awaiting_pickup) == "Ready at the pickup point"
     end)
+  end
+
+  describe "labels are written" do
+    test "a value without a label fails to compile and names it" do
+      error =
+        assert_raise CompileError, fn ->
+          Code.compile_string("""
+          defmodule AshGettextFixture.Unlabelled do
+            use Ash.Type.Enum, values: [:a, b: [label: "Bee"], c: "only a description"]
+            use AshGettext.Enum, backend: AshGettextFixture.Gettext
+          end
+          """)
+        end
+
+      assert error.description =~ ":a, :c"
+      refute error.description =~ ":b"
+    end
   end
 
   test "a value without a description stays nil" do
@@ -46,13 +63,13 @@ defmodule AshGettext.EnumTest do
     end
 
     test "falls back to the source text and emits telemetry" do
-      assert in_ru(fn -> ParcelStatus.label(:lost) end) == "Lost"
-      assert_receive {:missing, %{msgid: "Lost", locale: "ru", text_domain: "fixture"}}
+      assert in_ru(fn -> ParcelStatus.label(:lost) end) == "Parcel lost"
+      assert_receive {:missing, %{msgid: "Parcel lost", locale: "ru", text_domain: "fixture"}}
     end
 
     test "a hit emits nothing" do
       in_ru(fn -> ParcelStatus.label(:placed) end)
-      refute_receive {:missing, %{msgid: "Placed"}}
+      refute_receive {:missing, %{msgid: "Order placed"}}
     end
   end
 

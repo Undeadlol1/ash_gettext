@@ -59,20 +59,27 @@ defmodule AshGettext.Extractor do
   end
 
   @doc """
-  The messages a list of resources contribute: every public attribute's name
-  (`AshGettext.attribute_msgid/1`) and, for enum attributes (also
-  `{:array, enum}`), every value's label and description.
+  The messages a list of resources contribute: the labels written in each
+  resource's `gettext` block and, for enum attributes (also `{:array, enum}`)
+  of an `AshGettext.Enum`, every label and description as written.
 
-  Each message carries a `comments` entry like `MyApp.Parcel.weight` in place of
-  file references. Pure: reads compiled resource modules only.
+  Nothing is made from a code name. Each message carries a `comments` entry like
+  `MyApp.Parcel.weight` in place of file references. Pure: reads compiled
+  resource modules only.
   """
   @spec resource_messages([module()]) :: [message()]
   def resource_messages(resources) do
     resources
     |> Enum.flat_map(fn resource ->
-      resource
-      |> Ash.Resource.Info.public_attributes()
-      |> Enum.flat_map(&attribute_messages(resource, &1))
+      written = for {name, text} <- AshGettext.Info.attribute_labels(resource), do: {name, [text]}
+
+      enums =
+        for %{name: name, type: type} <- Ash.Resource.Info.public_attributes(resource),
+            do: {name, type |> enum_of() |> enum_texts()}
+
+      for {name, texts} <- written ++ enums,
+          msgid <- texts,
+          do: %{msgid: msgid, references: [], comments: ["#{inspect(resource)}.#{name}"]}
     end)
     |> merge()
   end
@@ -101,21 +108,11 @@ defmodule AshGettext.Extractor do
     |> Enum.sort_by(& &1.msgid)
   end
 
-  defp attribute_messages(resource, %{name: name, type: type}) do
-    source = "#{inspect(resource)}.#{name}"
-    labels = type |> enum_of() |> enum_texts()
-
-    for msgid <- [AshGettext.attribute_msgid(name) | labels] do
-      %{msgid: msgid, references: [], comments: [source]}
-    end
-  end
-
   defp enum_of({:array, type}), do: enum_of(type)
 
   defp enum_of(type) when is_atom(type) do
-    if Code.ensure_loaded?(type) and function_exported?(type, :values, 0) and
-         function_exported?(type, :label, 1) and function_exported?(type, :description, 1),
-       do: type
+    if Code.ensure_loaded?(type) and function_exported?(type, :__ash_gettext_enum__, 0),
+      do: type
   end
 
   defp enum_of(_type), do: nil
@@ -124,7 +121,8 @@ defmodule AshGettext.Extractor do
 
   defp enum_texts(enum) do
     for value <- enum.values(),
-        text <- [enum.label(value), enum.description(value)],
+        details = enum.details(value),
+        text <- [details[:label], details[:description]],
         is_binary(text),
         do: text
   end

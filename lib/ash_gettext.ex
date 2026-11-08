@@ -1,6 +1,6 @@
 defmodule AshGettext do
   @moduledoc """
-  Translate the text an Ash app shows: strings, plurals, enum values and attribute names.
+  Translate the text an Ash app shows: strings, plurals, enum labels and attribute labels.
 
   Enum values translate themselves: see `AshGettext.Enum`.
 
@@ -120,13 +120,15 @@ defmodule AshGettext do
   end
 
   @doc """
-  The translated name of a resource attribute, in Gettext's current language.
+  The translated label of a resource attribute, in Gettext's current language.
 
-  The backend and text domain come from the resource's domain (`AshGettext.Domain`).
-  The msgid is `attribute_msgid/1`: the attribute name in sentence case
-  (`:date_of_birth` is `"Date of birth"`). Misses fall back to it and are
-  reported through telemetry. Raises `ArgumentError` for an unknown attribute or
-  a resource whose domain has no `gettext` block.
+  The text is the one you wrote in the resource's `gettext` block
+  (`label :delivery_date, "Delivery date"`). It is never made from the
+  attribute's code name. The backend and text domain come from the resource's
+  domain (`AshGettext.Domain`). Misses fall back to the written text and are
+  reported through telemetry. Raises `ArgumentError` for an unknown attribute,
+  an attribute with no written label, or a resource whose domain has no
+  `gettext` block.
   """
   @spec attribute_label(module(), atom()) :: String.t()
   def attribute_label(resource, attribute) do
@@ -139,25 +141,13 @@ defmodule AshGettext do
   end
 
   @doc """
-  The name of a resource attribute, reporting whether the catalog covered it.
+  The label of a resource attribute, reporting whether the catalog covered it.
   """
   @spec attribute_label_or_missing(module(), atom()) ::
           {:ok, String.t()} | {:missing, String.t()}
   def attribute_label_or_missing(resource, attribute) do
     {backend, text_domain, msgid} = attribute_lookup!(resource, attribute)
     translate_or_missing(backend, text_domain, msgid, [], Gettext.get_locale(backend))
-  end
-
-  @doc """
-  The msgid an attribute name is looked up under: sentence case,
-  `:date_of_birth` -> `"Date of birth"`.
-  """
-  @spec attribute_msgid(atom() | String.t()) :: String.t()
-  def attribute_msgid(attribute) do
-    attribute
-    |> to_msgid()
-    |> String.replace("_", " ")
-    |> String.capitalize()
   end
 
   @doc """
@@ -224,11 +214,18 @@ defmodule AshGettext do
 
     case AshGettext.Info.locale_settings(Ash.Resource.Info.domain(resource)) do
       {:ok, settings} ->
-        {settings.backend, settings.text_domain, attribute_msgid(attribute)}
+        {settings.backend, settings.text_domain, written_label!(resource, attribute)}
 
       :error ->
         raise ArgumentError, "the domain of #{inspect(resource)} has no gettext block"
     end
+  end
+
+  defp written_label!(resource, attribute) do
+    AshGettext.Info.attribute_label(resource, attribute) ||
+      raise ArgumentError,
+            "#{inspect(resource)} has no written label for #{inspect(attribute)}. " <>
+              "Add `label #{inspect(attribute)}, \"...\"` to its `gettext` block."
   end
 
   defp to_msgid(msgid) when is_atom(msgid), do: Atom.to_string(msgid)

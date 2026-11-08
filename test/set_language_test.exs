@@ -11,7 +11,7 @@ defmodule AshGettext.SetLanguageTest do
     Ash.create!(Parcel, %{weight: 100}, actor: %{language: "ru"})
 
     assert Gettext.get_locale(Backend) == "ru"
-    assert ParcelStatus.label(:placed) == "Размещён"
+    assert ParcelStatus.label(:placed) == "Заказ размещён"
   end
 
   test "context locale sets the language" do

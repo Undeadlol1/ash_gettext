@@ -26,9 +26,10 @@ defmodule Mix.Tasks.AshGettext.Extract do
       this run would produce. For CI, so a new `message:` cannot land without
       its template entry.
 
-  The template also lists, for every resource of a translating domain, each
-  public attribute's name and each enum value's label, with a `#.` comment
-  naming the attribute they come from.
+  The template also lists, for every resource of a translating domain, the
+  attribute labels you wrote in its `gettext` block and the labels and
+  descriptions you wrote on its enum values, with a `#.` comment naming the
+  attribute they come from. Nothing is made from a code name.
 
   Interpolated messages (`message: "Bad value: \#{inspect(x)}"`) cannot be msgids
   and are reported at the end rather than skipped silently — each one is a string
@@ -101,7 +102,7 @@ defmodule Mix.Tasks.AshGettext.Extract do
     end
   end
 
-  # Attribute names and enum labels of every resource in a translating domain.
+  # Written attribute labels and enum texts of every resource in a translating domain.
   defp resources do
     for domain <- domains(),
         {:ok, _settings} <- [AshGettext.Info.settings(domain)],

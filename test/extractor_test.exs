@@ -167,21 +167,20 @@ defmodule AshGettext.ExtractorTest do
   end
 
   describe "messages from resources" do
-    test "lists public attribute names and enum labels with where they come from" do
+    test "lists only written texts, with where they come from" do
       messages = Extractor.resource_messages([AshGettextFixture.Parcel])
 
       assert Enum.map(messages, & &1.msgid) ==
-               Enum.sort(
-                 ~w(Id Label Status Weight) ++
-                   [
-                     "Past statuses",
-                     "Awaiting pickup",
-                     "Ready at the pickup point",
-                     "Lost",
-                     "On its way",
-                     "Placed"
-                   ]
-               )
+               Enum.sort([
+                 "Weight",
+                 "Label",
+                 "Past statuses",
+                 "Order placed",
+                 "Ready for pickup",
+                 "Ready at the pickup point",
+                 "On its way",
+                 "Parcel lost"
+               ])
 
       assert %{comments: ["AshGettextFixture.Parcel.weight"], references: []} =
                Enum.find(messages, &(&1.msgid == "Weight"))
@@ -192,14 +191,12 @@ defmodule AshGettext.ExtractorTest do
                  "AshGettextFixture.Parcel.status"
                ]
              } =
-               Enum.find(messages, &(&1.msgid == "Lost"))
+               Enum.find(messages, &(&1.msgid == "Parcel lost"))
     end
 
-    test "skips private attributes" do
-      refute Enum.any?(
-               Extractor.resource_messages([AshGettextFixture.Parcel]),
-               &(&1.msgid == "Secret note")
-             )
+    test "collects nothing from attributes and enums nobody wrote text for" do
+      assert Extractor.resource_messages([AshGettextFixture.Untranslated.Parcel]) == []
+      refute Enum.any?(Extractor.resource_messages([AshGettextFixture.Crate]), &(&1.msgid == "A"))
     end
 
     test "merging combines references and comments of one msgid" do

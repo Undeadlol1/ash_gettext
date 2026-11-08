@@ -158,6 +158,12 @@ defmodule AshGettextFixture.Parcel do
 
     attribute(:secret_note, :string)
   end
+
+  gettext do
+    label(:weight, "Weight")
+    label(:label, "Label")
+    label(:past_statuses, "Past statuses")
+  end
 end
 
 defmodule AshGettextFixture.ComparedParcel do

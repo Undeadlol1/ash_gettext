@@ -15,6 +15,15 @@ defmodule AshGettext.Resource do
   `AshGettext.Resource.Transformers.AddEnumLabels`). Load it to get the label
   on the record: `Ash.get!(Order, id, load: [:status_label])`.
 
+  Attribute names are written by you, never made from the code name:
+
+      gettext do
+        label :delivery_date, "Delivery date"
+      end
+
+  `AshGettext.attribute_label/2` translates that text. An attribute with no
+  `label` raises. A `label` for an attribute the resource lacks fails to compile.
+
   Every action also sets Gettext's language once, when it starts, from the
   action's actor or `context: %{locale: ...}` (see `AshGettext.SetLanguage`).
 
@@ -26,7 +35,34 @@ defmodule AshGettext.Resource do
   macro the app almost certainly already has.
   """
 
+  @label %Spark.Dsl.Entity{
+    name: :label,
+    describe: "The text a person reads for an attribute. Written by you, then translated.",
+    examples: [~S|label :delivery_date, "Delivery date"|],
+    target: AshGettext.Resource.Label,
+    args: [:attribute, :text],
+    schema: [
+      attribute: [type: :atom, required: true, doc: "The attribute the text names."],
+      text: [type: :string, required: true, doc: "The text, in the source language."]
+    ]
+  }
+
+  @gettext %Spark.Dsl.Section{
+    name: :gettext,
+    describe: "The texts a person reads for this resource's attributes.",
+    examples: [
+      """
+      gettext do
+        label :delivery_date, "Delivery date"
+      end
+      """
+    ],
+    entities: [@label]
+  }
+
   use Spark.Dsl.Extension,
+    sections: [@gettext],
+    verifiers: [AshGettext.Resource.Verifiers.ValidateLabels],
     transformers: [
       AshGettext.Resource.Transformers.AttachErrorHandler,
       AshGettext.Resource.Transformers.AttachSetLanguage,

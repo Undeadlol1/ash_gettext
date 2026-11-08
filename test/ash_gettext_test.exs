@@ -190,7 +190,7 @@ defmodule AshGettextTest do
   describe "labelling an attribute" do
     alias AshGettextFixture.Parcel
 
-    test "translates the sentence-case attribute name in Gettext's current language" do
+    test "translates the written attribute label in Gettext's current language" do
       assert Gettext.with_locale(Backend, "ru", fn ->
                AshGettext.attribute_label(Parcel, :weight)
              end) ==
@@ -221,8 +221,10 @@ defmodule AshGettextTest do
       end
     end
 
-    test "attribute_msgid/1 is sentence case" do
-      assert AshGettext.attribute_msgid(:date_of_birth) == "Date of birth"
+    test "raises, naming the fix, for an attribute with no written label" do
+      assert_raise ArgumentError, ~r/no written label for :secret_note.*label :secret_note/, fn ->
+        AshGettext.attribute_label(Parcel, :secret_note)
+      end
     end
   end
 

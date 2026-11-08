@@ -5,8 +5,8 @@ defmodule AshGettext.Enum do
       defmodule MyApp.Order.Status do
         use Ash.Type.Enum,
           values: [
-            :placed,
-            awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]
+            placed: [label: "Order placed"],
+            awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
           ]
 
         use AshGettext.Enum, backend: MyApp.Gettext
@@ -16,7 +16,13 @@ defmodule AshGettext.Enum do
       #=> "Ожидает выдачи"
 
   Put it after `use Ash.Type.Enum`. The text you write is the msgid, so the
-  source language needs no catalog. The language is Gettext's current locale
+  source language needs no catalog.
+
+  Every value needs a `label:` you wrote. The library never makes one from the
+  value's name, so a value without one is a compile error. Descriptions are
+  optional. A label equal to the value's name in sentence case (`"Placed"` for
+  `:placed`) looks like Ash's own default and is rejected too; write what a
+  person should read. The language is Gettext's current locale
   for the process (`Gettext.put_locale/2`, `Gettext.with_locale/3`). A missing
   translation returns the source text and emits the
   `[:ash_gettext, :translation, :missing]` telemetry event.
@@ -42,6 +48,8 @@ defmodule AshGettext.Enum do
           description: "use AshGettext.Enum must come after use Ash.Type.Enum"
       end
 
+      AshGettext.Enum.verify_labels!(__MODULE__, __ENV__)
+
       @doc false
       def __ash_gettext_enum__, do: true
 
@@ -51,6 +59,31 @@ defmodule AshGettext.Enum do
       def description(value),
         do: AshGettext.Enum.translate(unquote(backend), unquote(text_domain), super(value))
     end
+  end
+
+  @doc false
+  # Ash fills a missing label with the value's name in sentence case. That
+  # default is what we refuse, so a label equal to it counts as not written.
+  def verify_labels!(module, env) do
+    values_map = Module.get_attribute(module, :values_map)
+
+    missing =
+      for value <- Module.get_attribute(module, :values),
+          values_map[value].label == ash_default_label(value),
+          do: inspect(value)
+
+    if missing != [] do
+      raise CompileError,
+        file: env.file,
+        line: env.line,
+        description:
+          "#{inspect(module)} has values without a written label: #{Enum.join(missing, ", ")}. " <>
+            "Give each one `label: \"...\"`; AshGettext never makes labels from value names."
+    end
+  end
+
+  defp ash_default_label(value) do
+    value |> to_string() |> String.replace(~r([^A-Za-z]), " ") |> String.capitalize()
   end
 
   @doc false

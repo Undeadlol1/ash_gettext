@@ -22,10 +22,10 @@ msgstr "Этот заказ уже размещён"
 msgid "must weigh at least %{greater_than_or_equal_to} kg"
 msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
 
-msgid "Placed"
-msgstr "Размещён"
+msgid "Order placed"
+msgstr "Заказ размещён"
 
-msgid "Awaiting pickup"
+msgid "Ready for pickup"
 msgstr "Ожидает выдачи"
 
 msgid "On its way"

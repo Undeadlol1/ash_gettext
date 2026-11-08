@@ -17,12 +17,12 @@ defmodule AshGettext.EnumLabelTest do
     parcel = parcel(status: :placed)
 
     assert Ash.get!(Parcel, parcel.id, load: [:status_label], actor: @ru).status_label ==
-             "Размещён"
+             "Заказ размещён"
   end
 
   test "Ash.load on a record in hand uses the actor's language" do
     parcel = parcel(status: :placed)
-    assert Ash.load!(parcel, :status_label, actor: @ru).status_label == "Размещён"
+    assert Ash.load!(parcel, :status_label, actor: @ru).status_label == "Заказ размещён"
   end
 
   test "the source language gives the English label" do
@@ -39,7 +39,7 @@ defmodule AshGettext.EnumLabelTest do
     parcel = parcel(past_statuses: [:placed, :shipped])
 
     assert Ash.get!(Parcel, parcel.id, load: [:past_statuses_label], actor: @ru).past_statuses_label ==
-             ["Размещён", "В пути"]
+             ["Заказ размещён", "В пути"]
   end
 
   test "an existing field with that name is not overwritten" do
