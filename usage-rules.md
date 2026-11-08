@@ -15,7 +15,7 @@ defaults; add options only when a requirement demands them.
   already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
   only if the app serves JSON:API.
 - Translating text needs nothing else: no domain block, no resource
-  extension, no `Gettext.put_locale`. The domain and resource extensions are
+  extension, no locale setup. The domain and resource extensions are
   only for translating errors.
 - No application config is required. Do not add `config :ash_gettext`. All
   error settings live in the domain DSL.
@@ -40,11 +40,12 @@ defaults; add options only when a requirement demands them.
   `<attribute>_label` calculation (a list for `{:array, enum}`). Load it with
   `load: [:status_label]`. Do not write your own. A field already named that is
   kept.
-- One language for everything: Gettext's current locale. Running an action
-  with `actor:` or `context: %{locale: "ru"}` sets it once, when the action
-  starts (through the domain's `locale_resolvers`). Enums, errors and attribute
-  names all read it. With no actor and no locale it is left alone. Outside an
-  action, set it with `Gettext.put_locale/2` or `Gettext.with_locale/3`.
+- The language comes from the action. Run it with `actor:` or
+  `context: %{locale: "ru"}`, and loaded `_label` fields and errors use the
+  language the domain's `locale_resolvers` give. No action changes the process
+  language. With no actor and no locale, Gettext's current locale is used.
+  Outside an action (a direct `label/1`, `AshGettext.attribute_label/2`, a job
+  formatting text), wrap the call in `Gettext.with_locale/3`.
 - The msgid is the plain sentence in the source language, with `%{var}`
   placeholders filled from `bindings`. Do not invent keys like
   `"orders.shipped"`. The source language needs no catalog.
@@ -73,12 +74,12 @@ defaults; add options only when a requirement demands them.
 
 ## Picking the language
 
-- Actions set the language themselves. For the pure functions, pick the `locale` argument with
+- Actions find their language themselves. For the pure functions, pick the `locale` argument with
   `AshGettext.Locale.resolve(context, resolvers: [...], supported: AshGettext.known_locales(backend), default: "en")`.
   It cuts `"ru_RU"` to `"ru"` and falls back to `default` for a language
   with no catalog.
 - In a domain, an action's language comes from its `locale_resolvers`,
-  tried in order once when the action starts, until one returns a string. A returned locale is cut to its
+  tried in order until one returns a string. A returned locale is cut to its
   language (`"ru_RU"` and `"ru-RU"` become `"ru"`). If that language has no
   catalog directory, `default_locale` is used.
 - A resolver implements `@behaviour AshGettext.Locale.Resolver` with
@@ -191,8 +192,8 @@ defaults; add options only when a requirement demands them.
   error message. The `message:` is the msgid and translation is automatic.
 - Do not write an `error_handler` on an action to translate. The resource
   extension sets it. Writing your own disables translation for that action.
-- Do not call `Gettext.put_locale` per process or request to pick the error
-  language. Pass `context: %{locale: "ru"}` or use a resolver.
+- Do not change the process language to pick the error language. Pass
+  `actor:` or `context: %{locale: "ru"}` and let a resolver answer.
 - Do not hand-write `.pot` entries that the extractor produces.
 - Configuration lives in the domain DSL and is read through `AshGettext.Info`.
   Do not read it from `Application.get_env`.
@@ -219,5 +220,5 @@ defaults; add options only when a requirement demands them.
 - Use these two helpers to test the translations themselves. In tests of
   application behavior, assert the text users read through your own API
   instead.
-- Do not set `Gettext.put_locale` in a test. It leaks between tests and
+- Do not change the process language in a test. It leaks between tests and
   breaks `async: true`. Use `Gettext.with_locale(backend, "ru", fn -> ... end)`.

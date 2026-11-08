@@ -27,28 +27,29 @@ becomes the default. `AshGettext.known_locales/1` reads the languages from
 the backend's `priv` directory, so adding a language directory is all it
 takes to support one.
 
-Use `resolve/2` yourself when you call `AshGettext.translate/5`. [Enums](translating-text.md)
-do not need it: they use Gettext's current locale.
+Use `resolve/2` yourself when you call `AshGettext.translate/5`. A direct
+call to an [enum's](translating-text.md) `label/1` uses Gettext's current
+locale, so wrap it in `Gettext.with_locale/3`.
 
 ## Take the language from the signed-in user
 
 A resolver is a module with one function. It gets a map and returns a
-language, or `nil` if it has no answer:
+language, or `nil` if it has no answer. It is your code: read the language
+from wherever your app keeps it. Here the user has a `:language` field:
 
 ```elixir
 defmodule MyApp.UserLocale do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
-  def resolve(%{actor: %{locale: locale}}), do: locale
+  def resolve(%{actor: %{language: language}}), do: language
   def resolve(_context), do: nil
 end
 ```
 
 A resolver must be a pure function of its context. Read the locale off the
-loaded actor and do not query the database. Resolvers run once, when an
-action starts, before its transaction, and a query there is slow and hides
-work from the action.
+loaded actor and do not query the database. Resolvers run for each label and
+error, and a query there is slow and hides work from the action.
 
 Pass your resolvers to `resolve/2`:
 
@@ -78,8 +79,8 @@ an explicit `:locale` win. Your list replaces the default one, so add
 
 ## Choose the language of an action
 
-Every action runs the same steps, with the settings from the domain's
-`gettext` block:
+Labels loaded on records and errors take their language from the action,
+with the settings from the domain's `gettext` block:
 
 ```elixir
 gettext do
@@ -90,11 +91,19 @@ end
 ```
 
 Each resolver gets a map with `:locale` from the action context, `:actor`
-and `:changeset`. When one answers, AshGettext calls `Gettext.put_locale/2`
-for that process. Enums, [errors](translating-errors.md) and attribute labels
-then come out in that language. A background job no longer has to set it
-before it runs an action. With no actor and no `locale`, the process language
-is left alone.
+and `:changeset`. When one answers, loaded `_label` fields and
+[errors](translating-errors.md) come out in that language. No action changes
+the process language, so a long-lived process, such as a job worker, never
+runs the next job in the last user's language. With no actor and no `locale`,
+Gettext's current language is used.
+
+Code outside an action picks the language itself:
+
+```elixir
+Gettext.with_locale(MyApp.Gettext, user.language, fn ->
+  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+end)
+```
 
 ```elixir
 Ash.create(changeset, context: %{locale: "ru"})

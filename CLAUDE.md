@@ -28,8 +28,8 @@ its own.
 - **Plug into Ash, don't wrap Gettext.** Use Ash's own hooks (an enum's
   `label/1`, an action's error handler, calculations) so the text Ash already
   shows comes out translated. No "call our function instead" helpers.
-- **The language is set once,** from the action's actor, and everything
-  follows Gettext's current language.
+- **The language comes from the action's actor;** nothing changes the
+  process language behind your back.
 - **Docs go in the order a newcomer works:** install, set up once, tell it the
   user's language, then use it.
 

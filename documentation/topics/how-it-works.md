@@ -48,11 +48,10 @@ three things:
 1. It reads the domain's settings with `AshGettext.Info.settings/1`. If the
    domain has no `gettext` block, or `translate_errors?` is `false`, the
    error is returned as it is.
-2. It reads Gettext's current language. `AshGettext.SetLanguage` set it
-   once, when the action started: it ran the resolver chain on the
-   `:locale` from the action context, the `:actor` and the `:changeset`,
-   cut the first answer to a language the backend has, and called
-   `Gettext.put_locale/2`. With no answer it left the language alone.
+2. It works out the language. It runs the resolver chain on the `:locale`
+   from the action context, the `:actor` and the `:changeset`, and cuts the
+   first answer to a language the backend has. With no answer it uses
+   Gettext's current language. It never changes the process language.
 3. It looks the error's `message` up in the backend, under the domain's
    `text_domain`, with the error's `vars` as values.
 
@@ -96,7 +95,7 @@ catalogs, so it cannot disagree with the files on disk.
 |---|---|
 | `AshGettext.Domain` | The `gettext` block and its verifier. |
 | `AshGettext.Resource` | The extension that attaches the handler. |
-| `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in Gettext's current language. |
+| `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in the action's language. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Locale` | Runs the resolvers, then normalizes. |
 | `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |

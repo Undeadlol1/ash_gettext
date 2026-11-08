@@ -15,10 +15,11 @@ The first packaged version. Not published to Hex yet.
   wrapper to call. An empty value (`nil`) has no label and no description.
 - `AshGettext.translate/5` and `translate_plural/7` are the pure functions
   underneath, with the language passed as an argument.
-- Running an action with `actor:` (or `context: %{locale: "ru"}`) sets
-  Gettext's language for that process, once, when the action starts, using the
-  domain's `locale_resolvers`. Enum labels, error messages and attribute names
-  all come out in it. With no actor and no locale the language is left alone.
+- Running an action with `actor:` (or `context: %{locale: "ru"}`) gives loaded
+  `_label` fields and error messages in that user's language, using the
+  domain's `locale_resolvers`. No action changes the process language, so a
+  long-lived process never runs the next job in the last user's language. Code
+  outside an action uses `Gettext.with_locale/3`.
 - User-facing text is always written by a person. The library never makes it
   from a code name. An enum value without a `label:` is a compile error.
 - A resource's `gettext` block holds written attribute labels

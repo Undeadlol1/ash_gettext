@@ -14,8 +14,8 @@ msgstr "Привет, %{name}"
 
 Nothing here needs setup. AshGettext keeps no global state: the locale is an
 argument or part of the action context, and any settings are read from the
-domain. So tests that use it can all be `async: true`. Never call
-`Gettext.put_locale/2` in a test to choose a language.
+domain. No action changes the process language. So tests that use it can all
+be `async: true`. To choose a language in a test, use `Gettext.with_locale/3`.
 
 ## Check that a message is translated
 

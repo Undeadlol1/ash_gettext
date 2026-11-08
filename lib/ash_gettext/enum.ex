@@ -22,8 +22,9 @@ defmodule AshGettext.Enum do
   Every value needs a `label:` you wrote. The library never makes one from the
   value's name, so a value without one is a compile error. Descriptions are
   optional. An empty value (`nil`) has no label and no description. The
-  language is Gettext's current locale for the process
-  (`Gettext.put_locale/2`, `Gettext.with_locale/3`). A missing translation
+  language is Gettext's current locale for the process; choose it with
+  `Gettext.with_locale/3`. A loaded `<attribute>_label` uses the actor's
+  language instead. A missing translation
   returns the source text and emits the `[:ash_gettext, :translation, :missing]`
   telemetry event.
 

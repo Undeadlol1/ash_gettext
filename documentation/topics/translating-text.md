@@ -42,8 +42,8 @@ msgid "Ready at the pickup point"
 msgstr "Готов к выдаче в пункте"
 ```
 
-The language is Gettext's current locale for the process. Set it with
-`Gettext.put_locale/2`, or for one block with `Gettext.with_locale/3`:
+The language is Gettext's current locale for the process. Choose it for a
+block with `Gettext.with_locale/3`:
 
 ```elixir
 Gettext.with_locale(MyApp.Gettext, "ru", fn ->
@@ -203,9 +203,10 @@ event. In your own language nothing is missing. In tests, use
 
 ## Get the language from the user
 
-Run an action with `actor:` (or `context: %{locale: "ru"}`) and AshGettext
-sets Gettext's language for that process. Enums, errors and attribute names
-then come out in it. To turn what a browser sends, such as `ru_RU`, or the
+Run an action with `actor:` (or `context: %{locale: "ru"}`) and loaded
+`_label` fields and errors come out in the actor's language. No action
+changes the process language. Code outside an action uses
+`Gettext.with_locale/3`. To turn what a browser sends, such as `ru_RU`, or the
 signed-in user into a language your catalogs have, see [Locales](locales.md).
 
 ## Add the text to the template

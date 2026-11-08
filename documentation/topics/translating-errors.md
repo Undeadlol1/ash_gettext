@@ -56,9 +56,8 @@ msgid "must weigh at least %{greater_than_or_equal_to} kg"
 msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
 ```
 
-Run the action with `actor:` or pass the language in the context. AshGettext
-sets Gettext's language for the process when the action starts, and the error
-is translated in it:
+Run the action with `actor:` or pass the language in the context. The error
+comes back in that language:
 
 ```elixir
 MyApp.Shipping.Parcel
@@ -67,9 +66,9 @@ MyApp.Shipping.Parcel
 # {:error, %Ash.Error.Invalid{errors: [%{message: "должен весить не меньше 30 кг"}]}}
 ```
 
-With no actor and no `locale`, the process language is left alone. To take
-the language from the signed-in user, see [Locales](locales.md). Resolvers run
-once, when the action starts, so they must not query the database.
+With no actor and no `locale`, Gettext's current language is used. No action
+changes the process language. To take the language from the signed-in user,
+see [Locales](locales.md). Resolvers must not query the database.
 
 ## No handler on each action
 

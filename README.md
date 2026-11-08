@@ -80,22 +80,25 @@ mix ash_gettext.install --apply
 
 ### 2. Tell it the user's language
 
-A resolver reads the language off the actor. This is the one place your app
-says where a user's language lives:
+A resolver is your code. It reads the language from wherever your app
+keeps it. Here the user has a `:language` field:
 
 ```elixir
 defmodule MyApp.Locale.FromActor do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
-  def resolve(%{actor: %{locale: locale}}), do: locale
+  def resolve(%{actor: %{language: language}}), do: language
   def resolve(_context), do: nil
 end
 ```
 
+Call the field whatever you like; the resolver is where you say it.
+
 Now run any action with `actor: user` (or `context: %{locale: "ru"}`).
-AshGettext sets Gettext's language for that process once, when the action
-starts. Everything below comes out in it.
+Labels loaded on records and errors come out in the actor's language. The
+process language is never changed. Code outside an action, such as a job
+that formats text, picks the language itself with `Gettext.with_locale/3`.
 
 A resolver must be a pure function of its context: read the locale off the
 loaded actor, do not query the database. `ru_RU` and `en-US` are cut to the
@@ -118,15 +121,19 @@ defmodule MyApp.Order.Status do
     ]
 end
 
-MyApp.Order.Status.label(:awaiting_pickup)
+Gettext.with_locale(MyApp.Gettext, user.language, fn ->
+  MyApp.Order.Status.label(:awaiting_pickup)
+end)
 #=> "Ожидает выдачи"
 
-MyApp.Order.Status.description(:awaiting_pickup)
+Gettext.with_locale(MyApp.Gettext, user.language, fn ->
+  MyApp.Order.Status.description(:awaiting_pickup)
+end)
 #=> "Готов к выдаче в пункте"
 ```
 
 `label/1` and `description/1` are still Ash's own functions. They now return
-the translated text. An empty value (`nil`) gives `nil`.
+the translated text, in Gettext's current language. An empty value (`nil`) gives `nil`.
 
 ### 4. Show an enum on a record
 
@@ -154,7 +161,9 @@ end
 ```
 
 ```elixir
-AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+Gettext.with_locale(MyApp.Gettext, user.language, fn ->
+  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+end)
 #=> "Дата рождения"
 ```
 
