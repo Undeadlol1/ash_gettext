@@ -72,6 +72,7 @@ defmodule AshGettext.GettextExtractTest do
 
     gettext do
       backend(ExtractFixture.Gettext)
+      locale_resolver(AshGettextFixture.ActorLanguage)
     end
 
     resources do

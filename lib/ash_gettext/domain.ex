@@ -62,10 +62,11 @@ defmodule AshGettext.Domain do
       ],
       locale_resolver: [
         type: {:behaviour, AshGettext.Locale.Resolver},
+        required: true,
         doc: """
-        A module implementing `AshGettext.Locale.Resolver`. It reads the language
-        from the action's actor. Without one, or with no actor, Gettext's current
-        process language is used.
+        Required. A module implementing `AshGettext.Locale.Resolver`. It reads the
+        language from the action's actor. With no actor, Gettext's current process
+        language is used.
         """
       ],
       translate_errors?: [

@@ -109,7 +109,7 @@ defaults; add options only when a requirement demands them.
   The domain block alone changes no behavior.
 - Options on the `gettext` block: `backend` (required module);
   `default_locale` (default `"en"`); `text_domain` (default `"ash"`);
-  `locale_resolver` (optional module);
+  `locale_resolver` (required module);
   `translate_errors?` (default `true`); `require_resource_extension?`
   (default `false`).
 - The `message:` of an error IS the msgid. Write it as the plain sentence in

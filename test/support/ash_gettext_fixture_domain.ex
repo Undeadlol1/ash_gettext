@@ -335,6 +335,7 @@ defmodule AshGettextFixture.Opinionated do
   gettext do
     backend(AshGettextFixture.Gettext)
     text_domain("fixture")
+    locale_resolver(AshGettextFixture.ActorLanguage)
   end
 
   resources do
@@ -356,6 +357,7 @@ defmodule AshGettextFixture.SwitchedOff do
   gettext do
     backend(AshGettextFixture.Gettext)
     text_domain("fixture")
+    locale_resolver(AshGettextFixture.ActorLanguage)
     translate_errors?(false)
   end
 

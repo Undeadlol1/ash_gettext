@@ -33,8 +33,8 @@ defmodule AshGettext.DomainTest do
     assert option(:text_domain)[:default] == "ash"
   end
 
-  test "the locale resolver is optional and has no default" do
-    refute option(:locale_resolver)[:required]
+  test "the locale resolver is required, so a forgotten one fails the build" do
+    assert option(:locale_resolver)[:required]
     refute Keyword.has_key?(option(:locale_resolver), :default)
   end
 

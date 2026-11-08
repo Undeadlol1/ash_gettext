@@ -57,9 +57,9 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`backend`](#gettext-backend){: #gettext-backend .spark-required} | `atom` |  | The Gettext backend whose catalogs this domain translates against. |
+| [`locale_resolver`](#gettext-locale_resolver){: #gettext-locale_resolver .spark-required} | `module` |  | Required. A module implementing `AshGettext.Locale.Resolver`. It reads the language from the action's actor. With no actor, Gettext's current process language is used. |
 | [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when the resolver names a language the catalogs do not have. |
 | [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for everything Ash-derived: errors, enum labels, attribute names. |
-| [`locale_resolver`](#gettext-locale_resolver){: #gettext-locale_resolver } | `module` |  | A module implementing `AshGettext.Locale.Resolver`. It reads the language from the action's actor. Without one, or with no actor, Gettext's current process language is used. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |
 

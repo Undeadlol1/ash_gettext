@@ -69,7 +69,7 @@ defmodule AshGettext.Info do
   The `{backend, locale}` to use for `actor`, or `nil` for Gettext's current language.
 
   Asks the domain's `locale_resolver` with the actor and fits the answer to the
-  catalogs. `nil` when there is no actor, no resolver, or the resolver returns
+  catalogs. `nil` when there is no actor or the resolver returns
   `nil`. Nothing here changes the process language.
   """
   @spec language(module() | map(), term()) :: {module(), String.t()} | nil

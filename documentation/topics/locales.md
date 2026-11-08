@@ -48,7 +48,7 @@ language your text is written in.
 
 ## No actor, or no answer
 
-With no actor, no resolver, or a `nil` answer, Gettext's current process
+With no actor or a `nil` answer, Gettext's current process
 language is used. For a visitor who is not signed in, wrap the call:
 
 ```elixir

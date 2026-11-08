@@ -25,7 +25,6 @@ defmodule AshGettext.InfoTest do
     test "applies the defaults a domain does not state" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Opinionated)
       assert settings.default_locale == "en"
-      assert settings.locale_resolver == nil
     end
   end
 
@@ -44,10 +43,6 @@ defmodule AshGettext.InfoTest do
 
     test "has no answer when the resolver declines" do
       assert Info.language(AshGettextFixture.Shipping, %{}) == nil
-    end
-
-    test "has no answer for a domain without a resolver" do
-      assert Info.language(AshGettextFixture.Opinionated, %{language: "ru"}) == nil
     end
   end
 
