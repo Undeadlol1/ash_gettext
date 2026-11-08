@@ -19,17 +19,17 @@ end
 # `mix gettext.extract` collects the labels you wrote into your template.
 # You translate them in `priv/gettext/ru/LC_MESSAGES/ash.po`.
 
-# The user's language is Russian. Load an order as that user:
-order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
+order_for_russian_user = Ash.get!(MyApp.Order, id, load: [:status_label], actor: russian_user)
+order_for_english_user = Ash.get!(MyApp.Order, id, load: [:status_label], actor: english_user)
 
-order.status        #=> :awaiting_pickup
-order.status_label  #=> "Ожидает выдачи"
+order_for_russian_user.status_label  #=> "Ожидает выдачи"
+order_for_english_user.status_label  #=> "Ready for pickup"
 
 # The resource says: validate present(:delivery_date), message: "can't be blank"
-{:error, error} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: user)
+{:error, error} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: russian_user)
 
 hd(error.errors).message
-#=> "не может быть пустым"   (written in English, the user gets Russian)
+#=> "не может быть пустым"
 ```
 
 Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key. That's it.
