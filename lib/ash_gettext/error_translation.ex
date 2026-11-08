@@ -11,6 +11,10 @@ defmodule AshGettext.ErrorTranslation do
   does not is left exactly as it was, so adopting this can only ever add
   translations, never mangle an existing message.
 
+  Ash's own errors with no message (a missing required value, a failed policy)
+  get the written sentence from `AshGettext.AshMessages`, translated, and come
+  back as an `AshGettext.AshMessages.Translated` that keeps the original.
+
   Pure by construction: backend, text domain and locale are all arguments, so a
   test is one assertion over one struct — no action run, no database, no actor.
 
@@ -28,8 +32,9 @@ defmodule AshGettext.ErrorTranslation do
   Translate `error`'s message, leaving anything untranslatable untouched.
 
   Handles a bare error struct, a list of them, and a class error whose nested
-  `:errors` hold the real messages. Anything that is not a struct with a binary
-  `:message` comes back as it was. Missing options raise `KeyError`.
+  `:errors` hold the real messages. An error with no message that
+  `AshGettext.AshMessages` lists gets its sentence; anything else without a
+  binary `:message` comes back as it was. Missing options raise `KeyError`.
 
       AshGettext.ErrorTranslation.translate(error,
         backend: MyApp.Gettext,
@@ -69,7 +74,29 @@ defmodule AshGettext.ErrorTranslation do
     end
   end
 
-  defp translate_message(error, _opts), do: error
+  # Ash's own errors print from code names; give them the written sentence.
+  defp translate_message(error, opts) do
+    case AshGettext.AshMessages.msgid(error) do
+      nil ->
+        error
+
+      msgid ->
+        AshGettext.AshMessages.Translated.exception(
+          original: error,
+          field: Map.get(error, :field),
+          path: error.path,
+          class: error.class,
+          message:
+            AshGettext.translate(
+              Keyword.fetch!(opts, :backend),
+              Keyword.fetch!(opts, :text_domain),
+              msgid,
+              bindings(error),
+              Keyword.fetch!(opts, :locale)
+            )
+        )
+    end
+  end
 
   # Splode collects interpolation values in `vars`; they are the bindings a
   # catalog entry like "must be at least %{min} kg" needs.

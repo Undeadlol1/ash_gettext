@@ -31,6 +31,9 @@ defmodule Mix.Tasks.AshGettext.Extract do
   descriptions you wrote on its enum values, with a `#.` comment naming the
   attribute they come from. Nothing is made from a code name.
 
+  It always lists the sentences for Ash's own errors too
+  (`AshGettext.AshMessages`), such as "is required".
+
   Interpolated messages (`message: "Bad value: \#{inspect(x)}"`) cannot be msgids
   and are reported at the end rather than skipped silently — each one is a string
   a user may read in a language they did not choose.
@@ -51,7 +54,14 @@ defmodule Mix.Tasks.AshGettext.Extract do
     paths = if paths == [], do: @default_paths, else: paths
 
     result = paths |> sources() |> Extractor.find_messages()
-    messages = Extractor.merge([result.messages, Extractor.resource_messages(resources())])
+
+    messages =
+      Extractor.merge([
+        result.messages,
+        Extractor.resource_messages(resources()),
+        Extractor.ash_messages()
+      ])
+
     pot = Extractor.to_template(messages)
 
     report(result, messages, paths)

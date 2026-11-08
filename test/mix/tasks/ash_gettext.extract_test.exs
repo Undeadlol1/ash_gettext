@@ -45,6 +45,12 @@ defmodule Mix.Tasks.AshGettext.ExtractTest do
     assert File.read!(pot) =~ ~s(msgid "is too heavy")
   end
 
+  test "always adds the sentences for Ash's own errors", %{src: src, pot: pot} do
+    Extract.run([src, "--output", pot])
+
+    assert File.read!(pot) =~ "#. Ash.Error.Changes.Required\nmsgid \"is required\""
+  end
+
   test "--check passes on a current template and fails once a message is added",
        %{src: src, pot: pot} do
     Extract.run([src, "--output", pot])

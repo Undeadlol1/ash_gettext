@@ -36,3 +36,12 @@ msgstr "Вес"
 
 msgid "Ready at the pickup point"
 msgstr "Готов к выдаче в пункте"
+
+msgid "is required"
+msgstr "обязательное поле"
+
+msgid "is invalid"
+msgstr "неверное значение"
+
+msgid "You are not allowed to do this"
+msgstr "Вам нельзя это делать"

@@ -91,6 +91,8 @@ defmodule AshGettext.MixProject do
           AshGettext.Info,
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
+          AshGettext.AshMessages,
+          AshGettext.AshMessages.Translated,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,

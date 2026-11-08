@@ -6,9 +6,10 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   return value as the error to keep. The error is translated into Gettext's current language, which
   `AshGettext.SetLanguage` set when the action started.
 
-  It sits below every transport by design. It also sits
-  below every *validation* — an error raised by a custom validation, a builtin
-  constraint, or the data layer all arrive here the same way.
+  It sits below every transport by design. An error from a custom validation,
+  a builtin constraint, a value that does not cast, a missing required value or
+  a failed policy all arrive here the same way. Errors the data layer returns
+  after the change ran (a stale record) do not pass through it.
 
   If the domain does not configure `gettext`, the error passes through untouched.
   """

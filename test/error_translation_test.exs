@@ -57,8 +57,8 @@ defmodule AshGettext.ErrorTranslationTest do
                ErrorTranslation.translate(invalid, @opts)
     end
 
-    test "passes through an error carrying no message" do
-      error = InvalidAttribute.exception(field: :weight)
+    test "passes through an error carrying no message that no sentence is written for" do
+      error = Ash.Error.Changes.StaleRecord.exception(resource: AshGettextFixture.Parcel)
 
       assert ErrorTranslation.translate(error, @opts) == error
     end

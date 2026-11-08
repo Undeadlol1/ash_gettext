@@ -85,6 +85,19 @@ defmodule AshGettext.Extractor do
   end
 
   @doc """
+  The written sentences for Ash's own errors (`AshGettext.AshMessages`), each
+  with a `comments` entry naming the error it is shown for.
+  """
+  @spec ash_messages() :: [message()]
+  def ash_messages do
+    AshGettext.AshMessages.messages()
+    |> Enum.map(fn {module, msgid} ->
+      %{msgid: msgid, references: [], comments: [inspect(module)]}
+    end)
+    |> merge()
+  end
+
+  @doc """
   Combine message lists, deduplicating by msgid and merging references and
   comments. Sorted by msgid, so the output is deterministic.
   """

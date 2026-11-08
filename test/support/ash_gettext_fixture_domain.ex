@@ -200,6 +200,36 @@ defmodule AshGettextFixture.ComparedParcel do
   end
 end
 
+defmodule AshGettextFixture.Delivery do
+  @moduledoc "A resource whose only rules are Ash's own: a required date and a typed count."
+
+  use Ash.Resource,
+    domain: AshGettextFixture.Shipping,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  ets do
+    private?(true)
+  end
+
+  actions do
+    defaults([:read, create: [:delivery_date, :count]])
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :delivery_date, :date do
+      allow_nil?(false)
+      public?(true)
+    end
+
+    attribute :count, :integer do
+      public?(true)
+    end
+  end
+end
+
 defmodule AshGettextFixture.PlainKind do
   @moduledoc false
   use Ash.Type.Enum, values: [:a, :b]
@@ -263,6 +293,7 @@ defmodule AshGettextFixture.Shipping do
     resource(AshGettextFixture.Parcel)
     resource(AshGettextFixture.ComparedParcel)
     resource(AshGettextFixture.Crate)
+    resource(AshGettextFixture.Delivery)
   end
 end
 

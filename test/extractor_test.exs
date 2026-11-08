@@ -166,6 +166,17 @@ defmodule AshGettext.ExtractorTest do
     end
   end
 
+  describe "messages for Ash's own errors" do
+    test "lists every written sentence, naming the error it is for" do
+      messages = Extractor.ash_messages()
+
+      assert Enum.map(messages, & &1.msgid) == Enum.sort(AshGettext.AshMessages.msgids())
+
+      assert %{comments: ["Ash.Error.Changes.Required"], references: []} =
+               Enum.find(messages, &(&1.msgid == "is required"))
+    end
+  end
+
   describe "messages from resources" do
     test "lists only written texts, with where they come from" do
       messages = Extractor.resource_messages([AshGettextFixture.Parcel])
