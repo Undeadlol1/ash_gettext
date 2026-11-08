@@ -42,13 +42,15 @@ msgid "Ready at the pickup point"
 msgstr "Готов к выдаче в пункте"
 ```
 
-The language is Gettext's current locale for the process. Choose it for a
-block with `Gettext.with_locale/3`:
+The language is Gettext's current locale for the process:
 
 ```elixir
-Gettext.with_locale(MyApp.Gettext, "ru", fn ->
-  MyApp.Order.Status.label(:awaiting_pickup)
-end)
+test "the status reads in Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
+
+  assert MyApp.Order.Status.label(:awaiting_pickup) == "Ожидает выдачи"
+  assert MyApp.Order.Status.description(:awaiting_pickup) == "Готов к выдаче в пункте"
+end
 ```
 
 With no translation, you get the label as written. A value without a
@@ -152,10 +154,11 @@ end
 Then ask for it:
 
 ```elixir
-Gettext.with_locale(MyApp.Gettext, "ru", fn ->
-  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
-end)
-#=> "Дата рождения"
+test "the attribute name reads in Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
+
+  assert AshGettext.attribute_label(MyApp.Order, :date_of_birth) == "Дата рождения"
+end
 ```
 
 The language is Gettext's current one; the backend and text domain come from

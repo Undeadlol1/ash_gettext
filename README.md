@@ -112,8 +112,8 @@ domain).
 
 Now run any action with `actor: user`. Labels loaded on records and errors
 come out in the actor's language. The process language is never changed.
-With no actor, such as a visitor who is not signed in, wrap the call in
-`Gettext.with_locale(MyApp.Gettext, "ru", fn -> ... end)`.
+Code outside an action, such as a job that formats text, picks the language
+with `Gettext.with_locale/3`.
 
 A resolver must be a pure function of the actor: read the language off the
 loaded actor, do not query the database. `ru_RU` and `en-US` are cut to the
@@ -135,16 +135,15 @@ defmodule MyApp.Order.Status do
       awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
     ]
 end
+```
 
-Gettext.with_locale(MyApp.Gettext, user.language, fn ->
-  MyApp.Order.Status.label(:awaiting_pickup)
-end)
-#=> "Ожидает выдачи"
+```elixir
+test "the status reads in Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
 
-Gettext.with_locale(MyApp.Gettext, user.language, fn ->
-  MyApp.Order.Status.description(:awaiting_pickup)
-end)
-#=> "Готов к выдаче в пункте"
+  assert MyApp.Order.Status.label(:awaiting_pickup) == "Ожидает выдачи"
+  assert MyApp.Order.Status.description(:awaiting_pickup) == "Готов к выдаче в пункте"
+end
 ```
 
 `label/1` and `description/1` are still Ash's own functions. They now return
@@ -176,10 +175,11 @@ end
 ```
 
 ```elixir
-Gettext.with_locale(MyApp.Gettext, user.language, fn ->
-  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
-end)
-#=> "Дата рождения"
+test "the attribute name reads in Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
+
+  assert AshGettext.attribute_label(MyApp.Order, :date_of_birth) == "Дата рождения"
+end
 ```
 
 An attribute with no written `label` raises `ArgumentError`. A `label` for an
