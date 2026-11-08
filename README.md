@@ -34,120 +34,27 @@ hd(error.errors).message
 
 Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key. That's it.
 
+## Installation
+
+Not on Hex yet, so take it from GitHub:
+
+```elixir
+def deps do
+  [
+    {:ash_gettext, github: "Undeadlol1/ash_gettext"}
+  ]
+end
+```
+
+Your app needs a Gettext backend (`use Gettext.Backend, otp_app: :my_app`).
+
 ## Usage
 
-### Translate an enum
+### 1. Set it up once
 
-Every value needs a label you write. AshGettext never makes a label from a
-code name, so a value without one is a compile error. Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
-
-```elixir
-defmodule MyApp.Order.Status do
-  use Ash.Type.Enum,
-    values: [
-      placed: [label: "Order placed"],
-      awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
-    ]
-
-  use AshGettext.Enum, backend: MyApp.Gettext
-end
-
-MyApp.Order.Status.label(:awaiting_pickup)
-#=> "Ожидает выдачи"
-
-MyApp.Order.Status.description(:awaiting_pickup)
-#=> "Готов к выдаче в пункте"
-```
-
-`label/1` and `description/1` are still Ash's own functions. They now return
-the translated text. The text you wrote is the key, and the key lives in
-`ash.po` (`text_domain: "other"` picks another file).
-
-The language is Gettext's current locale for the process. Set it the usual
-way with `Gettext.put_locale/2`, or for one block of code with
-`Gettext.with_locale/3`. Or run an action with `actor:` (or
-`context: %{locale: "ru"}`) and AshGettext sets it for you, see below.
-
-### Show an enum on a record
-
-Every attribute whose type uses `AshGettext.Enum` gets a field named
-`<attribute>_label`. Load it like any calculation:
-
-```elixir
-order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
-
-order.status        #=> :awaiting_pickup
-order.status_label  #=> "Ожидает выдачи"
-```
-
-It uses the same language as everything else. An empty value gives `nil`, a
-list attribute gives a list of labels, and a field you already named
-`status_label` is left alone.
-
-### Translate text
-
-The text you write is the key. In your own language it is also the
-translation, so you keep catalogs only for the other languages. These
-functions take the backend and the language as arguments:
-
-```elixir
-AshGettext.translate(MyApp.Gettext, "default", "Hello, %{name}", [name: "Ann"], "ru")
-#=> "Привет, Ann"
-
-AshGettext.translate_plural(MyApp.Gettext, "default", "%{count} parcel", "%{count} parcels", 3, [], "ru")
-#=> "3 посылки"
-```
-
-### Show an attribute name
-
-```elixir
-Gettext.with_locale(MyApp.Gettext, "ru", fn ->
-  AshGettext.attribute_label(MyApp.Order, :date_of_birth)
-end)
-#=> "Дата рождения"
-```
-
-You write the text in the resource, then it is translated:
-
-```elixir
-gettext do
-  label :date_of_birth, "Date of birth"
-end
-```
-
-The language is Gettext's current one. The backend and text domain come from
-the resource's domain. An attribute with no written `label`, or a resource
-whose domain has no `gettext` block, raises `ArgumentError`. A `label` for an
-attribute the resource does not have fails the build.
-
-### Pick the user's language
-
-Run an action with `actor:` (or `context: %{locale: "ru"}`) and AshGettext
-sets Gettext's language for that process, once, when the action starts.
-Enums, errors and attribute names then come out in it. A resolver reads the
-language off the actor:
-
-```elixir
-defmodule MyApp.Locale.FromActor do
-  @behaviour AshGettext.Locale.Resolver
-
-  @impl true
-  def resolve(%{actor: %{locale: locale}}), do: locale
-  def resolve(_context), do: nil
-end
-```
-
-A resolver must be a pure function of its context. Read the locale off the
-loaded actor and do not query the database: a resolver runs once, when the
-action starts. With no actor and no `locale`, the process language is left
-alone.
-
-`ru_RU` and `en-US` are cut to the language, and a language with no catalog
-becomes `default_locale`. More in [Locales](documentation/topics/locales.md).
-
-### Translate Ash's errors
-
-Add a `gettext` block to the domain and the extension to its resources:
+Add the extension and a `gettext` block to each domain, and the extension to
+your resources. Put them in your base domain and base resource so you write
+them once:
 
 ```elixir
 defmodule MyApp.Shop do
@@ -172,20 +79,120 @@ mix ash_gettext.install
 mix ash_gettext.install --apply
 ```
 
-An error's `message:` is now looked up like any other text, in the language
-Gettext is set to, which an action's actor or its `context: %{locale: "ru"}`
-sets when it starts:
+### 2. Tell it the user's language
+
+A resolver reads the language off the actor. This is the one place your app
+says where a user's language lives:
+
+```elixir
+defmodule MyApp.Locale.FromActor do
+  @behaviour AshGettext.Locale.Resolver
+
+  @impl true
+  def resolve(%{actor: %{locale: locale}}), do: locale
+  def resolve(_context), do: nil
+end
+```
+
+Now run any action with `actor: user` (or `context: %{locale: "ru"}`).
+AshGettext sets Gettext's language for that process once, when the action
+starts. Everything below comes out in it.
+
+A resolver must be a pure function of its context: read the locale off the
+loaded actor, do not query the database. `ru_RU` and `en-US` are cut to the
+language, and a language with no catalog becomes `default_locale`. More in
+[Locales](documentation/topics/locales.md).
+
+### 3. Translate an enum
+
+Write a label for every value. AshGettext never makes a label from a code
+name, so a value without one fails the build. Put `use AshGettext.Enum` after
+`use Ash.Type.Enum`:
+
+```elixir
+defmodule MyApp.Order.Status do
+  use Ash.Type.Enum,
+    values: [
+      placed: [label: "Order placed"],
+      awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
+    ]
+
+  use AshGettext.Enum, backend: MyApp.Gettext
+end
+
+MyApp.Order.Status.label(:awaiting_pickup)
+#=> "Ожидает выдачи"
+
+MyApp.Order.Status.description(:awaiting_pickup)
+#=> "Готов к выдаче в пункте"
+```
+
+`label/1` and `description/1` are still Ash's own functions. They now return
+the translated text.
+
+### 4. Show an enum on a record
+
+Every attribute whose type uses `AshGettext.Enum` gets a field named
+`<attribute>_label`. Load it like any calculation:
+
+```elixir
+order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
+
+order.status        #=> :awaiting_pickup
+order.status_label  #=> "Ожидает выдачи"
+```
+
+An empty value gives `nil`, a list attribute gives a list of labels, and a
+field you already named `status_label` is left alone.
+
+### 5. Show an attribute name
+
+Write the name in the resource:
+
+```elixir
+gettext do
+  label :date_of_birth, "Date of birth"
+end
+```
+
+```elixir
+AshGettext.attribute_label(MyApp.Order, :date_of_birth)
+#=> "Дата рождения"
+```
+
+An attribute with no written `label` raises `ArgumentError`. A `label` for an
+attribute the resource does not have fails the build.
+
+### 6. Errors
+
+Write the message in your own language. It comes back in the user's:
 
 ```elixir
 validate present(:email), message: "can't be blank"
 ```
 
-Errors, enum labels and attribute labels share one catalog, `ash.po`. Run
-`mix ash_gettext.extract` to write all of them to `ash.pot`.
+```elixir
+{:error, error} = Ash.create(MyApp.User, %{email: nil}, actor: user)
+hd(error.errors).message
+#=> "не может быть пустым"
+```
 
-### Report missing translations
+No code on the action. Create, update and destroy errors are translated.
 
-A lookup with no translation returns the text as written, and sends a
+### 7. Hand the texts to translators
+
+```
+mix ash_gettext.extract          # writes priv/gettext/ash.pot
+mix ash_gettext.extract --check  # in CI: fails when the template is stale
+```
+
+It collects your enum labels and descriptions, attribute labels and error
+messages into one template, `ash.pot`. Translators fill in `ash.po` per
+language.
+
+### 8. Catch missing translations
+
+A lookup with no translation returns the text as written and sends a
 telemetry event. Log it:
 
 ```elixir
@@ -202,13 +209,13 @@ def log_missing(_event, _measurements, meta, _config),
 
 The metadata has `backend`, `text_domain`, `msgid` and `locale`.
 
-### Check translations in tests
+In tests, assert a text is covered:
 
 ```elixir
 import AshGettext.Testing
 
-test "the shipped message has a Russian translation" do
-  assert_covered(MyApp.Gettext, "default", "Order shipped", "ru")
+test "the status label has a Russian translation" do
+  assert_covered(MyApp.Gettext, "ash", "Ready for pickup", "ru")
 end
 ```
 
