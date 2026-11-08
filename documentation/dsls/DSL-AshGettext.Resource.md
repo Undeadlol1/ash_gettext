@@ -28,8 +28,8 @@ Attribute names are written by you, never made from the code name:
 `label` raises. A `label` for an attribute the resource lacks fails to compile.
 
 Labels loaded on records and errors from actions use the language of the
-action's actor or `context: %{locale: ...}`. No action changes the process
-language.
+action's actor, else Gettext's current language. No action changes the
+process language.
 
 What to translate is read from the resource's **domain** (`AshGettext.Domain`).
 A resource whose domain does not configure `gettext`, or which sets

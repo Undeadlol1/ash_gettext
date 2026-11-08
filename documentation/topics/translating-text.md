@@ -203,11 +203,10 @@ event. In your own language nothing is missing. In tests, use
 
 ## Get the language from the user
 
-Run an action with `actor:` (or `context: %{locale: "ru"}`) and loaded
-`_label` fields and errors come out in the actor's language. No action
-changes the process language. Code outside an action uses
-`Gettext.with_locale/3`. To turn what a browser sends, such as `ru_RU`, or the
-signed-in user into a language your catalogs have, see [Locales](locales.md).
+Run an action with `actor:` and loaded `_label` fields and errors come out
+in the actor's language. No action changes the process language. With no
+actor, and in code outside an action, use `Gettext.with_locale/3`. See
+[Locales](locales.md).
 
 ## Add the text to the template
 

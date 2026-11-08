@@ -15,11 +15,12 @@ The first packaged version. Not published to Hex yet.
   wrapper to call. An empty value (`nil`) has no label and no description.
 - `AshGettext.translate/5` and `translate_plural/7` are the pure functions
   underneath, with the language passed as an argument.
-- Running an action with `actor:` (or `context: %{locale: "ru"}`) gives loaded
-  `_label` fields and error messages in that user's language, using the
-  domain's `locale_resolvers`. No action changes the process language, so a
-  long-lived process never runs the next job in the last user's language. Code
-  outside an action uses `Gettext.with_locale/3`.
+- Running an action with `actor:` gives loaded `_label` fields and error
+  messages in that user's language, using the domain's one `locale_resolver`.
+  It gets the actor and returns its language. With no actor, Gettext's
+  current process language is used. No action changes the process language,
+  so a long-lived process never runs the next job in the last user's
+  language.
 - User-facing text is always written by a person. The library never makes it
   from a code name. An enum value without a `label:` is a compile error.
 - A resource's `gettext` block holds written attribute labels
@@ -30,9 +31,9 @@ The first packaged version. Not published to Hex yet.
   `[:ash_gettext, :translation, :missing]`, with `backend`, `text_domain`,
   `msgid` and `locale`.
 - `AshGettext.known_locales/1` includes the source locale.
-- `AshGettext.Locale.resolve/2` picks a language your catalogs have from
-  resolvers, such as one that reads the signed-in user. A resolver must be a
-  pure function of its context and must not query the database.
+- A resolver's answer is cut to a language your catalogs have (`ru_RU`
+  becomes `ru`), or `default_locale`. A resolver must be a pure function of
+  the actor and must not query the database.
 - `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
   block on a domain translates the errors of every create, update and destroy
   action on its resources, in Gettext's current language.

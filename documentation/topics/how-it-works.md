@@ -48,10 +48,10 @@ three things:
 1. It reads the domain's settings with `AshGettext.Info.settings/1`. If the
    domain has no `gettext` block, or `translate_errors?` is `false`, the
    error is returned as it is.
-2. It works out the language. It runs the resolver chain on the `:locale`
-   from the action context, the `:actor` and the `:changeset`, and cuts the
-   first answer to a language the backend has. With no answer it uses
-   Gettext's current language. It never changes the process language.
+2. It works out the language. It asks the domain's `locale_resolver` with
+   the action's actor, and cuts the answer to a language the backend has.
+   With no actor or no answer it uses Gettext's current language. It never
+   changes the process language.
 3. It looks the error's `message` up in the backend, under the domain's
    `text_domain`, with the error's `vars` as values.
 
@@ -97,13 +97,13 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.Resource` | The extension that attaches the handler. |
 | `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in the action's language. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
-| `AshGettext.Locale` | Runs the resolvers, then normalizes. |
+| `AshGettext.Info` | Reads the `gettext` block. `language/2` asks the resolver, then normalizes. |
 | `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |
 | `AshGettext.Enum` | `use` it instead of `Ash.Type.Enum` to translate `label/1` and `description/1`. |
 | `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
 
-`AshGettext.ErrorTranslation.translate/2` and `AshGettext.Locale.resolve/2`
-take everything they need as arguments, so you can call them yourself.
+`AshGettext.ErrorTranslation.translate/2` takes everything it needs as
+arguments, so you can call it yourself.
 
 ## Limits
 

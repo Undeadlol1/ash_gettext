@@ -56,19 +56,19 @@ msgid "must weigh at least %{greater_than_or_equal_to} kg"
 msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
 ```
 
-Run the action with `actor:` or pass the language in the context. The error
-comes back in that language:
+Run the action with `actor:`. The error comes back in the actor's language:
 
 ```elixir
 MyApp.Shipping.Parcel
-|> Ash.Changeset.for_create(:create, %{weight: 5}, context: %{locale: "ru"})
+|> Ash.Changeset.for_create(:create, %{weight: 5}, actor: user)
 |> Ash.create()
 # {:error, %Ash.Error.Invalid{errors: [%{message: "должен весить не меньше 30 кг"}]}}
 ```
 
-With no actor and no `locale`, Gettext's current language is used. No action
-changes the process language. To take the language from the signed-in user,
-see [Locales](locales.md). Resolvers must not query the database.
+With no actor, Gettext's current language is used, so wrap the call in
+`Gettext.with_locale/3`. No action changes the process language. The
+domain's resolver reads the language off the actor; see [Locales](locales.md).
+A resolver must not query the database.
 
 ## No handler on each action
 

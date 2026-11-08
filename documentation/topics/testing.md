@@ -94,14 +94,16 @@ msgid "must weigh at least %{min} kg"
 msgstr "должен весить не меньше %{min} кг"
 ```
 
-run the action with a locale on the context and read the message:
+run the action in that language and read the message:
 
 ```elixir
 test "creating a light parcel fails in Russian" do
   assert {:error, error} =
-           MyApp.Shipping.Parcel
-           |> Ash.Changeset.for_create(:create, %{weight: 5}, context: %{locale: "ru"})
-           |> Ash.create()
+           Gettext.with_locale(MyApp.Gettext, "ru", fn ->
+             MyApp.Shipping.Parcel
+             |> Ash.Changeset.for_create(:create, %{weight: 5})
+             |> Ash.create()
+           end)
 
   assert Enum.map(error.errors, & &1.message) == ["должен весить не меньше 30 кг"]
 end

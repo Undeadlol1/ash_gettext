@@ -40,10 +40,10 @@ defaults; add options only when a requirement demands them.
   `<attribute>_label` calculation (a list for `{:array, enum}`). Load it with
   `load: [:status_label]`. Do not write your own. A field already named that is
   kept.
-- The language comes from the action. Run it with `actor:` or
-  `context: %{locale: "ru"}`, and loaded `_label` fields and errors use the
-  language the domain's `locale_resolvers` give. No action changes the process
-  language. With no actor and no locale, Gettext's current locale is used.
+- The language comes from the actor. Run the action with `actor:`, and loaded
+  `_label` fields and errors use the language the domain's `locale_resolver`
+  gives. No action changes the process language. With no actor, Gettext's
+  current locale is used.
   Outside an action (a direct `label/1`, `AshGettext.attribute_label/2`, a job
   formatting text), wrap the call in `Gettext.with_locale/3`.
 - The msgid is the plain sentence in the source language, with `%{var}`
@@ -74,23 +74,24 @@ defaults; add options only when a requirement demands them.
 
 ## Picking the language
 
-- Actions find their language themselves. For the pure functions, pick the `locale` argument with
-  `AshGettext.Locale.resolve(context, resolvers: [...], supported: AshGettext.known_locales(backend), default: "en")`.
-  It cuts `"ru_RU"` to `"ru"` and falls back to `default` for a language
-  with no catalog.
-- In a domain, an action's language comes from its `locale_resolvers`,
-  tried in order until one returns a string. A returned locale is cut to its
-  language (`"ru_RU"` and `"ru-RU"` become `"ru"`). If that language has no
-  catalog directory, `default_locale` is used.
+- Actions find their language themselves. For the pure functions, pass the
+  `locale` argument; `AshGettext.Locale.Normalizer.normalize(locale,
+  AshGettext.known_locales(backend), "en")` cuts `"ru_RU"` to `"ru"` and
+  falls back to the default for a language with no catalog.
+- A domain names one resolver: `locale_resolver MyApp.Locale`. It is
+  optional. Without it, Gettext's current process language is used.
 - A resolver implements `@behaviour AshGettext.Locale.Resolver` with
-  `resolve/1`. It receives `%{locale: ..., actor: ..., changeset: ...}` and
-  returns a locale string, or `nil` to let the next resolver answer.
-- `AshGettext.Locale.FromContext` reads `context: %{locale: "ru"}` from the
-  action (atom or string key). When you set `locale_resolvers`, list it
-  yourself if you still want it: `[MyApp.Localization, AshGettext.Locale.FromContext]`.
-- A resolver that needs the signed-in user's saved language belongs in the
-  host app. Do not add actor lookups to the library or guess the field.
-- A resolver must be a pure function of its context. Read the locale off the
+  `resolve/1`. It receives the actor (never `nil`) and returns a locale
+  string, or `nil` for Gettext's current language:
+  `def resolve(%{language: language}), do: language` and
+  `def resolve(_actor), do: nil`. The answer is cut to its language
+  (`"ru_RU"` becomes `"ru"`); one with no catalog becomes `default_locale`.
+- There is no language in the action context. With no actor, such as a
+  visitor who is not signed in, wrap the call in
+  `Gettext.with_locale(MyApp.Gettext, "ru", fn -> ... end)`.
+- A resolver belongs in the host app. Do not add actor lookups to the
+  library or guess the field.
+- A resolver must be a pure function of the actor. Read the locale off the
   loaded actor. Never query the database in a resolver: it runs while an
   action's error is being built, possibly inside a failed transaction.
 
@@ -108,7 +109,7 @@ defaults; add options only when a requirement demands them.
   The domain block alone changes no behavior.
 - Options on the `gettext` block: `backend` (required module);
   `default_locale` (default `"en"`); `text_domain` (default `"ash"`);
-  `locale_resolvers` (default `[AshGettext.Locale.FromContext]`);
+  `locale_resolver` (optional module);
   `translate_errors?` (default `true`); `require_resource_extension?`
   (default `false`).
 - The `message:` of an error IS the msgid. Write it as the plain sentence in
@@ -191,7 +192,8 @@ defaults; add options only when a requirement demands them.
 - Do not write an `error_handler` on an action to translate. The resource
   extension sets it. Writing your own disables translation for that action.
 - Do not change the process language to pick the error language. Pass
-  `actor:` or `context: %{locale: "ru"}` and let a resolver answer.
+  `actor:` and let the resolver answer, or wrap the call in
+  `Gettext.with_locale/3` when there is no actor.
 - Do not hand-write `.pot` entries that the extractor produces.
 - Configuration lives in the domain DSL and is read through `AshGettext.Info`.
   Do not read it from `Application.get_env`.
@@ -203,10 +205,10 @@ defaults; add options only when a requirement demands them.
 
 - Tests with `async: true` are safe. Nothing is global: backend, text domain
   and locale are arguments or domain settings, and the locale of a run comes
-  from `context: %{locale: "ru"}`.
+  from the actor or `Gettext.with_locale/3`.
 - Assert the text through the real action:
-  `Ash.create(changeset, context: %{locale: "ru"})`, then check the error's
-  message.
+  `Gettext.with_locale(MyApp.Gettext, "ru", fn -> Ash.create(changeset) end)`,
+  then check the error's message.
 - `AshGettext.Testing.assert_translates(backend, text_domain, msgid, locale, expected, bindings \\ [])`
   asserts the exact rendering and returns the string.
 - `AshGettext.Testing.assert_covered(backend, text_domain, msgid, locale, bindings \\ [])`

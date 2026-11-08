@@ -53,9 +53,8 @@ Your app needs a Gettext backend (`use Gettext.Backend, otp_app: :my_app`).
 
 ### 1. Set it up once
 
-Add the extension and a `gettext` block to each domain, and the extension to
-your resources. Put them in your base domain and base resource so you write
-them once:
+Add the extension and a `gettext` block to each domain. Put it in your base
+domain so you write it once:
 
 ```elixir
 defmodule MyApp.Shop do
@@ -63,13 +62,25 @@ defmodule MyApp.Shop do
 
   gettext do
     backend(MyApp.Gettext)
-    locale_resolvers([MyApp.Locale.FromActor, AshGettext.Locale.FromContext])
+    locale_resolver(MyApp.Locale)
   end
 end
 ```
 
+Add the extension to each resource. It gives the resource its `_label`
+fields, its attribute names and its translated errors.
+
 ```elixir
-use Ash.Resource, extensions: [AshGettext.Resource]
+defmodule MyApp.Order do
+  use Ash.Resource,
+    domain: MyApp.Shop,
+    extensions: [AshGettext.Resource]
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:status, MyApp.Order.Status, public?: true)
+  end
+end
 ```
 
 Or let the install task add both to every domain and resource. The first
@@ -82,27 +93,27 @@ mix ash_gettext.install --apply
 
 ### 2. Tell it the user's language
 
-A resolver is your code. It reads the language from wherever your app
-keeps it. Here the user has a `:language` field:
+A resolver is your code. It gets the actor and returns its language. Here
+the user has a `:language` field:
 
 ```elixir
-defmodule MyApp.Locale.FromActor do
+defmodule MyApp.Locale do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
-  def resolve(%{actor: %{language: language}}), do: language
-  def resolve(_context), do: nil
+  def resolve(%{language: language}), do: language
+  def resolve(_actor), do: nil
 end
 ```
 
 Call the field whatever you like; the resolver is where you say it.
 
-Now run any action with `actor: user` (or `context: %{locale: "ru"}`).
-Labels loaded on records and errors come out in the actor's language. The
-process language is never changed. Code outside an action, such as a job
-that formats text, picks the language itself with `Gettext.with_locale/3`.
+Now run any action with `actor: user`. Labels loaded on records and errors
+come out in the actor's language. The process language is never changed.
+With no actor, such as a visitor who is not signed in, wrap the call in
+`Gettext.with_locale(MyApp.Gettext, "ru", fn -> ... end)`.
 
-A resolver must be a pure function of its context: read the locale off the
+A resolver must be a pure function of the actor: read the language off the
 loaded actor, do not query the database. `ru_RU` and `en-US` are cut to the
 language, and a language with no catalog becomes `default_locale`. More in
 [Locales](documentation/topics/locales.md).
