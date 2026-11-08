@@ -62,7 +62,7 @@ defmodule MyApp.Shop do
 
   gettext do
     backend(MyApp.Gettext)
-    locale_resolver(MyApp.Locale)
+    locale_resolver(MyApp.LocaleResolver)
   end
 end
 ```
@@ -97,7 +97,7 @@ A resolver is your code. It gets the actor and returns its language. Here
 the user has a `:language` field:
 
 ```elixir
-defmodule MyApp.Locale do
+defmodule MyApp.LocaleResolver do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
@@ -106,7 +106,9 @@ defmodule MyApp.Locale do
 end
 ```
 
-Call the field whatever you like; the resolver is where you say it.
+Call the field whatever you like; the resolver is where you say it. One
+resolver is enough for the whole app; list it in every domain (or your base
+domain).
 
 Now run any action with `actor: user`. Labels loaded on records and errors
 come out in the actor's language. The process language is never changed.

@@ -190,7 +190,10 @@ defmodule AshGettext.InstallerTest do
 
       assert block =~ "backend MyApp.Gettext"
       refute block =~ "text_domain"
-      refute block =~ "locale_resolver"
+    end
+
+    test "always names a resolver, derived from the backend's namespace" do
+      assert Installer.gettext_block(@opts) =~ "locale_resolver MyApp.LocaleResolver"
     end
 
     test "leaves out a text domain that is the default" do
@@ -204,29 +207,9 @@ defmodule AshGettext.InstallerTest do
     end
 
     test "names the host's resolver" do
-      block = Installer.gettext_block(backend: "MyApp.Gettext", resolver: "MyApp.Localization")
+      block = Installer.gettext_block(backend: "MyApp.Gettext", resolver: "MyApp.Custom")
 
-      assert block =~ "locale_resolver MyApp.Localization"
-    end
-  end
-
-  describe "generating a starting resolver" do
-    test "implements the resolver behaviour" do
-      assert Installer.resolver_template("MyApp.Localization") =~
-               "@behaviour AshGettext.Locale.Resolver"
-    end
-
-    test "compiles as written, so a host can install and run before filling it in" do
-      stub = Installer.resolver_template("AshGettextInstallerStubTest.Localization")
-
-      assert {:ok, _ast} = Code.string_to_quoted(stub)
-    end
-
-    test "declines by default rather than guessing where a locale is stored" do
-      stub = Installer.resolver_template("MyApp.Localization")
-
-      assert stub =~ "TODO"
-      assert stub =~ "nil"
+      assert block =~ "locale_resolver MyApp.Custom"
     end
   end
 end

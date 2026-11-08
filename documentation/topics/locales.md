@@ -11,7 +11,7 @@ Name one resolver in the domain's `gettext` block:
 gettext do
   backend(MyApp.Gettext)
   default_locale("en")
-  locale_resolver(MyApp.Locale)
+  locale_resolver(MyApp.LocaleResolver)
 end
 ```
 
@@ -19,7 +19,7 @@ A resolver is a module with one function. It gets the actor and returns a
 language, or `nil`. It is your code. Here the user has a `:language` field:
 
 ```elixir
-defmodule MyApp.Locale do
+defmodule MyApp.LocaleResolver do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true

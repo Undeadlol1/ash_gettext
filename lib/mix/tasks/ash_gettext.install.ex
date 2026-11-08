@@ -6,7 +6,7 @@ defmodule Mix.Tasks.AshGettext.Install do
 
       mix ash_gettext.install                    # preview every edit
       mix ash_gettext.install --apply            # write them
-      mix ash_gettext.install --backend MyApp.Gettext --resolver MyApp.Localization
+      mix ash_gettext.install --backend MyApp.Gettext --resolver MyApp.LocaleResolver
 
   For each Ash domain it adds the `AshGettext.Domain` extension and a
   `gettext do` block naming this app's Gettext backend. A domain that already
@@ -16,18 +16,18 @@ defmodule Mix.Tasks.AshGettext.Install do
 
     * `--backend` — the Gettext backend to translate against. Detected from the
       project when there is exactly one `use Gettext.Backend`.
-    * `--resolver` — a module implementing `AshGettext.Locale.Resolver`. It
-      reads the language from the actor.
+    * `--resolver` — the module implementing `AshGettext.Locale.Resolver` that
+      each domain names. Defaults to `LocaleResolver` in the backend's
+      namespace, such as `MyApp.LocaleResolver`.
     * `--text-domain` — defaults to `ash`, so the texts go to `ash.pot`.
     * `--apply` — write the changes. Without it, nothing is written.
 
   ## What this cannot do for you
 
-  Translating to *the signed-in user's saved language* needs a resolver that
-  knows where this app stores that, and a generic library must not assume it.
-  Without `--resolver`, everything uses Gettext's current process language.
-  Implement `AshGettext.Locale.Resolver` yourself;
-  `AshGettext.Installer.resolver_template/1` returns a starting point.
+  The resolver module. Translating to *the signed-in user's saved language*
+  needs code that knows where this app stores that, and a generic library must
+  not assume it. The task prints a module to copy; write it, because the build
+  fails until it exists.
   """
 
   use Mix.Task
@@ -52,6 +52,7 @@ defmodule Mix.Tasks.AshGettext.Install do
     resources = add_extensions(resource_paths(searched), &Installer.install_resource/1)
 
     report(domains, resources, backend, applying?(opts))
+    print_resolver(opts[:resolver] || Installer.default_resolver(backend))
     write_changes(domains ++ resources, applying?(opts))
   end
 
@@ -141,6 +142,21 @@ defmodule Mix.Tasks.AshGettext.Install do
     if !applying? do
       Mix.shell().info("\nNothing written. Re-run with --apply to make these changes.")
     end
+  end
+
+  defp print_resolver(module) do
+    Mix.shell().info("""
+
+    Write this module; the build fails until it exists.
+
+    defmodule #{module} do
+      @behaviour AshGettext.Locale.Resolver
+
+      @impl true
+      def resolve(%{language: language}), do: language
+      def resolve(_actor), do: nil
+    end
+    """)
   end
 
   defp report_group(label, results) do

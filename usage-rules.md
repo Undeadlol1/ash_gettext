@@ -78,8 +78,8 @@ defaults; add options only when a requirement demands them.
   `locale` argument; `AshGettext.Locale.Normalizer.normalize(locale,
   AshGettext.known_locales(backend), "en")` cuts `"ru_RU"` to `"ru"` and
   falls back to the default for a language with no catalog.
-- A domain names one resolver: `locale_resolver MyApp.Locale`. It is
-  optional. Without it, Gettext's current process language is used.
+- A domain names one resolver: `locale_resolver MyApp.LocaleResolver`. It is
+  required: the build fails without it.
 - A resolver implements `@behaviour AshGettext.Locale.Resolver` with
   `resolve/1`. It receives the actor (never `nil`) and returns a locale
   string, or `nil` for Gettext's current language:
@@ -102,7 +102,8 @@ defaults; add options only when a requirement demands them.
   `AshGettext.Domain` extension and a `gettext do` block to every domain, and
   the `AshGettext.Resource` extension to every resource. Re-running skips what
   is done. Options: `--backend MyApp.Gettext` (needed when the app has zero or
-  several backends), `--resolver MyApp.Localization`, `--text-domain`.
+  several backends), `--resolver MyApp.LocaleResolver` (defaults to `LocaleResolver` next to
+  the backend; you write that module), `--text-domain`.
 - To wire by hand: `use Ash.Domain, extensions: [AshGettext.Domain]` with a
   `gettext do backend MyApp.Gettext end` block, and
   `use Ash.Resource, extensions: [AshGettext.Resource]` on each resource.

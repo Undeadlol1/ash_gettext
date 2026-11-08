@@ -6,7 +6,7 @@ defmodule AshGettext.Locale.Resolver do
   only with a non-nil actor. Return `nil` to use Gettext's current process
   language.
 
-      defmodule MyApp.Locale do
+      defmodule MyApp.LocaleResolver do
         @behaviour AshGettext.Locale.Resolver
 
         @impl true
