@@ -24,19 +24,29 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->
-        ErrorTranslation.translate(error, translation_options(settings))
+        ErrorTranslation.translate(error, translation_options(changeset, settings))
 
       :error ->
         error
     end
   end
 
-  # The language was set once when the action started (`AshGettext.SetLanguage`).
-  defp translation_options(settings) do
-    [
-      backend: settings.backend,
-      text_domain: settings.text_domain,
-      locale: Gettext.get_locale(settings.backend)
-    ]
+  # Ash can report an error (a cast failure, say) before the action's changes
+  # run, so the language `AshGettext.SetLanguage` sets may not be set yet. Ask
+  # the same resolvers here; Gettext's current language is the fallback.
+  defp translation_options(changeset, settings) do
+    context = changeset.context || %{}
+
+    locale =
+      case AshGettext.SetLanguage.resolve(changeset.domain, %{
+             locale: context[:locale],
+             actor: get_in(context, [:private, :actor]),
+             changeset: changeset
+           }) do
+        {_backend, locale} -> locale
+        nil -> Gettext.get_locale(settings.backend)
+      end
+
+    [backend: settings.backend, text_domain: settings.text_domain, locale: locale]
   end
 end
