@@ -25,10 +25,12 @@ defaults; add options only when a requirement demands them.
 
 ## Translating text
 
-- Enums: add `use AshGettext.Enum, backend: MyApp.Gettext` after
-  `use Ash.Type.Enum`. Then `MyApp.Status.label(:awaiting_pickup)` and
-  `description/1` return the translated text. Call those, never a wrapper.
-  Options: `:backend` (required), `:text_domain` (default `"ash"`). The msgid
+- Enums: write `use AshGettext.Enum, backend: MyApp.Gettext, values: [...]`
+  instead of using `Ash.Type.Enum` yourself. It makes the Ash enum for you. Then
+  `MyApp.Status.label(:awaiting_pickup)` and `description/1` return the
+  translated text. Call those, never a wrapper. `label(nil)` and
+  `description(nil)` return `nil`. Options: `:backend` and `:values`
+  (required), `:text_domain` (default `"ash"`). The msgid
   is the `label:` or description you wrote on the value. Every value needs a
   written `label:`; a value without one is a compile error. Do not invent
   per-attribute keys.
@@ -126,15 +128,22 @@ defaults; add options only when a requirement demands them.
   otherwise.
 - An action that already declares its own `error_handler` is left alone and
   its errors are not translated.
-- Validation errors, builtin constraint errors and data layer errors all
-  arrive at the same handler, so every transport (JSON:API, GraphQL) sees the
-  translated text.
+- Validation errors, builtin constraint errors, cast errors, missing required
+  values and failed policies all arrive at the same handler, so every
+  transport (JSON:API, GraphQL) sees the translated text. A stale record
+  error comes from the data layer after the handler and is not translated.
+- Ash's own errors with no message (`Ash.Error.Changes.Required`,
+  `InvalidAttribute`, `InvalidArgument`, `Ash.Error.Forbidden.Policy`) get a
+  written sentence from `AshGettext.AshMessages`, such as "is required". They
+  come back as `AshGettext.AshMessages.Translated`: `message` is the
+  translated sentence, `original` is Ash's error, `field` and `class` are
+  kept. Match on `field` or `original`, not on the Ash struct.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.
 - Run `mix ash_gettext.extract` to write the template from every literal
   `message:` in `lib`, plus the written attribute labels and enum labels of the
-  domains' resources. Arguments: source paths and `--output PATH`. Run
+  domains' resources, and the sentences for Ash's own errors. Arguments: source paths and `--output PATH`. Run
   `mix ash_gettext.extract --check` in CI: it fails when the `.pot` is stale.
 - Without `--output` the task writes the file your own lookups read: the
   backend's `priv` directory holding `<text_domain>.pot`. Do not pass
@@ -174,8 +183,8 @@ defaults; add options only when a requirement demands them.
   `ArgumentError` without it. `message` is the msgid. `field` is optional.
   `vars` are the `%{var}` values.
 - With `:ash_json_api` installed it renders with `code` as a string, the
-  translated message as `detail`, `vars` as `meta`, and `source.pointer` set
-  to `/data/attributes/<field>` when `field` is set. Its status class is
+  translated message as `detail`, `vars` as `meta`, no `title`, and
+  `source.pointer` set to `/data/attributes/<field>` when `field` is set. Its status class is
   `:invalid`.
 - It is translated by the same handler as any other error, so it follows the
   same limit: create, update and destroy only.

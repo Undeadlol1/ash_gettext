@@ -9,9 +9,10 @@ The first packaged version. Not published to Hex yet.
 - Every attribute with an `AshGettext.Enum` type gets a public
   `<attribute>_label` field on resources that use `AshGettext.Resource`.
   Load it (`load: [:status_label]`) to get the translated label on the record.
-- `use AshGettext.Enum, backend: MyApp.Gettext` after `use Ash.Type.Enum`
-  makes the enum's own `label/1` and `description/1` return the translated
-  text, in Gettext's current locale. There is no wrapper to call.
+- `use AshGettext.Enum, backend: MyApp.Gettext, values: [...]` makes an Ash
+  enum whose own `label/1` and `description/1` return the translated text, in
+  Gettext's current locale. It calls `use Ash.Type.Enum` for you. There is no
+  wrapper to call. An empty value (`nil`) has no label and no description.
 - `AshGettext.translate/5` and `translate_plural/7` are the pure functions
   underneath, with the language passed as an argument.
 - Running an action with `actor:` (or `context: %{locale: "ru"}`) sets
@@ -50,8 +51,13 @@ The first packaged version. Not published to Hex yet.
   needs no catalog.
 - `require_resource_extension?` on the `gettext` block is an opt-in compile
   time check that every resource in the domain carries `AshGettext.Resource`.
+- Ash's own errors that have no message (a missing required value, a value
+  that does not cast, a failed policy) come back with a written sentence in
+  the user's language, such as "is required", not text built from a field
+  name. The sentences live in `AshGettext.AshMessages`, and
+  `mix ash_gettext.extract` always adds them to the template.
 - `AshGettext.Error` is a user-facing error with a required `code`, a
   translatable `message`, and an optional `field` and `vars`. It renders for
-  JSON:API when `:ash_json_api` is present, which is an optional dependency.
+  JSON:API, with no English `title`, when `:ash_json_api` is present, which is an optional dependency.
 - `AshGettext.Testing` has `assert_translates/6` and `assert_covered/5` for
   checking a message and a catalog in your own tests.

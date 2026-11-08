@@ -11,10 +11,9 @@ user's language.
 
 ```elixir
 defmodule MyApp.Order.Status do
-  use Ash.Type.Enum,
+  use AshGettext.Enum,
+    backend: MyApp.Gettext,
     values: [placed: [label: "Order placed"], awaiting_pickup: [label: "Ready for pickup"]]
-
-  use AshGettext.Enum, backend: MyApp.Gettext
 end
 
 # `mix ash_gettext.extract` collects the labels you wrote into your template.
@@ -106,18 +105,17 @@ language, and a language with no catalog becomes `default_locale`. More in
 ### 3. Translate an enum
 
 Write a label for every value. AshGettext never makes a label from a code
-name, so a value without one fails the build. Put `use AshGettext.Enum` after
-`use Ash.Type.Enum`:
+name, so a value without one fails the build. `use AshGettext.Enum` takes the
+values and makes the Ash enum for you:
 
 ```elixir
 defmodule MyApp.Order.Status do
-  use Ash.Type.Enum,
+  use AshGettext.Enum,
+    backend: MyApp.Gettext,
     values: [
       placed: [label: "Order placed"],
       awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
     ]
-
-  use AshGettext.Enum, backend: MyApp.Gettext
 end
 
 MyApp.Order.Status.label(:awaiting_pickup)
@@ -128,7 +126,7 @@ MyApp.Order.Status.description(:awaiting_pickup)
 ```
 
 `label/1` and `description/1` are still Ash's own functions. They now return
-the translated text.
+the translated text. An empty value (`nil`) gives `nil`.
 
 ### 4. Show an enum on a record
 
@@ -165,7 +163,19 @@ attribute the resource does not have fails the build.
 
 ### 6. Errors
 
-Write the message in your own language. It comes back in the user's:
+Ash's own errors come back in the user's language. Leave out a required
+value and the user reads a sentence, not a field name:
+
+```elixir
+{:error, error} = Ash.create(MyApp.Order, %{}, actor: user)
+hd(error.errors).message
+#=> "обязательное поле"   (Ash says "attribute delivery_date is required")
+```
+
+The English sentence is "is required". `mix ash_gettext.extract` adds it and
+the other sentences for Ash's errors to your template.
+
+Your own messages work the same way. Write them in your own language:
 
 ```elixir
 validate present(:email), message: "can't be blank"
@@ -187,7 +197,8 @@ mix ash_gettext.extract --check  # in CI: fails when the template is stale
 ```
 
 It collects your enum labels and descriptions, attribute labels and error
-messages into one template, `ash.pot`. Translators fill in `ash.po` per
+messages, plus the sentences for Ash's own errors, into one template,
+`ash.pot`. Translators fill in `ash.po` per
 language.
 
 ### 8. Catch missing translations

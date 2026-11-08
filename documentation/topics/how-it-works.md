@@ -19,8 +19,9 @@ functions send a `[:ash_gettext, :translation, :missing]` telemetry event.
 Attribute labels are lookups like any other. The key is the text you wrote in
 the resource's `gettext` block, and the text domain defaults to `"ash"`.
 
-An enum with `use AshGettext.Enum` overrides Ash's `label/1` and
-`description/1`. It calls Ash's version for the source text, then looks that
+`use AshGettext.Enum` checks that every value has a written label, then makes an
+`Ash.Type.Enum` with the same values. It overrides Ash's `label/1` and
+`description/1`: they call Ash's version for the source text, then looks that
 text up with `AshGettext.translate/5` in Gettext's current locale. The key is
 the label or description as written. A value with no written label fails to
 compile.
@@ -58,6 +59,11 @@ three things:
 If the catalog has an entry, the error comes back with the translated message.
 If it has none, the error comes back unchanged.
 
+An Ash error with no message, such as a missing required value, takes its
+sentence from `AshGettext.AshMessages` instead. It comes back as an
+`AshGettext.AshMessages.Translated` that holds the translated sentence and
+keeps the original error.
+
 ## Why transport does not matter
 
 The handler changes the error struct itself. JSON:API and GraphQL
@@ -93,7 +99,8 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in Gettext's current language. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Locale` | Runs the resolvers, then normalizes. |
-| `AshGettext.Enum` | `use` it in an `Ash.Type.Enum` to translate its `label/1` and `description/1`. |
+| `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |
+| `AshGettext.Enum` | `use` it instead of `Ash.Type.Enum` to translate `label/1` and `description/1`. |
 | `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
 
 `AshGettext.ErrorTranslation.translate/2` and `AshGettext.Locale.resolve/2`

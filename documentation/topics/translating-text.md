@@ -9,17 +9,16 @@ you.
 
 ## Translate an enum
 
-Put `use AshGettext.Enum` after `use Ash.Type.Enum`:
+`use AshGettext.Enum` takes the values and makes the Ash enum for you:
 
 ```elixir
 defmodule MyApp.Order.Status do
-  use Ash.Type.Enum,
+  use AshGettext.Enum,
+    backend: MyApp.Gettext,
     values: [
       placed: [label: "Order placed"],
       awaiting_pickup: [label: "Ready for pickup", description: "Ready at the pickup point"]
     ]
-
-  use AshGettext.Enum, backend: MyApp.Gettext
 end
 
 MyApp.Order.Status.label(:awaiting_pickup)
@@ -27,8 +26,8 @@ MyApp.Order.Status.label(:awaiting_pickup)
 ```
 
 `label/1` and `description/1` are Ash's own functions. They now return the
-translated text. `:backend` is required. `:text_domain` is the catalog file
-and defaults to `"ash"`.
+translated text. `:backend` and `:values` are required. `:text_domain` is the
+catalog file and defaults to `"ash"`.
 
 The key is the `label:` you wrote on the value. Every value needs one: a value
 without it fails to compile, and the error lists those values. A description
@@ -53,7 +52,7 @@ end)
 ```
 
 With no translation, you get the label as written. A value without a
-description still returns `nil`. `details/1` is Ash's own and is not
+description still returns `nil`, and so does an empty value (`nil`). `details/1` is Ash's own and is not
 translated.
 
 ## Show an enum on a record
