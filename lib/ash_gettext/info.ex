@@ -3,7 +3,7 @@ defmodule AshGettext.Info do
   Read a domain's `gettext do ... end` configuration.
 
   `Spark.InfoGenerator` supplies the per-option readers — `gettext_backend/1`,
-  `gettext_default_locale/1`, `gettext_text_domain/1`, `gettext_locale_resolvers/1`,
+  `gettext_default_locale/1`, `gettext_text_domain/1`, `gettext_locale_resolver/1`,
   `gettext_translate_errors?/1` — each returning `{:ok, value}` or `:error`, plus
   raising `!` variants.
 
@@ -18,7 +18,7 @@ defmodule AshGettext.Info do
           backend: module(),
           default_locale: String.t(),
           text_domain: String.t(),
-          locale_resolvers: [module()],
+          locale_resolver: module() | nil,
           supported_locales: [String.t()]
         }
 
@@ -34,19 +34,80 @@ defmodule AshGettext.Info do
   def settings(domain) do
     # `gettext_translate_errors?/1` is a predicate option, so Spark generates it
     # returning a bare boolean rather than the `{:ok, value}` the others use.
-    with true <- translating?(domain),
-         {:ok, backend} <- gettext_backend(domain) do
-      {:ok,
-       %{
-         backend: backend,
-         default_locale: gettext_default_locale!(domain),
-         text_domain: gettext_text_domain!(domain),
-         locale_resolvers: gettext_locale_resolvers!(domain),
-         supported_locales: AshGettext.known_locales(backend)
-       }}
-    else
-      _not_translating -> :error
+    if translating?(domain), do: locale_settings(domain), else: :error
+  end
+
+  @doc """
+  The domain's gettext settings, whether or not error translation is on.
+
+  `:error` only when the domain has no `gettext` block. Used to find the
+  backend, text domain and language rules for enums, attributes and the
+  action's language.
+  """
+  @spec locale_settings(module() | map()) :: {:ok, settings()} | :error
+  def locale_settings(domain) do
+    case gettext_backend(domain) do
+      {:ok, backend} ->
+        {:ok,
+         %{
+           backend: backend,
+           default_locale: gettext_default_locale!(domain),
+           text_domain: gettext_text_domain!(domain),
+           locale_resolver: Spark.Dsl.Extension.get_opt(domain, [:gettext], :locale_resolver),
+           supported_locales: AshGettext.known_locales(backend)
+         }}
+
+      :error ->
+        :error
     end
+  rescue
+    # A domain without the extension has no such option.
+    _no_extension -> :error
+  end
+
+  @doc """
+  The `{backend, locale}` to use for `actor`, or `nil` for Gettext's current language.
+
+  Asks the domain's `locale_resolver` with the actor and fits the answer to the
+  catalogs. `nil` when there is no actor or the resolver returns
+  `nil`. Nothing here changes the process language.
+  """
+  @spec language(module() | map(), term()) :: {module(), String.t()} | nil
+  def language(_domain, nil), do: nil
+
+  def language(domain, actor) do
+    with {:ok, %{locale_resolver: resolver} = settings} when resolver != nil <-
+           locale_settings(domain),
+         answer when is_binary(answer) <- resolver.resolve(actor) do
+      {settings.backend,
+       AshGettext.Locale.Normalizer.normalize(
+         answer,
+         settings.supported_locales,
+         settings.default_locale
+       )}
+    else
+      _no_answer -> nil
+    end
+  end
+
+  @doc """
+  The written label of a resource's attribute from its `gettext` block, or `nil`.
+  """
+  @spec attribute_label(module(), atom()) :: String.t() | nil
+  def attribute_label(resource, attribute) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:gettext])
+    |> Enum.find_value(&(&1.attribute == attribute && &1.text))
+  end
+
+  @doc """
+  Every written attribute label of a resource, as `{attribute, text}`.
+  """
+  @spec attribute_labels(module()) :: [{atom(), String.t()}]
+  def attribute_labels(resource) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:gettext])
+    |> Enum.map(&{&1.attribute, &1.text})
   end
 
   defp translating?(domain) do

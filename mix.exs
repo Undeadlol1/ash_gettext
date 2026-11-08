@@ -33,6 +33,7 @@ defmodule AshGettext.MixProject do
       {:ash, "~> 3.32"},
       {:spark, "~> 2.3"},
       {:gettext, "~> 1.0"},
+      {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Only for `mix spark.cheat_sheets`, which generates the DSL reference.
@@ -42,7 +43,8 @@ defmodule AshGettext.MixProject do
 
   defp aliases do
     [
-      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshGettext.Domain",
+      "spark.cheat_sheets":
+        "spark.cheat_sheets --extensions AshGettext.Domain,AshGettext.Resource",
       docs: ["spark.cheat_sheets", "docs"]
     ]
   end
@@ -53,6 +55,7 @@ defmodule AshGettext.MixProject do
       source_ref: "v#{@version}",
       extras: [
         {"README.md", title: "Home"},
+        "documentation/topics/set-up-once.md",
         "documentation/topics/translating-text.md",
         "documentation/topics/locales.md",
         "documentation/topics/translating-errors.md",
@@ -61,6 +64,8 @@ defmodule AshGettext.MixProject do
         "documentation/topics/how-it-works.md",
         {"documentation/dsls/DSL-AshGettext.Domain.md",
          search_data: Spark.Docs.search_data_for(AshGettext.Domain)},
+        {"documentation/dsls/DSL-AshGettext.Resource.md",
+         search_data: Spark.Docs.search_data_for(AshGettext.Resource)},
         "CHANGELOG.md"
       ],
       groups_for_extras: [
@@ -71,27 +76,28 @@ defmodule AshGettext.MixProject do
       groups_for_modules: [
         "Public API": [
           AshGettext,
+          AshGettext.Enum,
           AshGettext.Domain,
           AshGettext.Resource,
-          AshGettext.Error,
-          AshGettext.Testing
+          AshGettext.Error
         ],
         Locales: [
-          AshGettext.Locale,
           AshGettext.Locale.Resolver,
-          AshGettext.Locale.FromContext,
           AshGettext.Locale.Normalizer
         ],
         "How it works": [
           AshGettext.Info,
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
+          AshGettext.AshMessages,
+          AshGettext.AshMessages.Translated,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
+          AshGettext.Domain.Transformers.MarkTexts,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
         ],
-        "Mix tasks": [Mix.Tasks.AshGettext.Extract, Mix.Tasks.AshGettext.Install]
+        "Mix tasks": [Mix.Tasks.AshGettext.Install]
       ]
     ]
   end

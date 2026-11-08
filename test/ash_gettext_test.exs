@@ -187,69 +187,68 @@ defmodule AshGettextTest do
     end
   end
 
-  describe "labelling an enum value" do
-    test "renders the label a catalog gives an enum value, per locale" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :placed, "en") == "Placed"
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :placed, "ru") == "Размещён"
+  describe "labelling an attribute" do
+    alias AshGettextFixture.Parcel
+
+    test "translates the written attribute label in Gettext's current language" do
+      assert Gettext.with_locale(Backend, "ru", fn ->
+               AshGettext.attribute_label(Parcel, :weight)
+             end) ==
+               "Вес"
+
+      assert Gettext.with_locale(Backend, "en", fn ->
+               AshGettext.attribute_label(Parcel, :weight)
+             end) ==
+               "Weight"
     end
 
-    test "accepts the value as a string, as it arrives from a payload" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, "placed", "ru") == "Размещён"
+    test "reports coverage" do
+      Gettext.with_locale(Backend, "ru", fn ->
+        assert {:ok, "Вес"} = AshGettext.attribute_label_or_missing(Parcel, :weight)
+        assert {:missing, "Label"} = AshGettext.attribute_label_or_missing(Parcel, :label)
+      end)
     end
 
-    test "accepts the attribute as a string too" do
-      assert AshGettext.enum_label(Backend, @text_domain, "status", :placed, "ru") == "Размещён"
+    test "raises for an unknown attribute" do
+      assert_raise ArgumentError, ~r/no attribute :nope/, fn ->
+        AshGettext.attribute_label(Parcel, :nope)
+      end
     end
 
-    test "renders a multi-word value from the catalog" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :awaiting_pickup, "en") ==
-               "Awaiting pickup"
+    test "raises for a resource whose domain has no gettext block" do
+      assert_raise ArgumentError, ~r/no gettext block/, fn ->
+        AshGettext.attribute_label(AshGettextFixture.Untranslated.Parcel, :weight)
+      end
     end
 
-    test "humanizes an uncovered value rather than putting the msgid on screen" do
-      assert AshGettext.enum_label(Backend, @text_domain, :status, :awaiting_refund, "ru") ==
-               "Awaiting refund"
-    end
-
-    test "humanizes an uncovered value of an attribute no catalog mentions at all" do
-      assert AshGettext.enum_label(Backend, @text_domain, :shipping_speed, :next_day, "en") ==
-               "Next day"
-    end
-  end
-
-  describe "labelling an enum value and reporting a gap" do
-    test "reports a covered value as :ok" do
-      assert {:ok, "Размещён"} =
-               AshGettext.enum_label_or_missing(Backend, @text_domain, :status, :placed, "ru")
-    end
-
-    test "never reports the source locale as :missing, and keeps the humanized label" do
-      assert {:ok, "Awaiting refund"} =
-               AshGettext.enum_label_or_missing(
-                 Backend,
-                 @text_domain,
-                 :status,
-                 :awaiting_refund,
-                 "en"
-               )
-    end
-
-    test "reports an uncovered value as :missing, with the humanized fallback" do
-      assert {:missing, "Awaiting refund"} =
-               AshGettext.enum_label_or_missing(
-                 Backend,
-                 @text_domain,
-                 :status,
-                 :awaiting_refund,
-                 "ru"
-               )
+    test "raises, naming the fix, for an attribute with no written label" do
+      assert_raise ArgumentError, ~r/no written label for :secret_note.*label :secret_note/, fn ->
+        AshGettext.attribute_label(Parcel, :secret_note)
+      end
     end
   end
 
-  describe "naming the msgid of an enum value" do
-    test "is the convention a catalog author has to know" do
-      assert AshGettext.enum_msgid(:status, :placed) == "status.placed"
-      assert AshGettext.enum_msgid("status", "awaiting_pickup") == "status.awaiting_pickup"
+  describe "missing telemetry from label functions" do
+    setup do
+      id = {__MODULE__, make_ref()}
+      test_pid = self()
+
+      :telemetry.attach(
+        id,
+        [:ash_gettext, :translation, :missing],
+        fn _event, _measurements, metadata, _ -> send(test_pid, {:missing, metadata}) end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+    end
+
+    test "attribute_label fires on a miss" do
+      Gettext.with_locale(Backend, "ru", fn ->
+        AshGettext.attribute_label(AshGettextFixture.Parcel, :label)
+      end)
+
+      assert_receive {:missing, %{msgid: "Label", locale: "ru"}}
     end
   end
 

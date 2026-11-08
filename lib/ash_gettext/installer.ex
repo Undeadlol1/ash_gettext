@@ -13,12 +13,11 @@ defmodule AshGettext.Installer do
 
   ## What cannot be generated
 
-  `locale_resolver` is deliberately left pointing at the library's generic
-  `AshGettext.Locale.FromContext`, which reads a locale someone already put on the
-  action context. Resolving "the signed-in user's saved language" needs to know
-  where the host stores that, which is exactly what a generic library must not
-  assume. `resolver_template/1` generates a module with the
-  behaviour and a `TODO` instead of guessing.
+  The resolver module itself. `locale_resolver` is written into every domain,
+  but reading a user's language needs to know where the host keeps it on the
+  actor, which a generic library must not assume. A generated stub would have to
+  return `nil`, and every translation would silently fall back to the default
+  language. So the host writes the module, and the build fails until it exists.
   """
 
   @typedoc """
@@ -42,10 +41,10 @@ defmodule AshGettext.Installer do
   ## Options
 
     * `:backend` — required; the host's Gettext backend module, as a string.
-    * `:text_domain` — the gettext text domain. Defaults to `"ash_errors"`, and
+    * `:text_domain` — the gettext text domain. Defaults to `"ash"`, and
       is then left out of the block.
-    * `:resolver` — a locale resolver module name to place ahead of the generic
-      context resolver. Omitted when absent.
+    * `:resolver` — a locale resolver module name. Defaults to
+      `default_resolver/1` of the backend.
   """
   @spec install_domain(String.t(), keyword()) :: result()
   def install_domain(content, opts) when is_binary(content) do
@@ -106,63 +105,36 @@ defmodule AshGettext.Installer do
   The `gettext do` block for a domain, as source text.
 
   Only what differs from the DSL defaults is written: `backend` always,
-  `text_domain` when it is not `"ash_errors"`, and `locale_resolvers` when a
-  `:resolver` was given. Repeating a default would pin it, so a later change to
+  `locale_resolver` always, and `text_domain` when it is not `"ash"`. Repeating a default would pin it, so a later change to
   the library's default would silently skip every installed domain.
   """
   @spec gettext_block(keyword()) :: String.t()
   def gettext_block(opts) do
+    backend = Keyword.fetch!(opts, :backend)
+
     lines =
-      ["backend #{Keyword.fetch!(opts, :backend)}"] ++
-        text_domain_line(opts[:text_domain]) ++ resolver_line(opts[:resolver])
+      ["backend #{backend}", "locale_resolver #{opts[:resolver] || default_resolver(backend)}"] ++
+        text_domain_line(opts[:text_domain])
 
     "  gettext do\n" <> Enum.map_join(lines, &"    #{&1}\n") <> "  end\n"
   end
 
   @doc """
-  A locale resolver the host must finish writing.
-
-  Generated rather than inferred: the library cannot know where an application
-  keeps a user's language, and guessing wrong is worse than an obvious `TODO`.
+  The resolver module name used when none is given: the backend's parent
+  namespace plus `LocaleResolver`, so `MyApp.Gettext` gives
+  `MyApp.LocaleResolver`.
   """
-  @spec resolver_template(String.t()) :: String.t()
-  def resolver_template(module) do
-    """
-    defmodule #{module} do
-      @moduledoc \"\"\"
-      Tells AshGettext how this application finds a user's language.
-
-      AshGettext ships no actor-aware resolver: it has no idea what a user is in
-      this app, and must not learn. This is the seam where that knowledge lives.
-      \"\"\"
-
-      @behaviour AshGettext.Locale.Resolver
-
-      @impl true
-      def resolve(%{actor: actor}) when is_map(actor) do
-        # TODO: return the locale this actor has chosen, or nil to fall back.
-        #
-        #   actor.locale
-        #   MyApp.Accounts.locale_for(actor)
-        #
-        # Returning nil is always safe — the next resolver, then the domain's
-        # default_locale, will answer.
-        _ = actor
-        nil
-      end
-
-      def resolve(_context), do: nil
-    end
-    """
+  @spec default_resolver(String.t()) :: String.t()
+  def default_resolver(backend) do
+    backend
+    |> String.split(".")
+    |> Enum.drop(-1)
+    |> Kernel.++(["LocaleResolver"])
+    |> Enum.join(".")
   end
 
-  defp text_domain_line(text_domain) when text_domain in [nil, "ash_errors"], do: []
+  defp text_domain_line(text_domain) when text_domain in [nil, "ash"], do: []
   defp text_domain_line(text_domain), do: [~s|text_domain "#{text_domain}"|]
-
-  defp resolver_line(nil), do: []
-
-  defp resolver_line(resolver),
-    do: ["locale_resolvers [AshGettext.Locale.FromContext, #{resolver}]"]
 
   # `use Ash.Domain` appears with an extensions list, or bare. Both are common.
   defp add_extension(content) do

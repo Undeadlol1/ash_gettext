@@ -27,9 +27,3 @@ msgstr "Weight must be at least %{min} kg"
 
 msgid "order_already_placed"
 msgstr "This order has already been placed"
-
-msgid "status.placed"
-msgstr "Placed"
-
-msgid "status.awaiting_pickup"
-msgstr "Awaiting pickup"

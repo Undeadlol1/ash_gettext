@@ -8,8 +8,8 @@ defmodule AshGettext.Domain do
         gettext do
           backend MyApp.Gettext
           default_locale "en"
-          text_domain "ash_errors"
-          locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
+          text_domain "ash"
+          locale_resolver MyApp.Locale
         end
 
         resources do
@@ -39,7 +39,7 @@ defmodule AshGettext.Domain do
       gettext do
         backend MyApp.Gettext
         default_locale "en"
-        text_domain "ash_errors"
+        text_domain "ash"
       end
       """
     ],
@@ -52,20 +52,21 @@ defmodule AshGettext.Domain do
       default_locale: [
         type: :string,
         default: "en",
-        doc: "The locale used when no resolver has an opinion."
+        doc: "The locale used when the resolver names a language the catalogs do not have."
       ],
       text_domain: [
         type: :string,
-        default: "ash_errors",
-        doc: "The gettext text domain error messages are looked up in."
+        default: "ash",
+        doc:
+          "The gettext text domain for everything Ash-derived: errors, enum labels, attribute names."
       ],
-      locale_resolvers: [
-        type: {:list, {:behaviour, AshGettext.Locale.Resolver}},
-        default: [AshGettext.Locale.FromContext],
+      locale_resolver: [
+        type: {:behaviour, AshGettext.Locale.Resolver},
+        required: true,
         doc: """
-        Modules implementing `AshGettext.Locale.Resolver`, tried in order until one
-        answers. Host-specific resolvers (\"read the user's stored locale\") belong
-        here; the library ships only the generic ones.
+        Required. A module implementing `AshGettext.Locale.Resolver`. It reads the
+        language from the action's actor. With no actor, Gettext's current process
+        language is used.
         """
       ],
       translate_errors?: [
@@ -87,5 +88,6 @@ defmodule AshGettext.Domain do
   }
   use Spark.Dsl.Extension,
     sections: [@gettext],
-    verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions]
+    verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions],
+    transformers: [AshGettext.Domain.Transformers.MarkTexts]
 end

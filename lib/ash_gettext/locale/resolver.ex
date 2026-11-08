@@ -1,30 +1,22 @@
 defmodule AshGettext.Locale.Resolver do
   @moduledoc """
-  How a host application answers "what language is this request in?".
+  Reads a user's language from the actor.
 
-  The library ships only resolvers that can work without knowing anything about
-  the host — `AshGettext.Locale.FromContext` reads a locale someone already put on
-  the action context. Anything that needs to know what a *user* is, or where
-  their preference is stored, is the host's job: implement this behaviour in the
-  host application and name the module in the domain DSL.
+  Name one in the domain's `gettext` block with `locale_resolver`. It is called
+  only with a non-nil actor. Return `nil` to use Gettext's current process
+  language.
 
-  A resolver returns `nil` to mean "I have no opinion", which lets the next
-  resolver in the chain answer.
-
-      defmodule MyApp.Localization.AshGettextAdapter do
+      defmodule MyApp.LocaleResolver do
         @behaviour AshGettext.Locale.Resolver
 
         @impl true
-        def resolve(%{actor: actor}) when not is_nil(actor) do
-          MyApp.Accounts.locale_for(actor)
-        end
-
-        def resolve(_context), do: nil
+        def resolve(%{language: language}), do: language
+        def resolve(_actor), do: nil
       end
   """
 
   @doc """
-  Return the locale this resolver reads from `context`, or `nil` to defer.
+  Return the actor's language, or `nil` for Gettext's current process language.
   """
-  @callback resolve(context :: map()) :: String.t() | nil
+  @callback resolve(actor :: term()) :: String.t() | nil
 end

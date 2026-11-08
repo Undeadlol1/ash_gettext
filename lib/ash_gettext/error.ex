@@ -5,19 +5,21 @@ defmodule AshGettext.Error do
   Ash errors carry no code concept, and AshJsonApi hardcodes `code` per error
   type, so a client cannot branch on "which rule rejected this" without parsing
   a sentence. This struct pairs the two: `code` is what a client switches on,
-  `message` is the gettext msgid that becomes the sentence the person reads.
+  `message` is the sentence the person reads, written in English. It is the
+  gettext msgid.
 
       {:error, AshGettext.Error.exception(
         code: :weight_too_low,
         field: :weight,
-        message: "weight_too_low",
+        message: "must weigh at least %{min} kg",
         vars: [min: 30]
       )}
 
   ## Fields
 
     * `:code` — required atom; `exception/1` raises `ArgumentError` without it.
-    * `:message` — the msgid. Left as is when no catalog covers it.
+    * `:message` — the written sentence, which is the msgid. Left as is when no
+      catalog covers it.
     * `:field` — optional; when set, JSON:API points `source.pointer` at it.
     * `:vars` — interpolation values for the translated sentence; JSON:API
       also exposes them as `meta`.
@@ -32,15 +34,16 @@ defmodule AshGettext.Error do
 
   ## Extraction
 
-  `mix ash_gettext.extract` finds `message:` given as a literal string. A
-  message passed as a module attribute or other expression is silently
-  skipped, so add its msgid to the template by hand.
+  `mix gettext.extract` finds `message:` given as a literal string in a
+  resource or in a validation or change module it uses. A message built
+  anywhere else, or passed as a module attribute or other expression, is not
+  found: mark it with `dgettext_noop("ash", "...")`.
 
   ## JSON:API
 
   When `:ash_json_api` is a dependency, the error renders with its `code` as a
   string, the message as `detail`, `vars` as `meta`, and the status of its
-  class.
+  class. It has no `title`, so no untranslated English reaches the reader.
   """
 
   use Splode.Error, fields: [:code, :field, :message], class: :invalid
@@ -51,7 +54,7 @@ defmodule AshGettext.Error do
   Raises `ArgumentError` when `:code` is missing or `nil`. The other fields
   are `:message`, `:field` and `:vars`, all optional here.
 
-      AshGettext.Error.exception(code: :weight_too_low, message: "weight_too_low")
+      AshGettext.Error.exception(code: :weight_too_low, message: "must weigh at least %{min} kg")
   """
   @impl true
   def exception(opts) do
@@ -63,10 +66,10 @@ defmodule AshGettext.Error do
   end
 
   @doc """
-  Return the error's `:message`, which is the gettext msgid.
+  Return the error's `:message`.
 
   Ash and Elixir call this when they print the error, so an untranslated error
-  reads as its msgid.
+  reads as the sentence you wrote.
   """
   @impl true
   def message(%{message: message}), do: message
@@ -79,7 +82,6 @@ if Code.ensure_loaded?(AshJsonApi.ToJsonApiError) do
         id: Ash.UUID.generate(),
         status_code: AshJsonApi.Error.class_to_status(error.class),
         code: to_string(error.code),
-        title: "Rejected",
         detail: error.message,
         source_pointer: error.field && "/data/attributes/#{error.field}",
         meta: Map.new(error.vars)

@@ -1,6 +1,8 @@
 defmodule AshGettext do
   @moduledoc """
-  Translate the text an Ash app shows: strings, plurals and enum values.
+  Translate the text an Ash app shows: strings, plurals, enum labels and attribute labels.
+
+  Enum values translate themselves: see `AshGettext.Enum`.
 
       AshGettext.translate(MyApp.Gettext, "default", "Order shipped", [], "ru")
       #=> "Заказ отправлен"
@@ -43,6 +45,7 @@ defmodule AshGettext do
   def translate(backend, text_domain, msgid, bindings, locale) do
     backend
     |> translate_or_missing(text_domain, msgid, bindings, locale)
+    |> report_missing(backend, text_domain, to_msgid(msgid), locale)
     |> text_of()
   end
 
@@ -80,6 +83,7 @@ defmodule AshGettext do
   def translate_plural(backend, text_domain, msgid, msgid_plural, count, bindings, locale) do
     backend
     |> translate_plural_or_missing(text_domain, msgid, msgid_plural, count, bindings, locale)
+    |> report_missing(backend, text_domain, to_msgid(msgid), locale)
     |> text_of()
   end
 
@@ -116,48 +120,35 @@ defmodule AshGettext do
   end
 
   @doc """
-  The label a catalog gives one value of an enum attribute.
+  The translated label of a resource attribute, in Gettext's current language.
 
-  The msgid is `"<attribute>.<value>"` — see `enum_msgid/2`. An uncovered value
-  falls back to a humanized form of the value itself (`:awaiting_pickup` reads
-  as `"Awaiting pickup"`), because the alternative is putting `status.awaiting_pickup`
-  in front of a user. The fallback is a stopgap that keeps a screen readable, not
-  a substitute for the catalog entry — use `enum_label_or_missing/5` to assert coverage.
-
-  Nothing here touches the attribute or its `Ash.Type.Enum`: this is a function
-  a caller uses where they already render, not a change to a resource.
+  The text is the one you wrote in the resource's `gettext` block
+  (`label :delivery_date, "Delivery date"`). It is never made from the
+  attribute's code name. The backend and text domain come from the resource's
+  domain (`AshGettext.Domain`). Misses fall back to the written text and are
+  reported through telemetry. Raises `ArgumentError` for an unknown attribute,
+  an attribute with no written label, or a resource whose domain has no
+  `gettext` block.
   """
-  @spec enum_label(backend(), text_domain(), msgid(), msgid(), locale()) :: String.t()
-  def enum_label(backend, text_domain, attribute, value, locale) do
+  @spec attribute_label(module(), atom()) :: String.t()
+  def attribute_label(resource, attribute) do
+    {backend, text_domain, msgid} = attribute_lookup!(resource, attribute)
+
     backend
-    |> enum_label_or_missing(text_domain, attribute, value, locale)
+    |> translate_or_missing(text_domain, msgid, [], Gettext.get_locale(backend))
+    |> report_missing(backend, text_domain, msgid, Gettext.get_locale(backend))
     |> text_of()
   end
 
   @doc """
-  The label for an enum value, reporting whether the catalog covered it.
+  The label of a resource attribute, reporting whether the catalog covered it.
   """
-  @spec enum_label_or_missing(backend(), text_domain(), msgid(), msgid(), locale()) ::
+  @spec attribute_label_or_missing(module(), atom()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def enum_label_or_missing(backend, text_domain, attribute, value, locale) do
-    msgid = enum_msgid(attribute, value)
-
-    case translate_or_missing(backend, text_domain, msgid, [], locale) do
-      # The source locale echoes an uncovered msgid as a hit; a label must still read as a word.
-      {:ok, ^msgid} -> {:ok, humanize(value)}
-      {:ok, label} -> {:ok, label}
-      {:missing, _msgid} -> {:missing, humanize(value)}
-    end
+  def attribute_label_or_missing(resource, attribute) do
+    {backend, text_domain, msgid} = attribute_lookup!(resource, attribute)
+    translate_or_missing(backend, text_domain, msgid, [], Gettext.get_locale(backend))
   end
-
-  @doc """
-  The msgid an enum value is looked up under: `"<attribute>.<value>"`.
-
-  Public because a catalog author has to know it, and because it is what
-  `mix ash_gettext.extract` and any hand-written entry must agree on.
-  """
-  @spec enum_msgid(msgid(), msgid()) :: String.t()
-  def enum_msgid(attribute, value), do: "#{to_msgid(attribute)}.#{to_msgid(value)}"
 
   @doc """
   The locales `backend` ships catalogs for.
@@ -166,7 +157,34 @@ defmodule AshGettext do
   list can never drift from the catalogs on disk.
   """
   @spec known_locales(backend()) :: [locale()]
-  def known_locales(backend), do: Gettext.known_locales(backend)
+  def known_locales(backend) do
+    Enum.uniq([source_locale(backend) | Gettext.known_locales(backend)])
+  end
+
+  @doc """
+  The backend's source locale: the language its msgids are written in, which
+  needs no catalog.
+  """
+  @spec source_locale(backend()) :: locale()
+  def source_locale(backend) do
+    if function_exported?(backend, :__gettext__, 1),
+      do: backend.__gettext__(:default_locale),
+      else: Application.get_env(:gettext, :default_locale, "en")
+  end
+
+  # Emits `[:ash_gettext, :translation, :missing]` so an app can count gaps.
+  defp report_missing({:missing, _} = result, backend, text_domain, msgid, locale) do
+    :telemetry.execute([:ash_gettext, :translation, :missing], %{count: 1}, %{
+      backend: backend,
+      text_domain: text_domain,
+      msgid: msgid,
+      locale: locale
+    })
+
+    result
+  end
+
+  defp report_missing(result, _backend, _text_domain, _msgid, _locale), do: result
 
   defp text_of({:ok, translated}), do: translated
   defp text_of({:missing, fallback}), do: fallback
@@ -178,16 +196,8 @@ defmodule AshGettext do
   end
 
   # In gettext the source text IS the msgid, so an echoed msgid in the source
-  # locale is a hit. The backend's `__gettext__(:default_locale)` already falls
-  # back to the global `:gettext` `:default_locale` (gettext's compiler.ex).
-  defp source_locale?(backend, locale) do
-    default_locale =
-      if function_exported?(backend, :__gettext__, 1),
-        do: backend.__gettext__(:default_locale),
-        else: Application.get_env(:gettext, :default_locale, "en")
-
-    locale == default_locale
-  end
+  # locale is a hit.
+  defp source_locale?(backend, locale), do: locale == source_locale(backend)
 
   # Gettext's runtime entry points are reached through apply/3 so the compiler
   # treats the msgid as data. Calling them directly makes gettext's extraction
@@ -197,13 +207,25 @@ defmodule AshGettext do
     apply(Gettext, entry_point, args)
   end
 
-  # Sentence case, not title case: an enum value is a word, and `Awaiting pickup`
-  # is what a person would have written if they had written it.
-  defp humanize(value) do
-    value
-    |> to_msgid()
-    |> String.replace("_", " ")
-    |> String.capitalize()
+  defp attribute_lookup!(resource, attribute) do
+    unless Ash.Resource.Info.attribute(resource, attribute) do
+      raise ArgumentError, "#{inspect(resource)} has no attribute #{inspect(attribute)}"
+    end
+
+    case AshGettext.Info.locale_settings(Ash.Resource.Info.domain(resource)) do
+      {:ok, settings} ->
+        {settings.backend, settings.text_domain, written_label!(resource, attribute)}
+
+      :error ->
+        raise ArgumentError, "the domain of #{inspect(resource)} has no gettext block"
+    end
+  end
+
+  defp written_label!(resource, attribute) do
+    AshGettext.Info.attribute_label(resource, attribute) ||
+      raise ArgumentError,
+            "#{inspect(resource)} has no written label for #{inspect(attribute)}. " <>
+              "Add `label #{inspect(attribute)}, \"...\"` to its `gettext` block."
   end
 
   defp to_msgid(msgid) when is_atom(msgid), do: Atom.to_string(msgid)

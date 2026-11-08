@@ -16,11 +16,13 @@ defmodule AshGettext.ResourceTest do
   test "adds no attribute" do
     attributes = Parcel |> Info.attributes() |> Enum.map(& &1.name) |> Enum.sort()
 
-    assert attributes == [:id, :label, :weight]
+    assert attributes == [:id, :label, :past_statuses, :secret_note, :status, :weight]
   end
 
-  test "adds no calculation" do
-    assert Info.calculations(Parcel) == []
+  test "adds only the enum label calculations" do
+    names = Parcel |> Info.calculations() |> Enum.map(& &1.name) |> Enum.sort()
+
+    assert names == [:past_statuses_label, :status_label]
   end
 
   test "adds no aggregate" do
@@ -34,7 +36,7 @@ defmodule AshGettext.ResourceTest do
   test "adds no action" do
     actions = Parcel |> Info.actions() |> Enum.map(& &1.name) |> Enum.sort()
 
-    assert actions == [:create, :read, :relabel]
+    assert actions == [:create, :destroy, :read, :relabel]
   end
 
   test "leaves attribute types exactly as declared" do

@@ -11,8 +11,8 @@ Declares, once per Ash domain, how its action errors are translated.
       gettext do
         backend MyApp.Gettext
         default_locale "en"
-        text_domain "ash_errors"
-        locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
+        text_domain "ash"
+        locale_resolver MyApp.Locale
       end
 
       resources do
@@ -44,7 +44,7 @@ Configure how the errors of this domain's actions are translated.
 gettext do
   backend MyApp.Gettext
   default_locale "en"
-  text_domain "ash_errors"
+  text_domain "ash"
 end
 
 ```
@@ -57,9 +57,9 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`backend`](#gettext-backend){: #gettext-backend .spark-required} | `atom` |  | The Gettext backend whose catalogs this domain translates against. |
-| [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when no resolver has an opinion. |
-| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash_errors"` | The gettext text domain error messages are looked up in. |
-| [`locale_resolvers`](#gettext-locale_resolvers){: #gettext-locale_resolvers } | `list(module)` | `[AshGettext.Locale.FromContext]` | Modules implementing `AshGettext.Locale.Resolver`, tried in order until one answers. Host-specific resolvers ("read the user's stored locale") belong here; the library ships only the generic ones. |
+| [`locale_resolver`](#gettext-locale_resolver){: #gettext-locale_resolver .spark-required} | `module` |  | Required. A module implementing `AshGettext.Locale.Resolver`. It reads the language from the action's actor. With no actor, Gettext's current process language is used. |
+| [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when the resolver names a language the catalogs do not have. |
+| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for everything Ash-derived: errors, enum labels, attribute names. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |
 

@@ -1,38 +1,116 @@
 defmodule AshGettext.Extractor do
   @moduledoc """
-  Find the translatable `message:` strings that plain gettext extraction misses.
+  Shows every text AshGettext translates to `mix gettext.extract`.
 
-  `mix gettext.extract` works by compiling the app and recording every call to a
-  gettext macro. Ash's error messages are not gettext calls — they are `message:`
-  options written inside resource DSL blocks and validation modules:
+  `mix gettext.extract` compiles the app and records each Gettext macro it
+  meets. The texts AshGettext translates are plain strings, not macro calls:
+  enum labels, attribute labels, `message:` options and the sentences for
+  Ash's own errors. So while the app compiles, `AshGettext.Enum` and
+  `AshGettext.Domain` hand each one to `Gettext.Macros.dgettext_noop_with_backend/3`
+  in the app's own modules, with the backend and text domain the lookups use.
 
-      identity :one_per_type, [:user_id, :streak_type] do
-        message "A streak of this type already exists for this user"
-      end
-
-      {:error, field: :weight, message: "must be at least %{min} kg"}
-
-  Nothing in that is a macro gettext knows about, so those strings never reach a
-  `.pot` file and never get translated. The usual workaround is to wrap each one
-  in `Gettext.Macros.dgettext_noop/2` by hand — which is churn across every call
-  site, and something a reviewer has to remember forever.
-
-  This module reads the source instead. It parses each file and collects every
-  `message:` whose value is a plain string, so no call site has to change and
-  forgetting is not possible.
-
-  Interpolated messages are skipped on purpose: `message: "Bad frequency:
-  \#{inspect(value)}"` cannot be a msgid, because the msgid has to be a constant
-  the catalog can key on. Those are reported separately by `find_messages/1` so they can
-  be found and rewritten with gettext bindings rather than silently ignored.
-
-  Pure: give it source text, get back results. No compilation, no app state.
+  A validation or change module a resource uses is read from its source file:
+  every `message:` whose value is a plain string is found there. An
+  interpolated message (`message: "too heavy: \#{weight}"`) cannot be a msgid,
+  so it is reported as a compile warning instead.
   """
 
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
   @type message :: %{msgid: String.t(), references: [reference_entry()]}
   @type interpolated :: %{path: String.t(), line: pos_integer()}
   @type find_result :: %{messages: [message()], interpolated: [interpolated()]}
+
+  @doc """
+  Marks each text for `mix gettext.extract`, as if `env`'s module had called
+  `Gettext.Macros.dgettext_noop_with_backend(backend, text_domain, text)`.
+  Does nothing unless Gettext is extracting.
+  """
+  @spec mark(Macro.Env.t(), module(), String.t(), [String.t()]) :: :ok
+  def mark(env, backend, text_domain, texts) do
+    if Gettext.Extractor.extracting?() do
+      calls =
+        for text <- Enum.uniq(texts) do
+          quote do
+            Gettext.Macros.dgettext_noop_with_backend(
+              unquote(backend),
+              unquote(text_domain),
+              unquote(text)
+            )
+          end
+        end
+
+      Code.eval_quoted({:__block__, [], [quote(do: require(Gettext.Macros)) | calls]}, [], env)
+    end
+
+    :ok
+  end
+
+  @doc """
+  The texts a resource shows: its written attribute labels and, with
+  `messages?`, every literal `message` in its DSL and in the app's own
+  validation, change and preparation modules it uses.
+  """
+  @spec resource_texts(module(), boolean()) :: [String.t()]
+  def resource_texts(resource, messages?) do
+    labels = for {_attribute, text} <- AshGettext.Info.attribute_labels(resource), do: text
+
+    if messages? do
+      {messages, modules} = walk(dsl_entities(resource), {[], []})
+      labels ++ messages ++ Enum.flat_map(Enum.uniq(modules), &module_messages/1)
+    else
+      labels
+    end
+  end
+
+  defp dsl_entities(resource) do
+    for {path, %{entities: entities}} when is_list(path) <- resource.spark_dsl_config(),
+        path != [:gettext],
+        do: entities
+  end
+
+  # Any `message` holding a string, and any `{module, opts}` implementing a
+  # validation, change or preparation, wherever the DSL nests it.
+  defp walk({:message, text}, {messages, modules}) when is_binary(text),
+    do: {[text | messages], modules}
+
+  defp walk({key, {module, opts}}, {messages, modules})
+       when key in [:validation, :change, :preparation] and is_atom(module),
+       do: walk(opts, {messages, [module | modules]})
+
+  defp walk(%_{} = struct, acc), do: walk(Map.from_struct(struct), acc)
+  defp walk(map, acc) when is_map(map), do: walk(Map.to_list(map), acc)
+  defp walk(list, acc) when is_list(list), do: Enum.reduce(list, acc, &walk/2)
+  defp walk(tuple, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), acc)
+  defp walk(_other, acc), do: acc
+
+  # Only the app's own modules: Ash's built-in ones live under deps.
+  defp module_messages(module) do
+    with {:module, ^module} <- Code.ensure_compiled(module),
+         source when is_list(source) <- module.module_info(:compile)[:source],
+         path = List.to_string(source),
+         true <- app_source?(path),
+         {:ok, contents} <- File.read(path) do
+      result = find_messages([{path, contents}])
+      Enum.each(result.interpolated, &warn_interpolated/1)
+      Enum.map(result.messages, & &1.msgid)
+    else
+      _not_the_apps -> []
+    end
+  end
+
+  defp app_source?(path) do
+    cwd = File.cwd!()
+    String.starts_with?(path, cwd <> "/") and not String.starts_with?(path, cwd <> "/deps/")
+  end
+
+  defp warn_interpolated(%{path: path, line: line}) do
+    IO.warn(
+      "this interpolated message cannot be a msgid, so it is not translated. " <>
+        ~s|Write a constant message and pass the varying part as vars, e.g. message: "must be at most %{max}", vars: [max: max].|,
+      file: path,
+      line: line
+    )
+  end
 
   @doc """
   Scan `sources` — a list of `{path, contents}` — for translatable messages.
@@ -52,14 +130,6 @@ defmodule AshGettext.Extractor do
         |> Enum.map(&%{path: &1.path, line: &1.line})
         |> Enum.sort_by(&{&1.path, &1.line})
     }
-  end
-
-  @doc """
-  Render extracted messages as the contents of a `.pot` file.
-  """
-  @spec to_template([message()]) :: String.t()
-  def to_template(messages) do
-    Enum.join([template_header() | Enum.map(messages, &entry/1)], "\n")
   end
 
   defp read_source(path, contents) do
@@ -131,41 +201,5 @@ defmodule AshGettext.Extractor do
       }
     end)
     |> Enum.sort_by(& &1.msgid)
-  end
-
-  defp template_header do
-    """
-    ## This file is a PO Template file.
-    ##
-    ## Generated by `mix ash_gettext.extract` from Ash `message:` options, which
-    ## plain `mix gettext.extract` cannot see. Do not edit by hand — re-run the
-    ## task instead. Translations belong in the matching `.po` files.
-    msgid ""
-    msgstr ""
-    """
-  end
-
-  # A reference deliberately carries no line number: the template is compared
-  # byte for byte against a fresh extraction, so any edit above a `message:`
-  # would move a line and be reported as a message change.
-  defp entry(%{msgid: msgid, references: references}) do
-    file_references =
-      references
-      |> Enum.map(& &1.path)
-      |> Enum.uniq()
-      |> Enum.map_join("\n", &"#: #{&1}")
-
-    """
-    #{file_references}
-    msgid "#{escape(msgid)}"
-    msgstr ""
-    """
-  end
-
-  defp escape(string) do
-    string
-    |> String.replace("\\", "\\\\")
-    |> String.replace("\"", "\\\"")
-    |> String.replace("\n", "\\n")
   end
 end

@@ -33,7 +33,7 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandlerTest do
     end
 
     test "the app's handler is what actually runs" do
-      result = Ash.create(Opinionated.Parcel, %{weight: 5}, context: %{locale: "ru"})
+      result = Ash.create(Opinionated.Parcel, %{weight: 5}, actor: %{language: "ru"})
 
       assert {:error, %{errors: [%{message: "handled by the app"}]}} = result
     end

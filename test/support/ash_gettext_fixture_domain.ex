@@ -120,7 +120,7 @@ defmodule AshGettextFixture.Parcel do
   end
 
   actions do
-    defaults([:read])
+    defaults([:read, :destroy])
 
     create :create do
       primary?(true)
@@ -147,6 +147,22 @@ defmodule AshGettextFixture.Parcel do
     attribute :label, :string do
       public?(true)
     end
+
+    attribute :status, AshGettextFixture.ParcelStatus do
+      public?(true)
+    end
+
+    attribute :past_statuses, {:array, AshGettextFixture.ParcelStatus} do
+      public?(true)
+    end
+
+    attribute(:secret_note, :string)
+  end
+
+  gettext do
+    label(:weight, "Weight")
+    label(:label, "Label")
+    label(:past_statuses, "Past statuses")
   end
 end
 
@@ -184,6 +200,83 @@ defmodule AshGettextFixture.ComparedParcel do
   end
 end
 
+defmodule AshGettextFixture.Delivery do
+  @moduledoc "A resource whose only rules are Ash's own: a required date and a typed count."
+
+  use Ash.Resource,
+    domain: AshGettextFixture.Shipping,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  ets do
+    private?(true)
+  end
+
+  actions do
+    defaults([:read, create: [:delivery_date, :count]])
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :delivery_date, :date do
+      allow_nil?(false)
+      public?(true)
+    end
+
+    attribute :count, :integer do
+      public?(true)
+    end
+  end
+end
+
+defmodule AshGettextFixture.PlainKind do
+  @moduledoc false
+  use Ash.Type.Enum, values: [:a, :b]
+end
+
+defmodule AshGettextFixture.Crate do
+  @moduledoc "Enum attributes: one translated and already labelled, one not translated."
+
+  use Ash.Resource,
+    domain: AshGettextFixture.Shipping,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  ets do
+    private?(true)
+  end
+
+  actions do
+    defaults([:read, create: [:status, :kind]])
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :status, AshGettextFixture.ParcelStatus do
+      public?(true)
+    end
+
+    attribute :kind, AshGettextFixture.PlainKind do
+      public?(true)
+    end
+  end
+
+  calculations do
+    calculate(:status_label, :string, expr("mine"), public?: true)
+  end
+end
+
+defmodule AshGettextFixture.ActorLanguage do
+  @moduledoc "A resolver that reads the language off the actor."
+  @behaviour AshGettext.Locale.Resolver
+
+  @impl true
+  def resolve(%{language: language}), do: language
+  def resolve(_actor), do: nil
+end
+
 defmodule AshGettextFixture.Shipping do
   @moduledoc "A domain that translates, for the library's own suite."
 
@@ -193,12 +286,14 @@ defmodule AshGettextFixture.Shipping do
     backend(AshGettextFixture.Gettext)
     default_locale("en")
     text_domain("fixture")
-    locale_resolvers([AshGettext.Locale.FromContext])
+    locale_resolver(AshGettextFixture.ActorLanguage)
   end
 
   resources do
     resource(AshGettextFixture.Parcel)
     resource(AshGettextFixture.ComparedParcel)
+    resource(AshGettextFixture.Crate)
+    resource(AshGettextFixture.Delivery)
   end
 end
 
@@ -240,6 +335,7 @@ defmodule AshGettextFixture.Opinionated do
   gettext do
     backend(AshGettextFixture.Gettext)
     text_domain("fixture")
+    locale_resolver(AshGettextFixture.ActorLanguage)
   end
 
   resources do
@@ -261,6 +357,7 @@ defmodule AshGettextFixture.SwitchedOff do
   gettext do
     backend(AshGettextFixture.Gettext)
     text_domain("fixture")
+    locale_resolver(AshGettextFixture.ActorLanguage)
     translate_errors?(false)
   end
 

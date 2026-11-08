@@ -6,30 +6,57 @@ The first packaged version. Not published to Hex yet.
 
 ### Changes
 
-- `AshGettext.translate/5`, `translate_plural/7` and `enum_label/5` translate
-  text, plurals and enum values, with the language passed as an argument.
-- `AshGettext.Locale.resolve/2` picks a language your catalogs have from
-  resolvers, such as one that reads the signed-in user.
+- Every attribute with an `AshGettext.Enum` type gets a public
+  `<attribute>_label` field on resources that use `AshGettext.Resource`.
+  Load it (`load: [:status_label]`) to get the translated label on the record.
+- `use AshGettext.Enum, backend: MyApp.Gettext, values: [...]` makes an Ash
+  enum whose own `label/1` and `description/1` return the translated text, in
+  Gettext's current locale. It calls `use Ash.Type.Enum` for you. There is no
+  wrapper to call. An empty value (`nil`) has no label and no description.
+- `AshGettext.translate/5` and `translate_plural/7` are the pure functions
+  underneath, with the language passed as an argument.
+- Running an action with `actor:` gives loaded `_label` fields and error
+  messages in that user's language, using the domain's one `locale_resolver`.
+  It gets the actor and returns its language. With no actor, Gettext's
+  current process language is used. No action changes the process language,
+  so a long-lived process never runs the next job in the last user's
+  language.
+- User-facing text is always written by a person. The library never makes it
+  from a code name. An enum value without a `label:` is a compile error.
+- A resource's `gettext` block holds written attribute labels
+  (`label :delivery_date, "Delivery date"`). `attribute_label/2` translates
+  one and raises for an attribute with no written label. A `label` for an
+  attribute the resource does not have fails the build.
+- A lookup with no translation sends the telemetry event
+  `[:ash_gettext, :translation, :missing]`, with `backend`, `text_domain`,
+  `msgid` and `locale`.
+- `AshGettext.known_locales/1` includes the source locale.
+- A resolver's answer is cut to a language your catalogs have (`ru_RU`
+  becomes `ru`), or `default_locale`. A resolver must be a pure function of
+  the actor and must not query the database.
 - `AshGettext.Domain` and `AshGettext.Resource` extensions. A `gettext do`
   block on a domain translates the errors of every create, update and destroy
-  action on its resources, in the locale its resolvers pick.
-- `text_domain` defaults to `ash_errors`, naming the catalog errors are looked
-  up in.
-- `mix ash_gettext.extract` writes every Ash `message:` to a `.pot` template,
-  into the file the lookups read: the backend's `priv` directory holding
-  `<text_domain>.pot`. `--check` fails in CI when the template is out of date.
-  When an app's domains name different text domains, the task lists them and
-  asks for `--output`.
+  action on its resources, in Gettext's current language.
+- `text_domain` defaults to `"ash"`: one catalog for Ash's errors, enum labels
+  and attribute names. Text from `translate/3` uses Gettext's `"default"`.
+- Gettext's own `mix gettext.extract` finds every text AshGettext translates:
+  enum labels and descriptions, attribute labels, the `message`s in a
+  resource's DSL and in the validation, change and preparation modules it
+  uses, and Ash's own error sentences. Each goes to its domain's backend and
+  `text_domain`. There is no extract task of AshGettext's own.
 - `mix ash_gettext.install` previews, and with `--apply` writes, the domain
   and resource extensions and the `gettext` block for an existing app.
-- `translate_or_missing/5`, `translate_plural_or_missing/7` and
-  `enum_label_or_missing/5` never report `:missing` in the source locale (the
+- `translate_or_missing/5`, `translate_plural_or_missing/7`
+  and `attribute_label_or_missing/2` never report `:missing` in the source locale (the
   backend's default locale). The msgid is the text, so the source language
   needs no catalog.
 - `require_resource_extension?` on the `gettext` block is an opt-in compile
   time check that every resource in the domain carries `AshGettext.Resource`.
+- Ash's own errors that have no message (a missing required value, a value
+  that does not cast, a failed policy) come back with a written sentence in
+  the user's language, such as "is required", not text built from a field
+  name. The sentences live in `AshGettext.AshMessages`, and
+  `mix gettext.extract` adds them to the template.
 - `AshGettext.Error` is a user-facing error with a required `code`, a
   translatable `message`, and an optional `field` and `vars`. It renders for
-  JSON:API when `:ash_json_api` is present, which is an optional dependency.
-- `AshGettext.Testing` has `assert_translates/6` and `assert_covered/5` for
-  checking a message and a catalog in your own tests.
+  JSON:API, with no English `title`, when `:ash_json_api` is present, which is an optional dependency.

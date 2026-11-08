@@ -31,6 +31,7 @@ defmodule AshGettext.Domain.Verifiers.ValidateResourceExtensionsTest do
 
       gettext do
         backend AshGettextFixture.Gettext
+        locale_resolver AshGettextFixture.ActorLanguage
         require_resource_extension? #{verify?}
       end
 

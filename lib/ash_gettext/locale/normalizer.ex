@@ -6,7 +6,7 @@ defmodule AshGettext.Locale.Normalizer do
   the language subtag. This module is the single place that reconciles the two,
   so no call site has to decide what `en_KZ` means.
 
-  `AshGettext.Locale.resolve/2` runs it on the first answer your resolvers give.
+  `AshGettext.Info.language/2` runs it on what the resolver returns.
   It runs on every translated error, so it does no I/O and keeps no state.
   A language the backend does not ship falls back to the default locale.
   """

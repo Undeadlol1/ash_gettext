@@ -20,6 +20,19 @@ instead of reinventing one. That is the only reason "Gettext" is in the
 name. The library is not "a Gettext wrapper" and not an i18n framework of
 its own.
 
+## Rules the code follows
+
+- **User-facing text is written by a person.** Never make it from a code name
+  (`:awaiting_pickup` is not "Awaiting pickup"). Missing text is a build error,
+  never a made-up fallback.
+- **Plug into Ash, don't wrap Gettext.** Use Ash's own hooks (an enum's
+  `label/1`, an action's error handler, calculations) so the text Ash already
+  shows comes out translated. No "call our function instead" helpers.
+- **The language comes from the action's actor;** nothing changes the
+  process language behind your back.
+- **Docs go in the order a newcomer works:** install, set up once, tell it the
+  user's language, then use it.
+
 ## Do not
 
 - Describe it as an error translator. Errors are one feature of several.

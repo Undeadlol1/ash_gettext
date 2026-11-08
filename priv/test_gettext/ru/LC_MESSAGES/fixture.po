@@ -19,11 +19,29 @@ msgstr "Вес должен быть не менее %{min} кг"
 msgid "order_already_placed"
 msgstr "Этот заказ уже размещён"
 
-msgid "status.placed"
-msgstr "Размещён"
-
-msgid "status.awaiting_pickup"
-msgstr "Ожидает выдачи"
-
 msgid "must weigh at least %{greater_than_or_equal_to} kg"
 msgstr "должен весить не меньше %{greater_than_or_equal_to} кг"
+
+msgid "Order placed"
+msgstr "Заказ размещён"
+
+msgid "Ready for pickup"
+msgstr "Ожидает выдачи"
+
+msgid "On its way"
+msgstr "В пути"
+
+msgid "Weight"
+msgstr "Вес"
+
+msgid "Ready at the pickup point"
+msgstr "Готов к выдаче в пункте"
+
+msgid "is required"
+msgstr "обязательное поле"
+
+msgid "is invalid"
+msgstr "неверное значение"
+
+msgid "You are not allowed to do this"
+msgstr "Вам нельзя это делать"

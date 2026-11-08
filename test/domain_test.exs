@@ -29,17 +29,17 @@ defmodule AshGettext.DomainTest do
     assert option(:default_locale)[:default] == "en"
   end
 
-  test "the text domain defaults to ash_errors, the file mix ash_gettext.extract writes" do
-    assert option(:text_domain)[:default] == "ash_errors"
+  test "the text domain defaults to ash" do
+    assert option(:text_domain)[:default] == "ash"
   end
 
-  test "locale resolvers default to reading the action context" do
-    assert option(:locale_resolvers)[:default] == [AshGettext.Locale.FromContext]
+  test "the locale resolver is required, so a forgotten one fails the build" do
+    assert option(:locale_resolver)[:required]
+    refute Keyword.has_key?(option(:locale_resolver), :default)
   end
 
-  test "locale resolvers must implement the resolver behaviour" do
-    assert option(:locale_resolvers)[:type] ==
-             {:list, {:behaviour, AshGettext.Locale.Resolver}}
+  test "the locale resolver must implement the resolver behaviour" do
+    assert option(:locale_resolver)[:type] == {:behaviour, AshGettext.Locale.Resolver}
   end
 
   test "error translation is on once a domain configures gettext" do

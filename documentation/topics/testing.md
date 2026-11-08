@@ -1,90 +1,43 @@
 # How to test with AshGettext
 
-This page shows how to check that your translations exist and that an Ash
-action returns them. The examples below use this Russian catalog. Swap in
-your own.
+Test the real call. Set the language, call the code, assert on the text.
 
-```po
-# priv/gettext/ru/LC_MESSAGES/default.po
-msgid "Hello, %{name}"
-msgstr "Привет, %{name}"
-```
+## Set the language
 
-## Keep tests parallel
+Use `Gettext.put_locale/2` at the top of the test. Each test runs in its own
+process, so the language leaks nowhere and tests can stay `async: true`. A
+`Task` the test starts does not inherit it.
 
-Nothing here needs setup. AshGettext keeps no global state: the locale is an
-argument or part of the action context, and any settings are read from the
-domain. So tests that use it can all be `async: true`. Never call
-`Gettext.put_locale/2` in a test to choose a language.
-
-## Check that a message is translated
-
-Use `AshGettext.Testing.assert_translates/6`. Its arguments are the backend,
-the text domain, the msgid, the locale and the text you expect. A map or
-keyword list of values goes last.
+## Enum labels
 
 ```elixir
-defmodule MyApp.TranslationsTest do
-  use ExUnit.Case, async: true
+test "the status label is Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
 
-  import AshGettext.Testing
-
-  test "the greeting is translated to Russian" do
-    assert_translates(MyApp.Gettext, "default", "Hello, %{name}", "ru", "Привет, Ann", name: "Ann")
-  end
+  assert MyApp.Status.label(:awaiting_pickup) == "Ожидает выдачи"
 end
 ```
 
-The test fails with the text the catalog produced, so a typo in the `.po` file
-is easy to find. It also returns the translated string.
-
-## Check that a message is covered
-
-When you only need to know that a translator did the work, use
-`AshGettext.Testing.assert_covered/5`. It does not pin the wording:
+## Loaded `_label` fields
 
 ```elixir
-test "the greeting has a Russian translation" do
-  assert_covered(MyApp.Gettext, "default", "Hello, %{name}", "ru", name: "Ann")
+test "the loaded label follows the actor's language" do
+  user = %{locale: "ru"}
+  order = Ash.load!(order, [:status_label], actor: user)
+
+  assert order.status_label == "Ожидает выдачи"
 end
 ```
 
-It fails if the lookup falls through to the msgid. In the source locale it
-always passes, because the msgid is the text.
-
-## Check every locale
-
-Loop over the locales the backend ships:
-
-```elixir
-for locale <- AshGettext.known_locales(MyApp.Gettext), locale != "en" do
-  test "the greeting is covered in #{locale}" do
-    assert_covered(MyApp.Gettext, "default", "Hello, %{name}", unquote(locale), name: "Ann")
-  end
-end
-```
-
-Add a new language directory and the loop checks it with no change to the
-test.
-
-## Check that an action returns the translated error
-
-For a domain with a `gettext do backend(MyApp.Gettext) text_domain("shipping")
-end` block and this catalog entry:
-
-```po
-# priv/gettext/ru/LC_MESSAGES/shipping.po
-msgid "must weigh at least %{min} kg"
-msgstr "должен весить не меньше %{min} кг"
-```
-
-run the action with a locale on the context and read the message:
+## Error messages
 
 ```elixir
 test "creating a light parcel fails in Russian" do
+  Gettext.put_locale(MyApp.Gettext, "ru")
+
   assert {:error, error} =
            MyApp.Shipping.Parcel
-           |> Ash.Changeset.for_create(:create, %{weight: 5}, context: %{locale: "ru"})
+           |> Ash.Changeset.for_create(:create, %{weight: 5})
            |> Ash.create()
 
   assert Enum.map(error.errors, & &1.message) == ["должен весить не меньше 30 кг"]
@@ -92,31 +45,34 @@ end
 ```
 
 This goes through the real action, so it also proves the resource has the
-`AshGettext.Resource` extension. The same test works for a create, update or
-destroy action. Read actions are not translated, so do not test them this way.
+`AshGettext.Resource` extension. Read actions are not translated.
 
-## Check that the template is current
+## Fail a test on a missing translation
 
-Run the check in CI, next to `mix test`:
-
-```
-mix ash_gettext.extract --check
-```
-
-It fails when a `message:` was added without regenerating the `.pot`. To run
-it inside a test, call `Mix.Tasks.AshGettext.Extract.run(["--check"])`; it
-raises when the file is stale.
-
-## Check that every resource is wired
-
-Set `require_resource_extension?` in the domain:
+Every plain lookup that misses sends `[:ash_gettext, :translation, :missing]`.
+Attach a handler in the test that sends the event to the test process:
 
 ```elixir
-gettext do
-  backend(MyApp.Gettext)
-  require_resource_extension?(true)
-end
+:telemetry.attach(
+  "gaps-#{inspect(self())}",
+  [:ash_gettext, :translation, :missing],
+  fn _event, _measurements, meta, pid -> send(pid, {:missing, meta}) end,
+  self()
+)
+
+# ... run the code ...
+
+refute_received {:missing, _meta}
 ```
 
-A resource that forgets the extension now produces a compiler warning. Compile
-with `--warnings-as-errors` in CI, and the build fails.
+## In CI
+
+Check the template is current, next to `mix test`:
+
+```
+mix gettext.extract --check-up-to-date
+```
+
+To catch a resource that forgot the extension, set
+`require_resource_extension?(true)` in the domain's `gettext` block and
+compile with `--warnings-as-errors`.
