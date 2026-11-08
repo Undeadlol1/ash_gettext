@@ -6,6 +6,9 @@ The first packaged version. Not published to Hex yet.
 
 ### Changes
 
+- Every attribute with an `AshGettext.Enum` type gets a public
+  `<attribute>_label` field on resources that use `AshGettext.Resource`.
+  Load it (`load: [:status_label]`) to get the translated label on the record.
 - `use AshGettext.Enum, backend: MyApp.Gettext` after `use Ash.Type.Enum`
   makes the enum's own `label/1` and `description/1` return the translated
   text, in Gettext's current locale. There is no wrapper to call.

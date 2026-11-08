@@ -31,6 +31,10 @@ defaults; add options only when a requirement demands them.
   Options: `:backend` (required), `:text_domain` (default `"ash"`). The msgid
   is the enum's own label or description: "Awaiting pickup" by default, or the
   `label:` set on the value. Do not invent per-attribute keys.
+- On a record: every attribute with an `AshGettext.Enum` type gets a public
+  `<attribute>_label` calculation (a list for `{:array, enum}`). Load it with
+  `load: [:status_label]`. Do not write your own. A field already named that is
+  kept.
 - One language for everything: Gettext's current locale. Running an action
   with `actor:` or `context: %{locale: "ru"}` sets it once, when the action
   starts (through the domain's `locale_resolvers`). Enums, errors and attribute

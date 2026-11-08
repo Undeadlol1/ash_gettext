@@ -52,6 +52,21 @@ With no translation, you get the label as written. A value without a
 description still returns `nil`. `details/1` is Ash's own and is not
 translated.
 
+## Show an enum on a record
+
+Every attribute whose type uses `AshGettext.Enum` gets a field named
+`<attribute>_label`. Load it to get the translated label on the record:
+
+```elixir
+order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
+
+order.status        #=> :awaiting_pickup
+order.status_label  #=> "Ожидает выдачи"
+```
+
+An empty value gives `nil`, a list attribute gives a list of labels, and a
+field you already named `status_label` is left alone.
+
 ## The text is the key
 
 Write the text in your app's own language. Gettext looks it up as written:

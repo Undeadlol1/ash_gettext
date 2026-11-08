@@ -11,42 +11,24 @@ user's language.
 
 ```elixir
 defmodule MyApp.Order.Status do
-  use Ash.Type.Enum, values: [:placed, awaiting_pickup: [label: "Awaiting pickup", description: "Ready at the pickup point"]]
+  use Ash.Type.Enum, values: [:placed, :awaiting_pickup]
   use AshGettext.Enum, backend: MyApp.Gettext
 end
 
-MyApp.Order.Status.label(:awaiting_pickup)
-#=> "Ожидает выдачи"
+# The user reads Russian. Load an order as that user:
+order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
 
-MyApp.Shop.create_order(%{delivery_date: nil}, actor: user)
-#=> {:error, %Ash.Error.Invalid{errors: [%{message: "не может быть пустым"}]}}
+order.status        #=> :awaiting_pickup
+order.status_label  #=> "Ожидает выдачи"
+
+# The resource says: validate present(:delivery_date), message: "can't be blank"
+{:error, error} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: user)
+
+hd(error.errors).message
+#=> "не может быть пустым"   (written in English, the user gets Russian)
 ```
 
-The enum's own `label/1` returns the user's language, and so does the message of a create that fails (the domain `gettext` block is further down). That's it.
-
-## Features
-
-- **Translate any text.** Strings and plurals, in the user's language.
-- **Enum labels and attribute names.** An enum's own `label/1` returns the
-  user's language. Attribute names come out as words too, with no keys to
-  invent.
-- **Ash's errors.** Add one block to a domain and its create, update and
-  destroy errors are translated.
-
-## Installation
-
-Not on Hex yet, so take it from GitHub:
-
-```elixir
-def deps do
-  [
-    {:ash_gettext, github: "Undeadlol1/ash_gettext"}
-  ]
-end
-```
-
-Your app needs a Gettext backend, `use Gettext.Backend`. Translating text
-needs nothing else.
+Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key. That's it.
 
 ## Usage
 
@@ -80,6 +62,22 @@ The language is Gettext's current locale for the process. Set it the usual
 way with `Gettext.put_locale/2`, or for one block of code with
 `Gettext.with_locale/3`. Or run an action with `actor:` (or
 `context: %{locale: "ru"}`) and AshGettext sets it for you, see below.
+
+### Show an enum on a record
+
+Every attribute whose type uses `AshGettext.Enum` gets a field named
+`<attribute>_label`. Load it like any calculation:
+
+```elixir
+order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
+
+order.status        #=> :awaiting_pickup
+order.status_label  #=> "Ожидает выдачи"
+```
+
+It uses the same language as everything else. An empty value gives `nil`, a
+list attribute gives a list of labels, and a field you already named
+`status_label` is left alone.
 
 ### Translate text
 
