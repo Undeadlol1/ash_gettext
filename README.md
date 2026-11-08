@@ -10,16 +10,19 @@ user's language.
 ## TL;DR
 
 ```elixir
-defmodule MyApp.Translator do
-  use AshGettext.Translator, backend: MyApp.Gettext
-end
+MyApp.Translator.enum_label(MyApp.Order.Status, :awaiting_pickup, actor: user)
+#=> "Ожидает выдачи"
 
-MyApp.Translator.translate("Order shipped", [], locale: "ru")
-#=> "Заказ отправлен"
+MyApp.Translator.attribute_label(MyApp.Order, :delivery_date, actor: user)
+#=> "Дата доставки"
+
+MyApp.Shop.create_order(%{delivery_date: nil}, actor: user)
+#=> {:error, %Ash.Error.Invalid{errors: [%{message: "не может быть пустым"}]}}
 ```
 
-Write the text in your own language and put the other languages in your
-catalogs. That's it.
+Each comes out in the user's own language. No keys to invent, no
+`dgettext` on every action. The English is the key, and `mix
+ash_gettext.extract` collects it for your translators. That's it.
 
 ## Features
 
