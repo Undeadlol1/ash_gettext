@@ -15,6 +15,9 @@ defmodule MyApp.Order.Status do
   use AshGettext.Enum, backend: MyApp.Gettext
 end
 
+# No labels written: Ash makes them "Placed" and "Awaiting pickup",
+# and `mix ash_gettext.extract` puts both in your template.
+
 # The user reads Russian. Load an order as that user:
 order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
 
