@@ -116,9 +116,6 @@ take everything they need as arguments, so you can call them yourself.
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`
   has no stable msgid. `mix gettext.extract` warns about these.
-- **A message in a module no resource uses is not extracted,** nor a module
-  attribute as `message:` in a validation module. Mark it with
-  `dgettext_noop("ash", "...")`.
 - **An entry that equals its msgid counts as missing.** In a non-source
   locale, a translation that is identical to the msgid cannot be told apart
   from a miss.

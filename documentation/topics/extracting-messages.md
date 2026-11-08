@@ -48,20 +48,11 @@ mix gettext.extract --check-up-to-date
 It writes nothing and fails when a template is out of date, so a new message
 cannot be merged without its entry.
 
-## Mark a message no resource uses
+## Text outside Ash
 
-A message in a module no resource references, such as a helper that builds
-errors, is not found. Mark it with Gettext's macro:
-
-```elixir
-use Gettext, backend: MyApp.Gettext
-
-message = dgettext_noop("ash", "This email is already registered")
-```
-
-The same goes for a `message:` in a module that is not a plain string, such as
-a module attribute, and for text you pass to `AshGettext.translate/5`. See
-[Translating text](translating-text.md#add-the-text-to-the-template).
+Text that is not in a resource, an enum or a module a resource uses, such as a
+helper that builds errors, is plain Elixir code. Gettext's usual rules apply:
+see [Gettext's docs](https://hexdocs.pm/gettext/Gettext.html).
 
 ## Fix a message with a variable in it
 

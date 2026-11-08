@@ -146,11 +146,9 @@ defaults; add options only when a requirement demands them.
   validation, change and preparation modules they use) and Ash's error
   sentences visible to it. Run `mix gettext.extract --check-up-to-date` in CI.
   There is no `ash_gettext` extract task.
-- A message in a module no resource uses, such as a helper that builds
-  errors, is not found. Wrap it in `dgettext_noop("ash", "...")`.
-- In a validation or change module, only a `message:` written as a literal
-  string is found. A module attribute or other expression is skipped: wrap it
-  in `dgettext_noop`. An interpolated string (`"... #{x}"`) is a compile
+- Write a `message:` as a literal string in the resource or in the validation
+  or change module it uses. Text elsewhere follows Gettext's usual rules. An
+  interpolated string (`"... #{x}"`) is a compile
   warning during extraction and cannot be a msgid: use a constant msgid with
   `%{var}` and `vars:`.
 - Do not edit the generated `.pot`. Translations go in the `.po` files.

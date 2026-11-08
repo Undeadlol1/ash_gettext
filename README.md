@@ -209,9 +209,6 @@ AshGettext makes your enum labels, attribute labels, messages and Ash's error
 sentences visible to it, so they land in `ash.pot`. Translators fill in
 `ash.po` per language.
 
-A message in a module no resource uses, such as a helper that builds errors,
-is not found. Mark it there with `dgettext_noop("ash", "...")`.
-
 ### 8. Catch missing translations
 
 A lookup with no translation returns the text as written and sends a
