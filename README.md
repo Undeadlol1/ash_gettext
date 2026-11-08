@@ -26,10 +26,11 @@ order_for_russian_user.status_label  #=> "Ожидает выдачи"
 order_for_english_user.status_label  #=> "Ready for pickup"
 
 # The resource says: validate present(:delivery_date), message: "can't be blank"
-{:error, error} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: russian_user)
+{:error, error_for_russian_user} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: russian_user)
+{:error, error_for_english_user} = Ash.create(MyApp.Order, %{delivery_date: nil}, actor: english_user)
 
-hd(error.errors).message
-#=> "не может быть пустым"
+hd(error_for_russian_user.errors).message  #=> "не может быть пустым"
+hd(error_for_english_user.errors).message  #=> "can't be blank"
 ```
 
 Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key. That's it.
