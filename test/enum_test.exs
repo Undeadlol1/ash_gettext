@@ -32,8 +32,9 @@ defmodule AshGettext.EnumTest do
         assert_raise CompileError, fn ->
           Code.compile_string("""
           defmodule AshGettextFixture.Unlabelled do
-            use Ash.Type.Enum, values: [:a, b: [label: "Bee"], c: "only a description"]
-            use AshGettext.Enum, backend: AshGettextFixture.Gettext
+            use AshGettext.Enum,
+              backend: AshGettextFixture.Gettext,
+              values: [:a, b: [label: "Bee"], c: "only a description"]
           end
           """)
         end
@@ -41,6 +42,25 @@ defmodule AshGettext.EnumTest do
       assert error.description =~ ":a, :c"
       refute error.description =~ ":b"
     end
+
+    test "a written label that reads like the value's name is accepted" do
+      modules =
+        Code.compile_string("""
+        defmodule AshGettextFixture.PlainlyLabelled do
+          use AshGettext.Enum,
+            backend: AshGettextFixture.Gettext,
+            values: [placed: [label: "Placed"]]
+        end
+        """)
+
+      {module, _binary} = List.keyfind(modules, AshGettextFixture.PlainlyLabelled, 0)
+      assert module.label(:placed) == "Placed"
+    end
+  end
+
+  test "an empty value has no label and no description" do
+    assert ParcelStatus.label(nil) == nil
+    assert ParcelStatus.description(nil) == nil
   end
 
   test "a value without a description stays nil" do
@@ -78,17 +98,16 @@ defmodule AshGettext.EnumTest do
       assert_raise ArgumentError, ~r/requires a :backend/, fn ->
         Code.compile_string("""
         defmodule AshGettext.EnumTest.NoBackend do
-          use Ash.Type.Enum, values: [:a]
-          use AshGettext.Enum
+          use AshGettext.Enum, values: [a: [label: "A"]]
         end
         """)
       end
     end
 
-    test "needs use Ash.Type.Enum first" do
-      assert_raise CompileError, ~r/after use Ash.Type.Enum/, fn ->
+    test "requires :values" do
+      assert_raise ArgumentError, ~r/requires a :values/, fn ->
         Code.compile_string("""
-        defmodule AshGettext.EnumTest.NoEnum do
+        defmodule AshGettext.EnumTest.NoValues do
           use AshGettext.Enum, backend: AshGettextFixture.Gettext
         end
         """)

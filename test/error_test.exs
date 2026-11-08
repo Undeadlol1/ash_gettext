@@ -51,6 +51,10 @@ defmodule AshGettext.ErrorTest do
              } = rendered
     end
 
+    test "has no title, which nobody would translate" do
+      assert AshJsonApi.ToJsonApiError.to_json_api_error(weight_error()).title == :undefined
+    end
+
     test "has no source pointer without a field" do
       rendered = AshJsonApi.ToJsonApiError.to_json_api_error(weight_error())
 
