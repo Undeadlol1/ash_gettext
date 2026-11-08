@@ -82,9 +82,7 @@ defmodule AshGettext.MixProject do
           AshGettext.Testing
         ],
         Locales: [
-          AshGettext.Locale,
           AshGettext.Locale.Resolver,
-          AshGettext.Locale.FromContext,
           AshGettext.Locale.Normalizer
         ],
         "How it works": [

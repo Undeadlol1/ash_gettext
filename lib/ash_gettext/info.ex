@@ -3,7 +3,7 @@ defmodule AshGettext.Info do
   Read a domain's `gettext do ... end` configuration.
 
   `Spark.InfoGenerator` supplies the per-option readers — `gettext_backend/1`,
-  `gettext_default_locale/1`, `gettext_text_domain/1`, `gettext_locale_resolvers/1`,
+  `gettext_default_locale/1`, `gettext_text_domain/1`, `gettext_locale_resolver/1`,
   `gettext_translate_errors?/1` — each returning `{:ok, value}` or `:error`, plus
   raising `!` variants.
 
@@ -18,7 +18,7 @@ defmodule AshGettext.Info do
           backend: module(),
           default_locale: String.t(),
           text_domain: String.t(),
-          locale_resolvers: [module()],
+          locale_resolver: module() | nil,
           supported_locales: [String.t()]
         }
 
@@ -53,7 +53,7 @@ defmodule AshGettext.Info do
            backend: backend,
            default_locale: gettext_default_locale!(domain),
            text_domain: gettext_text_domain!(domain),
-           locale_resolvers: gettext_locale_resolvers!(domain),
+           locale_resolver: Spark.Dsl.Extension.get_opt(domain, [:gettext], :locale_resolver),
            supported_locales: AshGettext.known_locales(backend)
          }}
 
@@ -66,17 +66,19 @@ defmodule AshGettext.Info do
   end
 
   @doc """
-  The `{backend, locale}` an action should use, or `nil` when no resolver answers.
+  The `{backend, locale}` to use for `actor`, or `nil` for Gettext's current language.
 
-  Asks the domain's `locale_resolvers` with `resolution` (the action's `:actor`,
-  `:locale` from its context, and so on) and fits the answer to the catalogs.
-  Nothing here changes the process language.
+  Asks the domain's `locale_resolver` with the actor and fits the answer to the
+  catalogs. `nil` when there is no actor, no resolver, or the resolver returns
+  `nil`. Nothing here changes the process language.
   """
-  @spec language(module() | map(), map()) :: {module(), String.t()} | nil
-  def language(domain, resolution) do
-    with {:ok, settings} <- locale_settings(domain),
-         answer when is_binary(answer) <-
-           Enum.find_value(settings.locale_resolvers, & &1.resolve(resolution)) do
+  @spec language(module() | map(), term()) :: {module(), String.t()} | nil
+  def language(_domain, nil), do: nil
+
+  def language(domain, actor) do
+    with {:ok, %{locale_resolver: resolver} = settings} when resolver != nil <-
+           locale_settings(domain),
+         answer when is_binary(answer) <- resolver.resolve(actor) do
       {settings.backend,
        AshGettext.Locale.Normalizer.normalize(
          answer,

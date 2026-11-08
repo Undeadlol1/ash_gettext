@@ -19,7 +19,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
   describe "a write action on a translating domain" do
     test "the handler finds the language itself when nothing set it yet" do
       changeset =
-        Ash.Changeset.for_create(Parcel, :create, %{weight: 100}, context: %{locale: "ru"})
+        Ash.Changeset.for_create(Parcel, :create, %{weight: 100}, actor: %{language: "ru"})
 
       Gettext.put_locale(AshGettextFixture.Gettext, "en")
 
@@ -30,45 +30,45 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
                "Вес должен быть не менее 30 кг"
     end
 
-    test "returns the error in the locale on the action context" do
-      result = Ash.create(Parcel, %{weight: 5}, context: %{locale: "ru"})
+    test "returns the error in the actor's language" do
+      result = Ash.create(Parcel, %{weight: 5}, actor: %{language: "ru"})
 
       assert message_of(result) == "Вес должен быть не менее 30 кг"
     end
 
     test "translates the message of a validation Ash ships, with its own placeholder" do
       result =
-        Ash.create(AshGettextFixture.ComparedParcel, %{weight: 5}, context: %{locale: "ru"})
+        Ash.create(AshGettextFixture.ComparedParcel, %{weight: 5}, actor: %{language: "ru"})
 
       assert message_of(result) == "должен весить не меньше 30 кг"
     end
 
     test "returns the error in English when English is asked for" do
-      result = Ash.create(Parcel, %{weight: 5}, context: %{locale: "en"})
+      result = Ash.create(Parcel, %{weight: 5}, actor: %{language: "en"})
 
       assert message_of(result) == "Weight must be at least 30 kg"
     end
 
-    test "falls back to the domain's default locale when none is given" do
+    test "with no actor, uses Gettext's current language" do
       result = Ash.create(Parcel, %{weight: 5})
 
       assert message_of(result) == "Weight must be at least 30 kg"
     end
 
     test "falls back to the default for a locale the catalogs do not cover" do
-      result = Ash.create(Parcel, %{weight: 5}, context: %{locale: "de"})
+      result = Ash.create(Parcel, %{weight: 5}, actor: %{language: "de"})
 
       assert message_of(result) == "Weight must be at least 30 kg"
     end
 
     test "normalises a regional locale to the catalog's language" do
-      result = Ash.create(Parcel, %{weight: 5}, context: %{locale: "ru_RU"})
+      result = Ash.create(Parcel, %{weight: 5}, actor: %{language: "ru_RU"})
 
       assert message_of(result) == "Вес должен быть не менее 30 кг"
     end
 
     test "leaves a message no catalog covers unchanged" do
-      result = Ash.create(Parcel, %{label: "reject me"}, context: %{locale: "ru"})
+      result = Ash.create(Parcel, %{label: "reject me"}, actor: %{language: "ru"})
 
       assert message_of(result) == "this label is not allowed"
     end
@@ -76,7 +76,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
     test "translates errors from update actions too, not only creates" do
       {:ok, parcel} = Ash.create(Parcel, %{weight: 100, label: "fine"})
 
-      result = Ash.update(parcel, %{label: "reject me"}, context: %{locale: "ru"})
+      result = Ash.update(parcel, %{label: "reject me"}, actor: %{language: "ru"})
 
       assert message_of(result) == "this label is not allowed"
     end
@@ -107,7 +107,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
 
   describe "a write action on a domain that does not configure gettext" do
     test "returns the message untranslated, proving the opt-in is real" do
-      result = Ash.create(Untranslated.Parcel, %{weight: 5}, context: %{locale: "ru"})
+      result = Ash.create(Untranslated.Parcel, %{weight: 5}, actor: %{language: "ru"})
 
       assert message_of(result) == "weight_too_low"
     end

@@ -9,7 +9,7 @@ defmodule AshGettext.Domain do
           backend MyApp.Gettext
           default_locale "en"
           text_domain "ash"
-          locale_resolvers [MyApp.Localization.Adapter, AshGettext.Locale.FromContext]
+          locale_resolver MyApp.Locale
         end
 
         resources do
@@ -52,7 +52,7 @@ defmodule AshGettext.Domain do
       default_locale: [
         type: :string,
         default: "en",
-        doc: "The locale used when no resolver has an opinion."
+        doc: "The locale used when the resolver names a language the catalogs do not have."
       ],
       text_domain: [
         type: :string,
@@ -60,13 +60,12 @@ defmodule AshGettext.Domain do
         doc:
           "The gettext text domain for everything Ash-derived: errors, enum labels, attribute names."
       ],
-      locale_resolvers: [
-        type: {:list, {:behaviour, AshGettext.Locale.Resolver}},
-        default: [AshGettext.Locale.FromContext],
+      locale_resolver: [
+        type: {:behaviour, AshGettext.Locale.Resolver},
         doc: """
-        Modules implementing `AshGettext.Locale.Resolver`, tried in order until one
-        answers. Host-specific resolvers (\"read the user's stored locale\") belong
-        here; the library ships only the generic ones.
+        A module implementing `AshGettext.Locale.Resolver`. It reads the language
+        from the action's actor. Without one, or with no actor, Gettext's current
+        process language is used.
         """
       ],
       translate_errors?: [

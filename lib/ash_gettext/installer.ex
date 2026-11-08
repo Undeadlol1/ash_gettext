@@ -13,11 +13,9 @@ defmodule AshGettext.Installer do
 
   ## What cannot be generated
 
-  `locale_resolver` is deliberately left pointing at the library's generic
-  `AshGettext.Locale.FromContext`, which reads a locale someone already put on the
-  action context. Resolving "the signed-in user's saved language" needs to know
-  where the host stores that, which is exactly what a generic library must not
-  assume. `resolver_template/1` generates a module with the
+  `locale_resolver` is left out unless `:resolver` is given. Reading a user's
+  language needs to know where the host keeps it on the actor, which a generic
+  library must not assume. `resolver_template/1` generates a module with the
   behaviour and a `TODO` instead of guessing.
   """
 
@@ -44,8 +42,7 @@ defmodule AshGettext.Installer do
     * `:backend` — required; the host's Gettext backend module, as a string.
     * `:text_domain` — the gettext text domain. Defaults to `"ash"`, and
       is then left out of the block.
-    * `:resolver` — a locale resolver module name to place ahead of the generic
-      context resolver. Omitted when absent.
+    * `:resolver` — a locale resolver module name. Omitted when absent.
   """
   @spec install_domain(String.t(), keyword()) :: result()
   def install_domain(content, opts) when is_binary(content) do
@@ -106,7 +103,7 @@ defmodule AshGettext.Installer do
   The `gettext do` block for a domain, as source text.
 
   Only what differs from the DSL defaults is written: `backend` always,
-  `text_domain` when it is not `"ash"`, and `locale_resolvers` when a
+  `text_domain` when it is not `"ash"`, and `locale_resolver` when a
   `:resolver` was given. Repeating a default would pin it, so a later change to
   the library's default would silently skip every installed domain.
   """
@@ -139,19 +136,13 @@ defmodule AshGettext.Installer do
       @behaviour AshGettext.Locale.Resolver
 
       @impl true
-      def resolve(%{actor: actor}) when is_map(actor) do
-        # TODO: return the locale this actor has chosen, or nil to fall back.
-        #
-        #   actor.locale
-        #   MyApp.Accounts.locale_for(actor)
-        #
-        # Returning nil is always safe — the next resolver, then the domain's
-        # default_locale, will answer.
+      def resolve(actor) do
+        # TODO: return the language this actor has chosen, such as
+        # actor.language. Returning nil is always safe: Gettext's current
+        # process language is used.
         _ = actor
         nil
       end
-
-      def resolve(_context), do: nil
     end
     """
   end
@@ -162,7 +153,7 @@ defmodule AshGettext.Installer do
   defp resolver_line(nil), do: []
 
   defp resolver_line(resolver),
-    do: ["locale_resolvers [AshGettext.Locale.FromContext, #{resolver}]"]
+    do: ["locale_resolver #{resolver}"]
 
   # `use Ash.Domain` appears with an extensions list, or bare. Both are common.
   defp add_extension(content) do

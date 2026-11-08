@@ -22,7 +22,7 @@ defmodule AshGettext.ProcessLanguageTest do
     Ash.read!(Parcel, actor: @ru)
     assert Gettext.get_locale(Backend) == default
 
-    parcel = Ash.update!(parcel, %{label: "x"}, context: %{locale: "ru"})
+    parcel = Ash.update!(parcel, %{label: "x"}, actor: @ru)
     assert Gettext.get_locale(Backend) == default
 
     Ash.destroy!(parcel, actor: @ru)
@@ -36,11 +36,12 @@ defmodule AshGettext.ProcessLanguageTest do
              "Заказ размещён"
   end
 
-  test "a loaded label comes back in the context's language" do
+  test "with no actor, a loaded label comes back in Gettext's current language" do
     parcel = placed_parcel()
 
-    assert Ash.get!(Parcel, parcel.id, load: [:status_label], context: %{locale: "ru"}).status_label ==
-             "Заказ размещён"
+    Gettext.with_locale(Backend, "ru", fn ->
+      assert Ash.get!(Parcel, parcel.id, load: [:status_label]).status_label == "Заказ размещён"
+    end)
   end
 
   test "an error comes back in the actor's language" do
@@ -48,8 +49,10 @@ defmodule AshGettext.ProcessLanguageTest do
              Ash.create(Parcel, %{weight: 5}, actor: @ru)
   end
 
-  test "an error comes back in the context's language" do
-    assert {:error, %{errors: [%{message: "Вес должен быть не менее 30 кг"}]}} =
-             Ash.create(Parcel, %{weight: 5}, context: %{locale: "ru"})
+  test "with no actor, an error comes back in Gettext's current language" do
+    Gettext.with_locale(Backend, "ru", fn ->
+      assert {:error, %{errors: [%{message: "Вес должен быть не менее 30 кг"}]}} =
+               Ash.create(Parcel, %{weight: 5})
+    end)
   end
 end

@@ -1,7 +1,7 @@
 defmodule AshGettext.Calculations.EnumLabel do
   @moduledoc """
   The translated label of an enum attribute, in the language of the query's
-  actor or `context: %{locale: ...}`. With neither, Gettext's current locale.
+  actor. With no actor, Gettext's current locale.
 
   `AshGettext.Resource` adds this as `<attribute>_label`. A `nil` value stays
   `nil`; a list attribute gives a list of labels.
@@ -25,10 +25,7 @@ defmodule AshGettext.Calculations.EnumLabel do
   end
 
   defp language([%resource{} | _], context) do
-    AshGettext.Info.language(Ash.Resource.Info.domain(resource), %{
-      actor: context.actor,
-      locale: (context.source_context || %{})[:locale]
-    })
+    AshGettext.Info.language(Ash.Resource.Info.domain(resource), context.actor)
   end
 
   defp language([], _context), do: nil

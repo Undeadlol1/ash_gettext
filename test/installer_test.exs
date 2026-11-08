@@ -190,7 +190,7 @@ defmodule AshGettext.InstallerTest do
 
       assert block =~ "backend MyApp.Gettext"
       refute block =~ "text_domain"
-      refute block =~ "locale_resolvers"
+      refute block =~ "locale_resolver"
     end
 
     test "leaves out a text domain that is the default" do
@@ -203,10 +203,10 @@ defmodule AshGettext.InstallerTest do
                ~s|text_domain "errors"|
     end
 
-    test "puts a host resolver after the context resolver, so an explicit locale still wins" do
+    test "names the host's resolver" do
       block = Installer.gettext_block(backend: "MyApp.Gettext", resolver: "MyApp.Localization")
 
-      assert block =~ "locale_resolvers [AshGettext.Locale.FromContext, MyApp.Localization]"
+      assert block =~ "locale_resolver MyApp.Localization"
     end
   end
 

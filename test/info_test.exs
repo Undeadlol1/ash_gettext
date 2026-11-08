@@ -2,7 +2,6 @@ defmodule AshGettext.InfoTest do
   use ExUnit.Case, async: true
 
   alias AshGettext.Info
-  alias AshGettext.Locale.FromContext
   alias AshGettextFixture.Gettext, as: Backend
 
   describe "reading the settings of a translating domain" do
@@ -12,10 +11,10 @@ defmodule AshGettext.InfoTest do
       assert settings.text_domain == "fixture"
     end
 
-    test "reports the declared default locale and resolvers" do
+    test "reports the declared default locale and resolver" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Shipping)
       assert settings.default_locale == "en"
-      assert settings.locale_resolvers == [AshGettextFixture.ActorLanguage, FromContext]
+      assert settings.locale_resolver == AshGettextFixture.ActorLanguage
     end
 
     test "derives supported locales from the backend rather than a declared list" do
@@ -26,7 +25,29 @@ defmodule AshGettext.InfoTest do
     test "applies the defaults a domain does not state" do
       assert {:ok, settings} = Info.settings(AshGettextFixture.Opinionated)
       assert settings.default_locale == "en"
-      assert settings.locale_resolvers == [FromContext]
+      assert settings.locale_resolver == nil
+    end
+  end
+
+  describe "finding the language of an actor" do
+    test "asks the resolver and fits the answer to the catalogs" do
+      assert Info.language(AshGettextFixture.Shipping, %{language: "ru_RU"}) == {Backend, "ru"}
+    end
+
+    test "falls back to the default locale for a language with no catalog" do
+      assert Info.language(AshGettextFixture.Shipping, %{language: "de"}) == {Backend, "en"}
+    end
+
+    test "has no answer without an actor" do
+      assert Info.language(AshGettextFixture.Shipping, nil) == nil
+    end
+
+    test "has no answer when the resolver declines" do
+      assert Info.language(AshGettextFixture.Shipping, %{}) == nil
+    end
+
+    test "has no answer for a domain without a resolver" do
+      assert Info.language(AshGettextFixture.Opinionated, %{language: "ru"}) == nil
     end
   end
 

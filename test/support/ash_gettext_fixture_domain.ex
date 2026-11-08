@@ -273,8 +273,8 @@ defmodule AshGettextFixture.ActorLanguage do
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
-  def resolve(%{actor: %{language: language}}), do: language
-  def resolve(_context), do: nil
+  def resolve(%{language: language}), do: language
+  def resolve(_actor), do: nil
 end
 
 defmodule AshGettextFixture.Shipping do
@@ -286,7 +286,7 @@ defmodule AshGettextFixture.Shipping do
     backend(AshGettextFixture.Gettext)
     default_locale("en")
     text_domain("fixture")
-    locale_resolvers([AshGettextFixture.ActorLanguage, AshGettext.Locale.FromContext])
+    locale_resolver(AshGettextFixture.ActorLanguage)
   end
 
   resources do

@@ -16,8 +16,8 @@ defmodule Mix.Tasks.AshGettext.Install do
 
     * `--backend` — the Gettext backend to translate against. Detected from the
       project when there is exactly one `use Gettext.Backend`.
-    * `--resolver` — a module implementing `AshGettext.Locale.Resolver`, placed
-      after the generic context resolver so an explicit locale still wins.
+    * `--resolver` — a module implementing `AshGettext.Locale.Resolver`. It
+      reads the language from the actor.
     * `--text-domain` — defaults to `ash`, so the texts go to `ash.pot`.
     * `--apply` — write the changes. Without it, nothing is written.
 
@@ -25,10 +25,9 @@ defmodule Mix.Tasks.AshGettext.Install do
 
   Translating to *the signed-in user's saved language* needs a resolver that
   knows where this app stores that, and a generic library must not assume it.
-  Without `--resolver` the domains are wired to `AshGettext.Locale.FromContext`,
-  which reads `context[:locale]` — enough to translate whatever locale a
-  request carries. For the rest, implement `AshGettext.Locale.Resolver`
-  yourself; `AshGettext.Installer.resolver_template/1` returns a starting point.
+  Without `--resolver`, everything uses Gettext's current process language.
+  Implement `AshGettext.Locale.Resolver` yourself;
+  `AshGettext.Installer.resolver_template/1` returns a starting point.
   """
 
   use Mix.Task
