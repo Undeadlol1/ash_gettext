@@ -3,8 +3,9 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   The `error_handler` that `AshGettext.Resource` installs on write actions.
 
   Ash calls this with the changeset and each error it collects, and takes the
-  return value as the error to keep. The error is translated into Gettext's current language, which
-  `AshGettext.SetLanguage` set when the action started.
+  return value as the error to keep. The error is translated into the language
+  of the action's actor or `context: %{locale: ...}`, else Gettext's current
+  language.
 
   It sits below every transport by design. An error from a custom validation,
   a builtin constraint, a value that does not cast, a missing required value or
@@ -18,7 +19,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   alias AshGettext.Info
 
   @doc """
-  Translate `error` into Gettext's current language.
+  Translate `error` into the action's language.
   """
   @spec translate_error(Ash.Changeset.t(), term()) :: term()
   def translate_error(changeset, error) do
@@ -31,14 +32,12 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
     end
   end
 
-  # Ash can report an error (a cast failure, say) before the action's changes
-  # run, so the language `AshGettext.SetLanguage` sets may not be set yet. Ask
-  # the same resolvers here; Gettext's current language is the fallback.
+  # Ask the domain's resolvers; Gettext's current language is the fallback.
   defp translation_options(changeset, settings) do
     context = changeset.context || %{}
 
     locale =
-      case AshGettext.SetLanguage.resolve(changeset.domain, %{
+      case Info.language(changeset.domain, %{
              locale: context[:locale],
              actor: get_in(context, [:private, :actor]),
              changeset: changeset

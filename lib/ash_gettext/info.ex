@@ -66,6 +66,29 @@ defmodule AshGettext.Info do
   end
 
   @doc """
+  The `{backend, locale}` an action should use, or `nil` when no resolver answers.
+
+  Asks the domain's `locale_resolvers` with `resolution` (the action's `:actor`,
+  `:locale` from its context, and so on) and fits the answer to the catalogs.
+  Nothing here changes the process language.
+  """
+  @spec language(module() | map(), map()) :: {module(), String.t()} | nil
+  def language(domain, resolution) do
+    with {:ok, settings} <- locale_settings(domain),
+         answer when is_binary(answer) <-
+           Enum.find_value(settings.locale_resolvers, & &1.resolve(resolution)) do
+      {settings.backend,
+       AshGettext.Locale.Normalizer.normalize(
+         answer,
+         settings.supported_locales,
+         settings.default_locale
+       )}
+    else
+      _no_answer -> nil
+    end
+  end
+
+  @doc """
   The written label of a resource's attribute from its `gettext` block, or `nil`.
   """
   @spec attribute_label(module(), atom()) :: String.t() | nil

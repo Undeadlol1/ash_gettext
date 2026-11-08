@@ -24,8 +24,9 @@ defmodule AshGettext.Resource do
   `AshGettext.attribute_label/2` translates that text. An attribute with no
   `label` raises. A `label` for an attribute the resource lacks fails to compile.
 
-  Every action also sets Gettext's language once, when it starts, from the
-  action's actor or `context: %{locale: ...}` (see `AshGettext.SetLanguage`).
+  Labels loaded on records and errors from actions use the language of the
+  action's actor or `context: %{locale: ...}`. No action changes the process
+  language.
 
   What to translate is read from the resource's **domain** (`AshGettext.Domain`).
   A resource whose domain does not configure `gettext`, or which sets
@@ -65,7 +66,6 @@ defmodule AshGettext.Resource do
     verifiers: [AshGettext.Resource.Verifiers.ValidateLabels],
     transformers: [
       AshGettext.Resource.Transformers.AttachErrorHandler,
-      AshGettext.Resource.Transformers.AttachSetLanguage,
       AshGettext.Resource.Transformers.AddEnumLabels
     ]
 end
