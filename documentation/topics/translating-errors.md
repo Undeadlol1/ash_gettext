@@ -104,29 +104,31 @@ text. The `.po` files hold only the other languages.
 ## Ash's own errors
 
 Some of Ash's errors have no message. Ash prints them from code names: a
-missing required value reads "attribute delivery_date is required". AshGettext
-gives each one a written English sentence and translates it:
+value that does not cast reads "Invalid value provided for count". AshGettext
+gives each one a written English sentence and translates it into the error's
+own text field, so the error stays Ash's own struct:
 
 | Error | Sentence |
 |---|---|
-| `Ash.Error.Changes.Required` | is required |
 | `Ash.Error.Changes.InvalidAttribute` | is invalid |
 | `Ash.Error.Changes.InvalidArgument` | is invalid |
 | `Ash.Error.Forbidden.Policy` | You are not allowed to do this |
 
 ```elixir
-{:error, error} = Ash.create(MyApp.Order, %{}, actor: user)
-error = hd(error.errors)
+{:error, error} = Ash.create(MyApp.Order, %{count: "abc"}, actor: user)
 
-error.message             #=> "обязательное поле"
-Exception.message(error)  # ends with "обязательное поле"
-error.field               #=> :delivery_date
-error.original            #=> %Ash.Error.Changes.Required{...}
+hd(error.errors)
+#=> %Ash.Error.Changes.InvalidAttribute{field: :count, message: "неверное значение"}
 ```
 
-The error comes back as an `AshGettext.AshMessages.Translated`. It keeps
-Ash's error in `original`, with its field and class. JSON:API renders the
-original error with the translated sentence as `detail`.
+The sentence goes into `message`, or into `custom_message` for a policy.
+JSON:API, GraphQL and AshPhoenix forms read that field, and code that matches
+on Ash's structs keeps working.
+
+`Ash.Error.Changes.Required` is left untouched. It has no text field, so the
+only way to translate it would be to swap it for another struct, which breaks
+every `%Ash.Error.Changes.Required{}` match. JSON:API and AshPhoenix render
+it as "is required"; translate that where you show it.
 
 `mix gettext.extract` adds these sentences to the template. A
 policy with its own message keeps it, and that message is its msgid. A stale

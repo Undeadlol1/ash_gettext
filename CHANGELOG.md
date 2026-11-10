@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Ash's own errors stay Ash's own structs. A value that does not cast and a
+  failed policy get the translated sentence in their own text field
+  (`message`, or `custom_message` for a policy) instead of being swapped for
+  `AshGettext.AshMessages.Translated`, which is gone. Code that matches on
+  `%Ash.Error.Changes.InvalidAttribute{}` or `%Ash.Error.Forbidden.Policy{}`
+  keeps working, and AshPhoenix forms show the sentence again.
+- `Ash.Error.Changes.Required` is left untouched. It has no text field, so it
+  is no longer translated; "is required" is no longer an extracted msgid.
+
 ## 0.1.0 — 2026-11-11
 
 The first packaged version.
