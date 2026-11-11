@@ -34,7 +34,7 @@ defmodule AshGettext.MixProject do
       {:spark, "~> 2.3"},
       {:gettext, "~> 1.0"},
       {:telemetry, "~> 1.1"},
-      {:ash_json_api, "~> 1.4", optional: true},
+      {:ash_json_api, "~> 1.6", optional: true},
       {:ash_graphql, "~> 1.0", optional: true},
       {:ash_phoenix, "~> 2.3", only: :test},
       # AshJsonApi needs it to serve a POST route in the HTTP tests.
