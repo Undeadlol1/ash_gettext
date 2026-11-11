@@ -45,3 +45,33 @@ msgstr "неверное значение"
 
 msgid "You are not allowed to do this"
 msgstr "Вам нельзя это делать"
+
+msgid "could not be found"
+msgstr "не найдено"
+
+msgid "must be present"
+msgstr "должно быть заполнено"
+
+msgid "must be greater than %{greater_than}"
+msgstr "должно быть больше %{greater_than}"
+
+msgid "must match the pattern %{regex}"
+msgstr "должно соответствовать шаблону %{regex}"
+
+msgid "length must be less than or equal to %{max}"
+msgstr "длина должна быть не больше %{max}"
+
+msgid "must be greater than or equal to %{min}"
+msgstr "должно быть не меньше %{min}"
+
+msgid "has already been taken"
+msgstr "уже занято"
+
+msgid "must equal %{value}"
+msgstr "должно быть равно %{value}"
+
+msgid "must match %{match}"
+msgstr "должно соответствовать %{match}"
+
+msgid "Something went wrong. Error id: %{id}"
+msgstr "Что-то пошло не так. Номер ошибки: %{id}"

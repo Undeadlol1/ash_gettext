@@ -1,17 +1,34 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-11
 
-### Fixes
+### Breaking
 
-- Ash's own errors stay Ash's own structs. A value that does not cast and a
-  failed policy get the translated sentence in their own text field
-  (`message`, or `custom_message` for a policy) instead of being swapped for
-  `AshGettext.AshMessages.Translated`, which is gone. Code that matches on
-  `%Ash.Error.Changes.InvalidAttribute{}` or `%Ash.Error.Forbidden.Policy{}`
-  keeps working, and AshPhoenix forms show the sentence again.
-- `Ash.Error.Changes.Required` is left untouched. It has no text field, so it
-  is no longer translated; "is required" is no longer an extracted msgid.
+- Ash's own errors stay Ash's own structs. `AshGettext.AshMessages.Translated`
+  is gone. If you matched on it, match on the Ash struct again
+  (`%Ash.Error.Changes.InvalidAttribute{}`, `%Ash.Error.Forbidden.Policy{}`).
+  The translated sentence is in the struct's own text field (`message`, or
+  `custom_message` for a policy).
+
+### Added
+
+- Errors are now translated in JSON:API and GraphQL replies, in the actor's
+  language, including the text those libraries write themselves ("is
+  required", record not found).
+- Errors from generic actions and read actions are translated, like create,
+  update and destroy errors.
+- A policy's own `error_message` is shown, translated, in JSON:API and
+  GraphQL replies. Those libraries alone reply "forbidden".
+- `mix gettext.extract` now also adds the sentences Ash and the JSON:API and
+  GraphQL replies use ("must be present", "is required", "could not be found"
+  and about 60 more), and every policy's `error_message`. Run it and
+  translate the new entries.
+
+### Changed
+
+- The minimum Ash is `~> 3.32`.
+- `Ash.Error.Changes.Required` carries its translated sentence in
+  `vars[:translation]`. AshPhoenix passes `vars` on, so a form can show it.
 
 ## 0.1.0 — 2026-11-11
 

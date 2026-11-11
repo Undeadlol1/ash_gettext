@@ -1,44 +1,11 @@
 # Translating errors
 
-Ash builds its error messages inside the action, so you cannot wrap them in
-a Gettext call yourself. This page shows how AshGettext translates them for
-you, which errors it covers, and how to turn it on one domain at a time.
-
 ## Turn it on
 
-Add the `AshGettext.Domain` extension and a `gettext` block to the domain:
-
-```elixir
-defmodule MyApp.Shipping do
-  use Ash.Domain, extensions: [AshGettext.Domain]
-
-  gettext do
-    backend(MyApp.Gettext)
-  end
-
-  resources do
-    resource MyApp.Shipping.Parcel
-  end
-end
-```
-
-`backend` is the only required option. See the
-[DSL reference](DSL-AshGettext.Domain.md) for the rest.
-
-Add the `AshGettext.Resource` extension to each resource:
-
-```elixir
-use Ash.Resource,
-  domain: MyApp.Shipping,
-  extensions: [AshGettext.Resource]
-```
-
-The domain block says how to translate. The resource extension turns it on
-for that resource's create, update and destroy actions.
-
-`mix ash_gettext.install` makes both edits in every domain and resource. Run
-it alone to see the edits, and with `--apply` to write them. If the app has
-more than one Gettext backend, name one with `--backend MyApp.Gettext`.
+Add `AshGettext.Domain` with a `gettext` block to the domain, and
+`AshGettext.Resource` to each resource. `mix ash_gettext.install --apply`
+does both; see [Set it up once](set-up-once.md) to write them once for the
+whole app. Create, update, destroy and generic actions are translated.
 
 ## See one error in two languages
 
@@ -66,74 +33,7 @@ MyApp.Shipping.Parcel
 ```
 
 With no actor, Gettext's current language is used, so wrap the call in
-`Gettext.with_locale/3`. No action changes the process language. The
-domain's resolver reads the language off the actor; see [Locales](locales.md).
-A resolver must not query the database.
-
-## No handler on each action
-
-Without AshGettext, each write action needs its own handler, and a new
-action ships untranslated if someone forgets it:
-
-```elixir
-create :register do
-  accept [:email]
-  error_handler {MyApp.Errors, :translate, []}
-end
-```
-
-The resource extension adds the handler to every create, update and destroy
-action, including actions you add later. An action that declares its own
-`error_handler` keeps it, and is not translated.
-
-## The message is the msgid
-
-An error's `message:` is looked up in the catalog as written:
-
-```elixir
-validate present(:email), message: "can't be blank"
-```
-
-If the catalog for the reader's locale has an entry, the entry replaces the
-message. If it has none, the message is left as it was. Adding AshGettext can
-add translations. It never changes a message that has no entry.
-
-Your own language needs no catalog, because the message is already the
-text. The `.po` files hold only the other languages.
-
-## Ash's own errors
-
-Some of Ash's errors have no message. Ash prints them from code names: a
-value that does not cast reads "Invalid value provided for count". AshGettext
-gives each one a written English sentence and translates it into the error's
-own text field, so the error stays Ash's own struct:
-
-| Error | Sentence |
-|---|---|
-| `Ash.Error.Changes.InvalidAttribute` | is invalid |
-| `Ash.Error.Changes.InvalidArgument` | is invalid |
-| `Ash.Error.Forbidden.Policy` | You are not allowed to do this |
-
-```elixir
-{:error, error} = Ash.create(MyApp.Order, %{count: "abc"}, actor: user)
-
-hd(error.errors)
-#=> %Ash.Error.Changes.InvalidAttribute{field: :count, message: "неверное значение"}
-```
-
-The sentence goes into `message`, or into `custom_message` for a policy.
-JSON:API, GraphQL and AshPhoenix forms read that field, and code that matches
-on Ash's structs keeps working.
-
-`Ash.Error.Changes.Required` is left untouched. It has no text field, so the
-only way to translate it would be to swap it for another struct, which breaks
-every `%Ash.Error.Changes.Required{}` match. JSON:API and AshPhoenix render
-it as "is required"; translate that where you show it.
-
-`mix gettext.extract` adds these sentences to the template. A
-policy with its own message keeps it, and that message is its msgid. A stale
-record error comes from the data layer after the handler, so it is not
-translated.
+`Gettext.with_locale/3`. See [Locales](locales.md).
 
 ## Put values in a message
 
@@ -147,28 +47,18 @@ InvalidAttribute.exception(
 )
 ```
 
-```po
-msgid "must weigh at least %{min} kg"
-msgstr "должен весить не меньше %{min} кг"
-```
+A message built with `#{...}` cannot be translated. `mix gettext.extract`
+warns about each one so you can rewrite it with `%{name}` and `vars`.
 
-A message built with `#{...}` cannot be a msgid, because the catalog needs a
-constant key. `mix gettext.extract` warns about each one so you can rewrite it
-with `%{name}` and `vars`.
+## Write your own message
 
-## Know which actions are translated
-
-Only create, update and destroy actions are translated. Ash gives those three
-an `error_handler` and gives read and generic actions none. Errors from a
-read or a generic action reach the caller as written. If you need a
-translated read error, translate it where you render it, with
-`AshGettext.ErrorTranslation.translate/2`.
+The `message:` is looked up in the catalog as written, so write it as the
+plain sentence in your language. Do this for a policy message too. A
+message with no catalog entry is left as it was.
 
 ## Choose the catalog file
 
-`text_domain` names the Gettext domain, which is the `.po` file the messages
-live in. It defaults to `"ash"`, the same catalog that holds enum labels and attribute
-names:
+`text_domain` names the `.po` file. It defaults to `"ash"`:
 
 ```elixir
 gettext do
@@ -181,8 +71,8 @@ Messages are now looked up in `priv/gettext/<locale>/LC_MESSAGES/shipping.po`.
 
 ## Roll out one domain at a time
 
-`translate_errors?` switches translation off for a domain that has a
-`gettext` block:
+`translate_errors? false` leaves a domain's messages exactly as written.
+Remove the line when you are ready:
 
 ```elixir
 gettext do
@@ -191,27 +81,10 @@ gettext do
 end
 ```
 
-Its resources keep their messages exactly as written. Remove the line when you
-are ready.
-
-`require_resource_extension?` is the opposite check. When `true`, compiling
-the domain warns about every resource that lacks the `AshGettext.Resource`
-extension:
-
-```elixir
-gettext do
-  backend(MyApp.Gettext)
-  require_resource_extension?(true)
-end
-```
-
-The warning is an error under `mix compile --warnings-as-errors`. It is off by
-default, because Ash extensions are opted into.
-
 ## Return a coded error
 
-`AshGettext.Error` is an error with a stable `code` the client can branch on
-and a `message` that is translated:
+`AshGettext.Error` has a stable `code` the client can branch on and a
+translated `message`:
 
 ```elixir
 {:error,
@@ -223,11 +96,8 @@ and a `message` that is translated:
  )}
 ```
 
-`code` is required. Leaving it out raises `ArgumentError`. `field` and `vars`
-are optional. The message is translated like any other, so return the error
-from a create, update or destroy action.
-
-With `:ash_json_api` installed, this error renders as:
+`code` is required. `field` and `vars` are optional. Return it from any
+action but a read. Over JSON:API it renders as:
 
 ```json
 {
@@ -238,6 +108,25 @@ With `:ash_json_api` installed, this error renders as:
 }
 ```
 
-`code` is the atom as a string, `detail` is the translated message and `meta`
-holds `vars`. There is no `title`, so no untranslated English reaches the
-reader. `source.pointer` appears only when `field` is set.
+## What is not translated
+
+- GraphQL's own query checks, and GraphQL's "something went wrong" reply
+  for an error type it does not know, stay in English.
+- An action with its own `error_handler` is not translated.
+- A Phoenix form shows no error for a policy failure.
+
+Ash gives a library no place to step in for these calls from your own code.
+Use `AshGettext.ErrorTranslation.translate/2` where you render their errors:
+
+- `Ash.bulk_update` and `Ash.bulk_destroy` when they run as one statement.
+  With `strategy: :stream` the errors are translated.
+- "Not found" from `Ash.get`, `Ash.read_one` and a code interface.
+- `Ash.count` and the other aggregates.
+- A read whose actor is passed only to `Ash.read`. Pass `actor:` to
+  `Ash.Query.for_read` and its errors are translated.
+
+An `error_handler` you wrote on a JSON:API or GraphQL domain keeps running.
+
+`Ash.Error.Changes.Required` has no `message`. Its translated sentence is in
+`vars[:translation]`. Read it from there when you render errors yourself, for
+example in a Phoenix form.

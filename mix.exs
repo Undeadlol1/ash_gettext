@@ -2,7 +2,7 @@ defmodule AshGettext.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/Undeadlol1/ash_gettext"
-  @version "0.1.0"
+  @version "0.2.0"
 
   def project do
     [
@@ -22,7 +22,7 @@ defmodule AshGettext.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger], mod: {AshGettext.Application, []}]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -35,7 +35,12 @@ defmodule AshGettext.MixProject do
       {:gettext, "~> 1.0"},
       {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
+      {:ash_graphql, "~> 1.0", optional: true},
       {:ash_phoenix, "~> 2.3", only: :test},
+      # AshJsonApi needs it to serve a POST route in the HTTP tests.
+      {:open_api_spex, "~> 3.16", only: :test},
+      # Ash needs a SAT solver to check the policy in the HTTP tests.
+      {:simple_sat, "~> 0.1", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Only for `mix spark.cheat_sheets`, which generates the DSL reference.
       {:igniter, "~> 0.6", only: :dev, runtime: false}
@@ -62,7 +67,6 @@ defmodule AshGettext.MixProject do
         "documentation/topics/translating-errors.md",
         "documentation/topics/extracting-messages.md",
         "documentation/topics/testing.md",
-        "documentation/topics/how-it-works.md",
         {"documentation/dsls/DSL-AshGettext.Domain.md",
          search_data: Spark.Docs.search_data_for(AshGettext.Domain)},
         {"documentation/dsls/DSL-AshGettext.Resource.md",
@@ -86,19 +90,23 @@ defmodule AshGettext.MixProject do
           AshGettext.Locale.Resolver,
           AshGettext.Locale.Normalizer
         ],
-        "How it works": [
+        "Mix tasks": [Mix.Tasks.AshGettext.Install],
+        Internals: [
           AshGettext.Info,
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
           AshGettext.AshMessages,
-          AshGettext.AshMessages.Translated,
+          AshGettext.TransportText,
+          AshGettext.JsonApi,
+          AshGettext.Graphql,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
+          AshGettext.Resource.Preparations.TranslateErrors,
           AshGettext.Domain.Transformers.MarkTexts,
+          AshGettext.Domain.Transformers.TranslateReplies,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
-        ],
-        "Mix tasks": [Mix.Tasks.AshGettext.Install]
+        ]
       ]
     ]
   end

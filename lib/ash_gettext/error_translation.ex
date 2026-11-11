@@ -13,7 +13,8 @@ defmodule AshGettext.ErrorTranslation do
 
   Ash's own errors with no message (a value that does not cast, a failed
   policy) get the written sentence from `AshGettext.AshMessages`, translated,
-  in their own text field. Every error keeps its struct.
+  in their own text field. One with no text field at all (a missing required
+  value) carries it in `vars[:translation]`. Every error keeps its struct.
 
   Pure by construction: backend, text domain and locale are all arguments, so a
   test is one assertion over one struct — no action run, no database, no actor.
@@ -68,7 +69,7 @@ defmodule AshGettext.ErrorTranslation do
     text_domain = Keyword.fetch!(opts, :text_domain)
     locale = Keyword.fetch!(opts, :locale)
 
-    case AshGettext.translate_or_missing(backend, text_domain, message, bindings(error), locale) do
+    case AshGettext.translate_error_text(backend, text_domain, message, bindings(error), locale) do
       {:ok, translated} -> %{error | message: translated}
       {:missing, _untranslated} -> error
     end
@@ -94,10 +95,20 @@ defmodule AshGettext.ErrorTranslation do
     end
   end
 
-  defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence),
-    do: %{error | custom_message: sentence}
+  # AshGraphql drops a policy's own message but passes `vars` on. The message is
+  # kept once: Ash hands the same error to its handler more than once.
+  defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence) do
+    vars = Keyword.put_new(List.wrap(error.vars), :policy_message, error.custom_message)
 
-  defp put_sentence(error, sentence), do: %{error | message: sentence}
+    %{error | custom_message: sentence, vars: vars}
+  end
+
+  defp put_sentence(%{message: _a_text_field} = error, sentence),
+    do: %{error | message: sentence}
+
+  # No text field: the sentence rides in `vars`, which every transport passes on.
+  defp put_sentence(error, sentence),
+    do: %{error | vars: Keyword.put(List.wrap(error.vars), :translation, sentence)}
 
   # Splode collects interpolation values in `vars`; they are the bindings a
   # catalog entry like "must be at least %{min} kg" needs.

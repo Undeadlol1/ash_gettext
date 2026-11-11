@@ -30,12 +30,15 @@ compile.
 
 The `AshGettext.Resource` extension runs a transformer,
 `AshGettext.Resource.Transformers.AttachErrorHandler`. It goes through the
-resource's actions and sets the `error_handler` of each create, update and
-destroy action to `AshGettext.ErrorTranslation.ErrorHandler.translate_error/2`.
+resource's actions and sets the `error_handler` of each create, update,
+destroy and generic action to `AshGettext.ErrorTranslation.ErrorHandler.translate_error/2`.
 
 - An action that already has an `error_handler` is left alone.
-- Read and generic actions are skipped, because Ash has no `error_handler`
-  option for them.
+- Read actions have no `error_handler` in Ash. The transformer adds one
+  preparation to the resource instead,
+  `AshGettext.Resource.Preparations.TranslateErrors`. It translates the
+  errors the query already has, and adds an `after_transaction` hook that
+  translates the errors of the read itself (a failed policy).
 
 Nothing else about the resource changes. No attribute, action or policy is
 rewritten.
@@ -61,7 +64,21 @@ If it has none, the error comes back unchanged.
 An Ash error with no message, such as a value that does not cast, takes its
 sentence from `AshGettext.AshMessages` instead, written into its own text
 field. Every error keeps its struct; `Ash.Error.Changes.Required`, which has
-no text field, is left as it is.
+no text field, carries the sentence in `vars[:translation]`. See
+[Why some errors are hard to translate](why-some-errors-are-hard.md).
+
+## Text a transport writes itself
+
+Some text never exists in the error. AshJsonApi and AshGraphql each write
+"is required" on a missing value themselves, and neither reads it from the
+error. That text can only be translated once the transport has written it.
+
+The rules for it are in `AshGettext.TransportText`, and they know nothing
+about any transport: look the text up, then the written sentence for the
+error's code, else leave it alone. `AshGettext.JsonApi` and
+`AshGettext.Graphql` are thin adapters over it, installed for you by
+`AshGettext.Domain.Transformers.TranslateReplies`. Another transport needs one call to
+`AshGettext.TransportText.translate/3` from its own error hook.
 
 ## Why transport does not matter
 
@@ -98,6 +115,8 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in the action's language. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Info` | Reads the `gettext` block. `language/2` asks the resolver, then normalizes. |
+| `AshGettext.JsonApi`, `AshGettext.Graphql` | Translate the text AshJsonApi and AshGraphql write into a reply. |
+| `AshGettext.Domain.Transformers.TranslateReplies` | Installs those two as the domain's `error_handler`. |
 | `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |
 | `AshGettext.Enum` | `use` it instead of `Ash.Type.Enum` to translate `label/1` and `description/1`. |
 | `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
@@ -110,8 +129,9 @@ arguments, so you can call it yourself.
 - **Text passed to `translate/5` is not extracted.** `mix gettext.extract`
   does not see it. Add it to the template by hand. Enum labels and attribute labels
   are extracted.
-- **Only write actions are translated.** Ash has no `error_handler` for reads
-  or generic actions. Their errors reach the caller as written.
+- **Read errors are not translated in the error.** Ash has no
+  `error_handler` for reads. A transport that writes the text can still
+  translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do.
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`

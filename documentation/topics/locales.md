@@ -1,8 +1,5 @@
 # Locales
 
-This page explains how AshGettext picks a language: from the actor, or from
-Gettext's current process language.
-
 ## Take the language from the actor
 
 Name one resolver in the domain's `gettext` block:
@@ -32,9 +29,8 @@ It is called only when the action has an actor. When it answers, loaded
 `_label` fields and [errors](translating-errors.md) come out in that
 language.
 
-A resolver must be a pure function of the actor. Read the language off the
-loaded actor and do not query the database. It runs for each label and
-error, and a query there is slow and hides work from the action.
+A resolver must not query the database. Read the language off the loaded
+actor.
 
 ## What the answer turns into
 
@@ -56,9 +52,6 @@ Gettext.with_locale(MyApp.Gettext, "ru", fn ->
   Ash.create(MyApp.Order, %{weight: 5})
 end)
 ```
-
-No action changes the process language, so a long-lived process, such as a
-job worker, never runs the next job in the last user's language.
 
 Code outside an action picks the language the same way:
 

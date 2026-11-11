@@ -9,7 +9,7 @@ defmodule AshGettext do
 
   Every input is an argument, including the language, and nothing is read
   from global state. So a translation works the same from any process, and a
-  test of one is a single assertion with no setup.
+  test of one is a single assertion.
 
   The text you write is the msgid. In the source language (the backend's
   configured `:default_locale`, else the global `:gettext` one, else `"en"`)
@@ -61,6 +61,34 @@ defmodule AshGettext do
       :dgettext
       |> lookup_in_backend([backend, text_domain, msgid, to_bindings(bindings)])
       |> mark_covered_or_missing(backend, locale, [msgid])
+    end)
+  end
+
+  @doc false
+  # An error text may have a value written into it that the error still lists
+  # ("must match ~r/a/" with `match: ~r/a/`). Putting `%{match}` back gives
+  # the msgid.
+  # ponytail: plain text replace; it only counts when the result is in the catalog.
+  @spec translate_error_text(backend(), text_domain(), String.t(), bindings(), locale()) ::
+          {:ok, String.t()} | {:missing, String.t()}
+  def translate_error_text(backend, text_domain, text, bindings, locale) do
+    with {:missing, _untranslated} <-
+           translate_or_missing(backend, text_domain, text, bindings, locale),
+         {msgid, written} when msgid != text <- with_names_for_values(text, bindings) do
+      translate_or_missing(backend, text_domain, msgid, Keyword.merge(bindings, written), locale)
+    else
+      _found_or_nothing_written ->
+        translate_or_missing(backend, text_domain, text, bindings, locale)
+    end
+  end
+
+  defp with_names_for_values(text, bindings) do
+    Enum.reduce(bindings, {text, []}, fn {name, value}, {text, written} ->
+      shown = if is_binary(value), do: value, else: inspect(value)
+
+      if shown != "" and String.contains?(text, shown),
+        do: {String.replace(text, shown, "%{#{name}}"), [{name, shown} | written]},
+        else: {text, written}
     end)
   end
 

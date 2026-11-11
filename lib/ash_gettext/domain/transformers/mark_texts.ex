@@ -2,8 +2,9 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
   @moduledoc """
   Shows `mix gettext.extract` every text this domain's resources translate:
   written attribute labels, literal `message`s in their DSL and in the app's
-  own validation, change and preparation modules they use, and the sentences
-  for Ash's own errors (`AshGettext.AshMessages`). See `AshGettext.Extractor`.
+  own validation, change and preparation modules they use, the sentences Ash
+  ships in its own template, and the ones for Ash's errors that have no
+  message (`AshGettext.AshMessages`). See `AshGettext.Extractor`.
 
   It runs in the domain, not the resource: an Ash domain compiles its
   resources first, so a resource waiting on its domain would deadlock.
@@ -13,6 +14,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
 
   use Spark.Dsl.Transformer
 
+  alias AshGettext.AshMessages
   alias Spark.Dsl.Transformer
 
   @doc false
@@ -38,7 +40,10 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
           text <- AshGettext.Extractor.resource_texts(resource, errors?),
           do: text
 
-    texts = if errors?, do: texts ++ AshGettext.AshMessages.msgids(), else: texts
+    texts =
+      if errors?,
+        do: texts ++ AshMessages.msgids() ++ AshMessages.ash_sentences(),
+        else: texts
 
     Transformer.eval(
       dsl_state,

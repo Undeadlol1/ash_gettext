@@ -1,8 +1,10 @@
 defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @moduledoc """
-  The `error_handler` that `AshGettext.Resource` installs on write actions.
+  The `error_handler` that `AshGettext.Resource` installs on every action.
+  Reads have no `error_handler`; a preparation calls this for them.
 
-  Ash calls this with the changeset and each error it collects, and takes the
+  Ash calls this with the changeset (the action input, for a generic action)
+  and each error it collects, and takes the
   return value as the error to keep. The error is translated into the language
   of the action's actor, else Gettext's current language.
 
@@ -20,10 +22,11 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @doc """
   Translate `error` into the action's language.
   """
-  @spec translate_error(Ash.Changeset.t(), term()) :: term()
+  @spec translate_error(Ash.Changeset.t() | Ash.ActionInput.t(), term()) :: term()
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->
+        remember_refusal(error)
         ErrorTranslation.translate(error, translation_options(changeset, settings))
 
       :error ->
@@ -31,15 +34,17 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
     end
   end
 
-  # Ask the domain's resolver; Gettext's current language is the fallback.
+  @json_api AshGettext.JsonApi
+
+  # AshJsonApi passes nothing of a failed policy on, so its reply step is told here.
+  defp remember_refusal(error) do
+    if Code.ensure_loaded?(@json_api), do: @json_api.remember_refusal(error)
+  end
+
   defp translation_options(changeset, settings) do
     actor = get_in(changeset.context || %{}, [:private, :actor])
 
-    locale =
-      case Info.language(changeset.domain, actor) do
-        {_backend, locale} -> locale
-        nil -> Gettext.get_locale(settings.backend)
-      end
+    locale = Info.locale(changeset.domain, actor, settings.backend)
 
     [backend: settings.backend, text_domain: settings.text_domain, locale: locale]
   end

@@ -1,16 +1,13 @@
 defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
   @moduledoc """
-  Point every write action's `error_handler` at `AshGettext.ErrorTranslation.ErrorHandler`.
+  Point every action's `error_handler` at `AshGettext.ErrorTranslation.ErrorHandler`.
 
   Doing this at compile time is what makes translation a property of the resource
   rather than a thing each action has to remember. Adding an action to a resource
   that uses `AshGettext.Resource` cannot forget to translate.
 
-  Two deliberate limits:
-
-  * **Write actions only.** Ash 3.29 exposes `error_handler` on `create`,
-    `update` and `destroy` — the changeset-based actions. Read and generic
-    actions have no equivalent hook, so their errors are not translated here.
+  * **Read actions** have no `error_handler` in Ash. The resource gets one
+    preparation, `AshGettext.Resource.Preparations.TranslateErrors`, instead.
   * **An action that already declares an `error_handler` is left alone.** The
     app asked for that handler explicitly; silently replacing it would be a worse
     surprise than an untranslated message.
@@ -20,7 +17,8 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
 
   alias Spark.Dsl.Transformer
 
-  @writes [:create, :update, :destroy]
+  @with_an_error_handler [:create, :update, :destroy, :action]
+  @read_preparation {AshGettext.Resource.Preparations.TranslateErrors, []}
   @handler {AshGettext.ErrorTranslation.ErrorHandler, :translate_error, []}
 
   @doc false
@@ -32,10 +30,25 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
     |> Transformer.get_entities([:actions])
     |> Enum.filter(&translatable?/1)
     |> Enum.reduce(dsl_state, &install/2)
-    |> then(&{:ok, &1})
+    |> translate_read_errors()
   end
 
-  defp translatable?(%{type: type, error_handler: nil}) when type in @writes, do: true
+  defp translate_read_errors(dsl_state) do
+    if Enum.any?(Transformer.get_entities(dsl_state, [:preparations]), &read_preparation?/1) do
+      {:ok, dsl_state}
+    else
+      {:ok, preparation} = Ash.Resource.Builder.build_preparation(@read_preparation)
+
+      {:ok, Transformer.add_entity(dsl_state, [:preparations], preparation)}
+    end
+  end
+
+  defp read_preparation?(%{preparation: @read_preparation}), do: true
+  defp read_preparation?(_other), do: false
+
+  defp translatable?(%{type: type, error_handler: nil}) when type in @with_an_error_handler,
+    do: true
+
   defp translatable?(_action), do: false
 
   defp install(action, dsl_state) do

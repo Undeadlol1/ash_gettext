@@ -9,14 +9,12 @@ defaults; add options only when a requirement demands them.
 
 ## Setup
 
-- AshGettext is not on Hex yet. Add
-  `{:ash_gettext, github: "Undeadlol1/ash_gettext"}` to deps. It needs `:ash`,
+- Add `{:ash_gettext, "~> 0.2"}` to deps. It needs `:ash`,
   `:spark` and `:gettext` (a Gettext backend, `use Gettext.Backend`, must
   already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
   only if the app serves JSON:API.
-- Translating text needs nothing else: no domain block, no resource
-  extension, no locale setup. The domain and resource extensions are
-  only for translating errors.
+- Translating text needs no domain block or resource extension. Those are
+  for translating errors.
 - No application config is required. Do not add `config :ash_gettext`. All
   error settings live in the domain DSL.
 - Keep the domain's `default_locale` equal to the backend's source
@@ -124,23 +122,18 @@ defaults; add options only when a requirement demands them.
   catalog.
 - A message no catalog covers is left unchanged. Adopting AshGettext never
   rewrites an existing message into something worse.
-- Translation runs only for errors raised in `create`, `update` and `destroy`
-  actions, through the `error_handler` the resource extension sets. Errors
-  from read and generic actions are not translated. Do not expect or promise
-  otherwise.
-- An action that already declares its own `error_handler` is left alone and
-  its errors are not translated.
-- Validation errors, builtin constraint errors, cast errors, missing required
-  values and failed policies all arrive at the same handler, so every
-  transport (JSON:API, GraphQL) sees the translated text. A stale record
-  error comes from the data layer after the handler and is not translated.
-- Ash's own errors with no message (`InvalidAttribute`, `InvalidArgument`,
-  `Ash.Error.Forbidden.Policy`) get a written sentence from
-  `AshGettext.AshMessages`, such as "is invalid", in their own text field
-  (`message`; `custom_message` for a policy). They stay Ash's own structs, so
-  match on them as usual.
-- `Ash.Error.Changes.Required` has no text field and is left untouched; it is
-  not translated.
+- Errors are translated for every action type. For a read called from
+  code, pass `actor:` to `Ash.Query.for_read`. A stale record error is not
+  translated.
+- An action that declares its own `error_handler` is not translated.
+- Ash's errors stay Ash's own structs; match on them as usual.
+  `Ash.Error.Changes.Required` has no `message`: its translated sentence is
+  in `vars[:translation]`.
+- Not translated: GraphQL's own query checks and its "something went wrong"
+  reply. From code: `Ash.bulk_update`/`Ash.bulk_destroy` run as one statement
+  (`strategy: :stream` is translated), "not found" from `Ash.get`,
+  `Ash.read_one` and code interfaces, `Ash.count` and other aggregates. Call
+  `AshGettext.ErrorTranslation.translate/2` on those errors.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.
@@ -161,6 +154,8 @@ defaults; add options only when a requirement demands them.
   in the domain without `AshGettext.Resource`.
 - A domain without the extension, or without a `gettext` block, passes errors
   through untouched.
+- Do not add an `error_handler` to a JSON:API or GraphQL domain to translate
+  its replies. One the app already has keeps running.
 
 ## Coded errors
 
@@ -184,8 +179,7 @@ defaults; add options only when a requirement demands them.
   translated message as `detail`, `vars` as `meta`, no `title`, and
   `source.pointer` set to `/data/attributes/<field>` when `field` is set. Its status class is
   `:invalid`.
-- It is translated by the same handler as any other error, so it follows the
-  same limit: create, update and destroy only.
+- Return it from any action but a read.
 
 ## Rules
 
@@ -197,22 +191,16 @@ defaults; add options only when a requirement demands them.
   `actor:` and let the resolver answer, or wrap the call in
   `Gettext.with_locale/3` when there is no actor.
 - Do not hand-write `.pot` entries that the extractor produces.
-- Configuration lives in the domain DSL and is read through `AshGettext.Info`.
-  Do not read it from `Application.get_env`.
+- Configuration lives in the domain DSL, not in `Application.get_env`.
 - To share one `gettext` block across domains, put it in a base domain macro
   and `use` that. To avoid `extensions:` on every resource, put it in the
   base resource macro.
 
 ## Tests
 
-- Tests with `async: true` are safe. Nothing is global: backend, text domain
-  and locale are arguments or domain settings, and the locale of a run comes
-  from the actor or `Gettext.with_locale/3`.
+- Tests with `async: true` are safe.
 - Assert the text through the real action:
   `Gettext.with_locale(MyApp.Gettext, "ru", fn -> Ash.create(changeset) end)`,
   then check the error's message.
-- Use these two helpers to test the translations themselves. In tests of
-  application behavior, assert the text users read through your own API
-  instead.
 - Do not change the process language in a test. It leaks between tests and
   breaks `async: true`. Use `Gettext.with_locale(backend, "ru", fn -> ... end)`.

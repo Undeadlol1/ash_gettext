@@ -60,9 +60,6 @@ defmodule MyApp.Order do
 end
 ```
 
-A resource or domain can still list its own `extensions:`. The base module
-adds AshGettext's extension to that list.
-
 A domain that needs one setting changed writes its own `gettext` block with
 just that setting. The rest still comes from the base domain:
 

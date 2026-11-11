@@ -29,6 +29,23 @@ defmodule AshGettextFixture.MinimumWeight do
   end
 end
 
+defmodule AshGettextFixture.Scales do
+  @moduledoc "What the generic `weigh` actions run, and an app's own handler for one."
+
+  def weigh(%{arguments: %{weight: weight}}, _context) when weight < 30 do
+    {:error,
+     Ash.Error.Changes.InvalidArgument.exception(
+       field: :weight,
+       message: "weight_too_low",
+       vars: [min: 30]
+     )}
+  end
+
+  def weigh(%{arguments: %{weight: weight}}, _context), do: {:ok, weight}
+
+  def keep(_input, error), do: error
+end
+
 defmodule AshGettextFixture.UntranslatedRule do
   @moduledoc """
   A validation whose message is a plain sentence no catalog covers.
@@ -134,6 +151,17 @@ defmodule AshGettextFixture.Parcel do
       accept([:label])
       require_atomic?(false)
       validate({AshGettextFixture.UntranslatedRule, []})
+    end
+
+    action :weigh, :integer do
+      argument(:weight, :integer, allow_nil?: false)
+      run(&AshGettextFixture.Scales.weigh/2)
+    end
+
+    action :weigh_the_apps_way, :integer do
+      argument(:weight, :integer, allow_nil?: false)
+      error_handler({AshGettextFixture.Scales, :keep, []})
+      run(&AshGettextFixture.Scales.weigh/2)
     end
   end
 

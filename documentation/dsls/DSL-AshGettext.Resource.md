@@ -12,8 +12,9 @@ Opts a resource into translated action errors, enum labels and attribute names.
     end
 
 No attribute is rewritten and no enum is replaced; the `attributes do` block
-stays as it is. The extension points each write action's `error_handler` at
-the library, and adds one public calculation, `<attribute>_label`, for each
+stays as it is. The extension points each action's `error_handler` at
+the library (a preparation does the same for reads), and adds one public
+calculation, `<attribute>_label`, for each
 attribute whose type is an `AshGettext.Enum` (see
 `AshGettext.Resource.Transformers.AddEnumLabels`). Load it to get the label
 on the record: `Ash.get!(Order, id, load: [:status_label])`.

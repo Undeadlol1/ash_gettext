@@ -21,9 +21,33 @@ defmodule AshGettext.AshMessagesTest do
       %{error: error_for(Ash.create(Delivery, %{}, actor: @russian), :delivery_date)}
     end
 
-    test "stays Ash's own Required error, untouched", %{error: error} do
-      assert %Ash.Error.Changes.Required{field: :delivery_date} = error
+    test "stays Ash's own Required error", %{error: error} do
+      assert %Ash.Error.Changes.Required{field: :delivery_date, type: :attribute} = error
       assert Exception.message(error) =~ "attribute delivery_date is required"
+    end
+
+    test "carries the Russian sentence next to its own values", %{error: error} do
+      assert error.vars[:translation] == "обязательное поле"
+    end
+
+    test "hands the Russian sentence to JSON:API in meta", %{error: error} do
+      assert %{meta: %{translation: "обязательное поле"}, code: "required"} =
+               AshJsonApi.ToJsonApiError.to_json_api_error(error)
+    end
+
+    test "hands the Russian sentence to an AshPhoenix form with the error", %{error: error} do
+      assert {:delivery_date, "is required", values} =
+               AshPhoenix.FormData.Error.to_form_error(error)
+
+      assert values[:translation] == "обязательное поле"
+    end
+  end
+
+  describe "a required attribute left out by a reader in the source language" do
+    test "carries the sentence as it was written" do
+      error = error_for(Ash.create(Delivery, %{}, actor: %{language: "en"}), :delivery_date)
+
+      assert error.vars[:translation] == "is required"
     end
   end
 
@@ -95,10 +119,22 @@ defmodule AshGettext.AshMessagesTest do
       assert translate(error) == error
     end
 
-    test "a required error passes through untouched" do
+    test "a required error changes in nothing but the sentence it carries" do
       error = Ash.Error.Changes.Required.exception(field: :delivery_date, type: :attribute)
 
-      assert translate(error) == error
+      assert translate(error) == %{error | vars: [translation: "обязательное поле"]}
+    end
+
+    test "a required error keeps the values the app gave it" do
+      error = Ash.Error.Changes.Required.exception(field: :delivery_date, vars: [row: 7])
+
+      assert Enum.sort(translate(error).vars) == [row: 7, translation: "обязательное поле"]
+    end
+
+    test "translating a required error twice changes nothing more" do
+      error = Ash.Error.Changes.Required.exception(field: :delivery_date)
+
+      assert translate(translate(error)) == translate(error)
     end
   end
 

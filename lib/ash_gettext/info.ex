@@ -91,6 +91,18 @@ defmodule AshGettext.Info do
   end
 
   @doc """
+  The locale to answer `actor` in: the one `language/2` gives, else `backend`'s
+  current language.
+  """
+  @spec locale(module() | map(), term(), module()) :: String.t()
+  def locale(domain, actor, backend) do
+    case language(domain, actor) do
+      {_backend, locale} -> locale
+      nil -> Gettext.get_locale(backend)
+    end
+  end
+
+  @doc """
   The written label of a resource's attribute from its `gettext` block, or `nil`.
   """
   @spec attribute_label(module(), atom()) :: String.t() | nil
