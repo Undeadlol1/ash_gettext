@@ -61,7 +61,8 @@ If it has none, the error comes back unchanged.
 An Ash error with no message, such as a value that does not cast, takes its
 sentence from `AshGettext.AshMessages` instead, written into its own text
 field. Every error keeps its struct; `Ash.Error.Changes.Required`, which has
-no text field, is left as it is.
+no text field, carries the sentence in `vars[:translation]`. See
+[Why some errors are hard to translate](why-some-errors-are-hard.md).
 
 ## Text a transport writes itself
 

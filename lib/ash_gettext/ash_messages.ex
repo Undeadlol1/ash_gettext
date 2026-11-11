@@ -1,5 +1,6 @@
 defmodule AshGettext.AshMessages do
   @messages [
+    {Ash.Error.Changes.Required, "is required"},
     {Ash.Error.Changes.InvalidAttribute, "is invalid"},
     {Ash.Error.Changes.InvalidArgument, "is invalid"},
     {Ash.Error.Forbidden.Policy, "You are not allowed to do this"}
@@ -23,8 +24,10 @@ defmodule AshGettext.AshMessages do
   goes into the error's own text field (`message`, or `custom_message` for a
   policy), so the error stays Ash's own struct.
 
-  `Ash.Error.Changes.Required` is not listed: it has no text field, and
-  replacing it with another struct would break code that matches on it.
+  `Ash.Error.Changes.Required` has no text field. Its sentence goes into its
+  `vars`, under `:translation`, next to whatever values the app put there.
+  Every transport passes `vars` on (JSON:API as `meta`), so the reader's
+  sentence travels with the error.
 
   | Error | Sentence |
   | --- | --- |

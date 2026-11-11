@@ -139,8 +139,9 @@ defaults; add options only when a requirement demands them.
   `AshGettext.AshMessages`, such as "is invalid", in their own text field
   (`message`; `custom_message` for a policy). They stay Ash's own structs, so
   match on them as usual.
-- `Ash.Error.Changes.Required` has no text field and is left untouched; it is
-  not translated.
+- `Ash.Error.Changes.Required` has no text field. It stays Ash's struct and
+  carries the sentence in `vars[:translation]`; do not expect a `message` on
+  it. Transports pass `vars` on (JSON:API as `meta`).
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.

@@ -24,7 +24,10 @@ defmodule AshGettext.TransportText do
       catalog entry, the written sentence for the code
       (`AshGettext.AshMessages`) is tried. Needed where a transport bakes a
       value into the text, so the text can never be a msgid.
-    * `:bindings` — values for `%{name}` in the text.
+    * `:bindings` — values for `%{name}` in the text: the error's `vars`, or
+      what the transport made of them (`meta` in JSON:API). When they hold a
+      `:translation`, the error was already translated below the transport,
+      in its actor's language, and that sentence is the answer.
     * `:actor` — who reads the reply. The domain's `locale_resolver` is asked
       for their language. Without an actor, or without an answer, Gettext's
       current language is used.
@@ -48,12 +51,12 @@ defmodule AshGettext.TransportText do
   def translate(text, domain, opts) when is_binary(text) and not is_nil(domain) do
     case Info.settings(domain) do
       {:ok, settings} ->
-        locale = locale(domain, settings, Keyword.get(opts, :actor))
         bindings = bindings(Keyword.get(opts, :bindings))
 
-        [text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
-        |> Enum.reject(&is_nil/1)
-        |> Enum.find_value(text, &translation(&1, settings, bindings, locale))
+        case Keyword.get(bindings, :translation) do
+          carried when is_binary(carried) -> carried
+          _none -> looked_up(text, domain, settings, bindings, opts)
+        end
 
       :error ->
         text
@@ -61,6 +64,14 @@ defmodule AshGettext.TransportText do
   end
 
   def translate(text, _domain, _opts), do: text
+
+  defp looked_up(text, domain, settings, bindings, opts) do
+    locale = locale(domain, settings, Keyword.get(opts, :actor))
+
+    [text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.find_value(text, &translation(&1, settings, bindings, locale))
+  end
 
   defp locale(domain, settings, actor) do
     case Info.language(domain, actor) do

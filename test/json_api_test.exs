@@ -22,7 +22,20 @@ defmodule AshGettext.JsonApiTest do
              pass: ["*/*"]
            )
 
-  defp reply(method, path, attributes, actor, domain \\ Api) do
+  defp reply(method, path, attributes, actor, domain \\ Api),
+    do:
+      request(
+        method,
+        path,
+        attributes,
+        actor,
+        &AshGettext.Plug.call(&1, AshGettext.Plug.init(domain: domain))
+      )
+
+  defp reply_without_the_plug(method, path, attributes, actor),
+    do: request(method, path, attributes, actor, & &1)
+
+  defp request(method, path, attributes, actor, set_language) do
     body = attributes && Jason.encode!(%{data: %{type: type_of(path), attributes: attributes}})
 
     conn =
@@ -30,7 +43,7 @@ defmodule AshGettext.JsonApiTest do
       |> put_req_header("content-type", "application/vnd.api+json")
       |> put_req_header("accept", "application/vnd.api+json")
       |> Ash.PlugHelpers.set_actor(actor)
-      |> AshGettext.Plug.call(AshGettext.Plug.init(domain: domain))
+      |> set_language.()
       |> Plug.Parsers.call(@parsers)
       |> ApiRouter.call(ApiRouter.init([]))
 
@@ -86,6 +99,35 @@ defmodule AshGettext.JsonApiTest do
     test "keeps AshJsonApi's own sentence for a record that is not there" do
       assert %{"detail" => "No note record found with `id: " <> _} =
                reply(:get, missing_note(), nil, @english)
+    end
+  end
+
+  describe "an app that never set the request's language" do
+    test "answers a missing required value as AshJsonApi wrote it" do
+      assert %{"code" => "required", "detail" => "is required", "meta" => %{}} =
+               reply_without_the_plug(:post, "/notes", %{}, @russian)
+    end
+
+    test "answers a required error Ash itself raised in the actor's language" do
+      {:error, error} = Ash.create(AshGettextFixture.Api.Note, %{}, actor: @russian)
+
+      assert [%{code: "required", detail: "обязательное поле", meta: %{translation: _}}] =
+               AshJsonApi.Error.to_json_api_errors(
+                 Api,
+                 AshGettextFixture.Api.Note,
+                 error,
+                 :create
+               )
+    end
+
+    test "still answers a validation in the actor's language" do
+      assert %{"detail" => "Вес должен быть не менее 30 кг"} =
+               reply_without_the_plug(:post, "/notes", %{title: "t", weight: 5}, @russian)
+    end
+
+    test "answers a record that is not there as AshJsonApi wrote it" do
+      assert %{"detail" => "No note record found with `id: " <> _} =
+               reply_without_the_plug(:get, missing_note(), nil, @russian)
     end
   end
 

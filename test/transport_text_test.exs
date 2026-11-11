@@ -44,6 +44,19 @@ defmodule AshGettext.TransportTextTest do
            ) == "No note record found with `id: 1`"
   end
 
+  test "a translation the error already carries wins over everything" do
+    assert TransportText.translate("is required", Shipping,
+             bindings: [translation: "обязательное поле"]
+           ) == "обязательное поле"
+  end
+
+  test "a carried translation is used even by a domain's adapter with no language set" do
+    assert TransportText.translate("is required", Shipping,
+             bindings: %{translation: "обязательное поле"},
+             code: "required"
+           ) == "обязательное поле"
+  end
+
   test "an actor's language wins over Gettext's current one" do
     assert TransportText.translate("is required", Shipping, actor: %{language: "ru"}) ==
              "обязательное поле"

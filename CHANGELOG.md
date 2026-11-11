@@ -18,6 +18,8 @@
   text a transport wrote itself. They belong to no transport;
   `AshGettext.JsonApi` is a thin adapter over them, and another transport
   needs one call.
+- A new guide, "Why some errors are hard to translate", says which errors
+  are translated where, and why.
 - `AshGettext.Plug` sets Gettext's language to the actor's for one request,
   using the domain's `locale_resolver`, and puts it back when the reply is
   sent.
@@ -32,9 +34,9 @@
   `AshGettext.AshMessages.Translated`, which is gone. Code that matches on
   `%Ash.Error.Changes.InvalidAttribute{}` or `%Ash.Error.Forbidden.Policy{}`
   keeps working, and AshPhoenix forms show the sentence again.
-- `Ash.Error.Changes.Required` is left untouched. It has no text field, so
-  the error itself is no longer translated. Over JSON:API, the reply is; see
-  `AshGettext.JsonApi`.
+- `Ash.Error.Changes.Required` stays Ash's own struct. It has no text field,
+  so the translated sentence is carried in `vars[:translation]`, next to the
+  app's own values. Every transport passes `vars` on (JSON:API as `meta`).
 
 ## 0.1.0 — 2026-11-11
 

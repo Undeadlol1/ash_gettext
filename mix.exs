@@ -65,6 +65,7 @@ defmodule AshGettext.MixProject do
         "documentation/topics/translating-text.md",
         "documentation/topics/locales.md",
         "documentation/topics/translating-errors.md",
+        "documentation/topics/why-some-errors-are-hard.md",
         "documentation/topics/extracting-messages.md",
         "documentation/topics/testing.md",
         "documentation/topics/how-it-works.md",

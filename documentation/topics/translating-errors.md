@@ -110,6 +110,7 @@ own text field, so the error stays Ash's own struct:
 
 | Error | Sentence |
 |---|---|
+| `Ash.Error.Changes.Required` | is required |
 | `Ash.Error.Changes.InvalidAttribute` | is invalid |
 | `Ash.Error.Changes.InvalidArgument` | is invalid |
 | `Ash.Error.Forbidden.Policy` | You are not allowed to do this |
@@ -125,10 +126,15 @@ The sentence goes into `message`, or into `custom_message` for a policy.
 JSON:API, GraphQL and AshPhoenix forms read that field, and code that matches
 on Ash's structs keeps working.
 
-`Ash.Error.Changes.Required` is left untouched. It has no text field, so the
-only way to translate it would be to swap it for another struct, which breaks
-every `%Ash.Error.Changes.Required{}` match. AshJsonApi writes its text
-("is required") in the reply; see the next section.
+`Ash.Error.Changes.Required` has no text field. It stays Ash's own struct
+and carries the sentence in its `vars`, next to any values of yours:
+
+```elixir
+%Ash.Error.Changes.Required{field: :delivery_date, vars: [translation: "обязательное поле"]}
+```
+
+Every transport passes `vars` on (JSON:API as `meta`). See
+[Why some errors are hard to translate](why-some-errors-are-hard.md).
 
 `mix gettext.extract` adds these sentences to the template. A
 policy with its own message keeps it, and that message is its msgid. A stale
