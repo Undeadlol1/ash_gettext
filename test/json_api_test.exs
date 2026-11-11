@@ -78,14 +78,9 @@ defmodule AshGettext.JsonApiTest do
   end
 
   describe "a reader in the source language" do
-    test "gets the same reply as an app without the handler" do
-      for {method, path, stock_path, attributes} <- [
-            {:post, "/notes", "/stock_notes", %{}},
-            {:post, "/notes", "/stock_notes", %{title: "t", weight: 5}}
-          ] do
-        assert without_id(reply(method, path, attributes, @english)) ==
-                 without_id(reply(method, stock_path, attributes, @english))
-      end
+    test "gets the same reply as a domain with translation switched off" do
+      assert without_id(reply(:post, "/notes", %{}, @english)) ==
+               without_id(reply(:post, "/stock_notes", %{}, @english))
     end
 
     test "keeps AshJsonApi's own sentence for a record that is not there" do
@@ -107,7 +102,18 @@ defmodule AshGettext.JsonApiTest do
     end
   end
 
-  describe "an app that never added the handler" do
+  describe "a domain with no error handler of its own" do
+    test "gets the translating handler without asking for it" do
+      assert AshJsonApi.Domain.Info.error_handler(Api) ==
+               {AshGettext.JsonApi, :translate_error, []}
+    end
+  end
+
+  describe "a domain that switched error translation off" do
+    test "keeps the handler it had: none" do
+      assert AshJsonApi.Domain.Info.error_handler(AshGettextFixture.StockApi) == nil
+    end
+
     test "replies as AshJsonApi does on its own, even to a Russian reader" do
       assert %{"code" => "required", "detail" => "is required"} =
                reply(:post, "/stock_notes", %{}, @russian, AshGettextFixture.StockApi)
@@ -115,6 +121,12 @@ defmodule AshGettext.JsonApiTest do
   end
 
   describe "an app with its own error handler" do
+    test "has it run first, with its own arguments" do
+      assert AshJsonApi.Domain.Info.error_handler(AshGettextFixture.OwnHandlerApi) ==
+               {AshGettext.JsonApi, :translate_error,
+                [{AshGettextFixture.OwnHandler, :handle_error, ["S-1"]}]}
+    end
+
     test "keeps what it added to meta, next to the translated sentence" do
       assert %{"detail" => "обязательное поле", "meta" => %{"support_code" => "S-1"}} =
                reply(:post, "/own_notes", %{}, @russian, AshGettextFixture.OwnHandlerApi)

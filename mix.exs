@@ -102,6 +102,7 @@ defmodule AshGettext.MixProject do
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
           AshGettext.Domain.Transformers.MarkTexts,
+          AshGettext.Domain.Transformers.TranslateJsonApiReplies,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
         ],
         "Mix tasks": [Mix.Tasks.AshGettext.Install]

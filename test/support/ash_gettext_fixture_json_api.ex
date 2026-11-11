@@ -76,7 +76,7 @@ defmodule AshGettextFixture.Api.Vault do
 end
 
 defmodule AshGettextFixture.Api do
-  @moduledoc "A JSON:API domain that translates its replies."
+  @moduledoc "A JSON:API domain with a `gettext` block and nothing else set up."
 
   use Ash.Domain,
     extensions: [AshGettext.Domain, AshJsonApi.Domain],
@@ -90,8 +90,6 @@ defmodule AshGettextFixture.Api do
   end
 
   json_api do
-    error_handler({AshGettext.JsonApi, :translate_error, []})
-
     routes do
       base_route "/notes", AshGettextFixture.Api.Note do
         get(:read)
@@ -111,11 +109,10 @@ defmodule AshGettextFixture.Api do
 end
 
 defmodule AshGettextFixture.OwnHandler do
-  @moduledoc "An app's own JSON:API error handler that adds to `meta`, then translates."
+  @moduledoc "An app's own JSON:API error handler, which adds to `meta`."
 
-  def handle_error(error, context) do
-    %{error | meta: Map.put(error.meta || %{}, :support_code, "S-1")}
-    |> AshGettext.JsonApi.translate_error(context)
+  def handle_error(error, _context, support_code) do
+    %{error | meta: Map.put(error.meta || %{}, :support_code, support_code)}
   end
 end
 
@@ -139,7 +136,7 @@ defmodule AshGettextFixture.OwnHandlerApi do
   end
 
   json_api do
-    error_handler({AshGettextFixture.OwnHandler, :handle_error, []})
+    error_handler({AshGettextFixture.OwnHandler, :handle_error, ["S-1"]})
 
     routes do
       base_route "/own_notes", AshGettextFixture.OwnHandlerApi.Note do
@@ -160,7 +157,7 @@ defmodule AshGettextFixture.StockApi.Note do
 end
 
 defmodule AshGettextFixture.StockApi do
-  @moduledoc "A JSON:API domain that never added the error handler."
+  @moduledoc "A JSON:API domain that switched error translation off."
 
   use Ash.Domain,
     extensions: [AshGettext.Domain, AshJsonApi.Domain],
@@ -171,6 +168,7 @@ defmodule AshGettextFixture.StockApi do
     default_locale("en")
     text_domain("fixture")
     locale_resolver(AshGettextFixture.ActorLanguage)
+    translate_errors?(false)
   end
 
   json_api do

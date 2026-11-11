@@ -4,11 +4,13 @@
 
 ### Changes
 
-- `AshGettext.JsonApi.translate_error/2` is an `error_handler` for the
-  `json_api` block. It translates the `detail` of every error in a reply,
-  including the text AshJsonApi writes itself ("is required", record not
-  found) and errors from reads. `code`, `title`, `meta` and the source
-  pointer are kept. Text with no catalog entry goes out unchanged.
+- JSON:API replies are translated. A domain with a `gettext` block that also
+  uses `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`,
+  with nothing to set up. It translates the `detail` of every error in a
+  reply, including the text AshJsonApi writes itself ("is required", record
+  not found) and errors from reads. `code`, `title`, `meta` and the source
+  pointer are kept. Text with no catalog entry goes out unchanged. An
+  `error_handler` you wrote still runs, first.
 - `AshGettext.Plug` sets Gettext's language to the actor's for one request,
   using the domain's `locale_resolver`, and puts it back when the reply is
   sent.

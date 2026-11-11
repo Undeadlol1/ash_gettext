@@ -162,12 +162,13 @@ defaults; add options only when a requirement demands them.
 - A domain without the extension, or without a `gettext` block, passes errors
   through untouched.
 - AshJsonApi writes some error text itself ("is required", record not found),
-  and read errors skip the action error handler. To translate the reply, add
-  `error_handler {AshGettext.JsonApi, :translate_error, []}` to the domain's
-  `json_api` block and `plug AshGettext.Plug, domain: MyApp.Shop` after the
-  plug that sets the actor. Only `detail` changes; `code` and `meta` are
-  kept. An app with its own `error_handler` calls
-  `AshGettext.JsonApi.translate_error(error, context)` from it.
+  and read errors skip the action error handler. A domain with a `gettext` block and
+  `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`
+  automatically; do not add it by hand. The reply is translated into
+  Gettext's current language: if the app does not already set it per
+  request, add `plug AshGettext.Plug, domain: MyApp.Shop` after the plug
+  that sets the actor. Only `detail` changes; `code` and `meta` are kept. An
+  `error_handler` the app wrote still runs, first.
 
 ## Coded errors
 

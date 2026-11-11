@@ -142,15 +142,13 @@ has run: "is required" for a missing value, "No note record found with ..."
 for a record that is not there. Errors from reads never reach an action's
 error handler at all. So the reply is translated in one more place.
 
-Add the handler to your `json_api` block:
+There is nothing to add to the domain. One with a `gettext` block that also
+uses `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`.
 
-```elixir
-json_api do
-  error_handler {AshGettext.JsonApi, :translate_error, []}
-end
-```
-
-And set the request's language after the plug that sets the actor:
+The reply is written in Gettext's current language. AshJsonApi does not tell
+an error handler who the actor is, so the request has to carry the language.
+If your app already calls `Gettext.put_locale/2` for each request, you are
+done. If not, add this after the plug that sets the actor:
 
 ```elixir
 plug :set_actor
@@ -167,17 +165,9 @@ catalog has no entry, the written sentence for the error's `code` is tried
 AshJsonApi wrote it. A reader in your own language always gets AshJsonApi's
 text unchanged.
 
-Both steps are opt-in. Without them nothing about your replies changes.
-
-If you already have an `error_handler`, call this one from yours:
-
-```elixir
-def handle_error(error, context) do
-  error
-  |> add_my_meta()
-  |> AshGettext.JsonApi.translate_error(context)
-end
-```
+An `error_handler` you wrote keeps running. It is called first, and the
+error it returns is then translated. `translate_errors? false` switches all
+of this off for the domain.
 
 ## Put values in a message
 
