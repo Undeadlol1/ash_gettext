@@ -55,6 +55,14 @@ when `debug_info` is off), else the resource's `defmodule`. A message in a
 validation or change module is found by reading that module's source, with
 its line. Ash's own sentences are made at the domain.
 
+With `extract_app_messages?` (the default), the first domain per backend and
+text domain also reads every `.ex` file under the project's `elixirc_paths`
+for literal `message:` strings (`AshGettext.Extractor.app_messages/2`). The
+result is kept in `:persistent_term` for the rest of the run, under a
+`:global` lock, so domains compiled in parallel read the files once. A text
+the scan already found at the same file is not marked again from the
+resource walk, and a module in a scanned file is not read twice.
+
 ## When an error is raised
 
 Ash calls the handler once for each error an action collects. The handler does

@@ -54,11 +54,27 @@ mix gettext.extract --check-up-to-date
 It writes nothing and fails when a template is out of date, so a new message
 cannot be merged without its entry.
 
-## Text outside Ash
+## Messages outside resources
 
-Text that is not in a resource, an enum or a module a resource uses, such as a
-helper that builds errors, is plain Elixir code. Gettext's usual rules apply:
-see [Gettext's docs](https://hexdocs.pm/gettext/Gettext.html).
+A message written in a plain module, such as a helper that builds an error
+with `message: "Not enough coins"`, is found too. Every `.ex` file under your
+app's `elixirc_paths` is read for literal `message:` strings (never your
+deps, and in an umbrella only the app being compiled). They go to each
+domain's backend and `text_domain`, once even when several domains share
+them. A domain with `translate_errors? false` adds none.
+
+To turn this off for a domain:
+
+```elixir
+gettext do
+  backend MyApp.Gettext
+  extract_app_messages? false
+end
+```
+
+Other text, such as text you pass to `AshGettext.translate/5`, is plain
+Elixir code. Gettext's usual rules apply: see
+[Gettext's docs](https://hexdocs.pm/gettext/Gettext.html).
 
 ## Fix a message with a variable in it
 

@@ -61,6 +61,7 @@ end
 | [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when the resolver names a language the catalogs do not have. |
 | [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for everything Ash-derived: errors, enum labels, attribute names. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
+| [`extract_app_messages?`](#gettext-extract_app_messages?){: #gettext-extract_app_messages? } | `boolean` | `true` | Whether `mix gettext.extract` also reads the app's own source files (its `elixirc_paths`) for every literal `message:`, so a message written in a plain module reaches the template too. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |
 
 

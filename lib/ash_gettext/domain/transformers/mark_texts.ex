@@ -2,7 +2,8 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
   @moduledoc """
   Shows `mix gettext.extract` every text this domain's resources translate:
   written attribute labels, literal `message`s in their DSL and in the app's
-  own validation, change and preparation modules they use, the sentences Ash
+  own validation, change and preparation modules they use, every literal
+  `message:` in the app's own source (`extract_app_messages?`), the sentences Ash
   ships in its own template, and the ones for Ash's errors that have no
   message (`AshGettext.AshMessages`). See `AshGettext.Extractor`.
 
@@ -15,6 +16,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
   use Spark.Dsl.Transformer
 
   alias AshGettext.AshMessages
+  alias AshGettext.Extractor
   alias Spark.Dsl.Transformer
 
   @doc false
@@ -33,12 +35,24 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
     text_domain = Transformer.get_option(dsl_state, [:gettext], :text_domain, "ash")
     errors? = Transformer.get_option(dsl_state, [:gettext], :translate_errors?, true)
 
+    app? = Transformer.get_option(dsl_state, [:gettext], :extract_app_messages?, true)
+
+    {scan_is, scan} =
+      if errors? and app?,
+        do: Extractor.app_messages(backend, text_domain),
+        else: {:seen, %{paths: MapSet.new(), messages: []}}
+
+    scanned = MapSet.new(scan.messages, &{&1.msgid, &1.path})
+
     texts =
       for %{resource: resource} <- Transformer.get_entities(dsl_state, [:resources]),
           Code.ensure_compiled(resource) == {:module, resource},
           AshGettext.Resource in Spark.extensions(resource),
-          text <- AshGettext.Extractor.resource_messages(resource, errors?),
+          text <- Extractor.resource_messages(resource, errors?, scan.paths),
+          not MapSet.member?(scanned, {text.msgid, text.path}),
           do: text
+
+    texts = if scan_is == :new, do: scan.messages ++ texts, else: texts
 
     texts =
       if errors?,
@@ -49,7 +63,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
       dsl_state,
       [],
       quote do
-        AshGettext.Extractor.mark(
+        Extractor.mark(
           __ENV__,
           unquote(backend),
           unquote(text_domain),

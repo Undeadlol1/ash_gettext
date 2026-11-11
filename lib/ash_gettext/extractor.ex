@@ -67,8 +67,8 @@ defmodule AshGettext.Extractor do
   @doc """
   `resource_texts/2`, each text with the file and line it is written at.
   """
-  @spec resource_messages(module(), boolean()) :: [located()]
-  def resource_messages(resource, messages?) do
+  @spec resource_messages(module(), boolean(), MapSet.t(String.t())) :: [located()]
+  def resource_messages(resource, messages?, scanned_paths \\ MapSet.new()) do
     labels =
       for label <- Spark.Dsl.Extension.get_entities(resource, [:gettext]),
           do: {label.text, entity_location(label, :text, nil)}
@@ -77,7 +77,45 @@ defmodule AshGettext.Extractor do
       if messages?, do: walk(dsl_entities(resource), nil, {[], []}), else: {[], []}
 
     place(labels ++ messages, resource) ++
-      Enum.flat_map(Enum.uniq(modules), &module_messages/1)
+      Enum.flat_map(Enum.uniq(modules), &module_messages(&1, scanned_paths))
+  end
+
+  @doc """
+  Every literal `message` in the app's own source: the `.ex` files under the
+  project's `elixirc_paths`. Read once per backend and text domain: the first
+  call returns `{:new, scan}`, every later one `{:seen, scan}`.
+  """
+  @spec app_messages(module(), String.t()) ::
+          {:new | :seen, %{paths: MapSet.t(String.t()), messages: [located()]}}
+  def app_messages(backend, text_domain) do
+    key = {__MODULE__, :app_messages, backend, text_domain}
+
+    # ponytail: remembered for the VM's life, which is one `mix gettext.extract`
+    # run; a second run in the same VM would need the key cleared.
+    :global.trans({key, self()}, fn ->
+      case :persistent_term.get(key, nil) do
+        nil ->
+          scan = scan_app()
+          :persistent_term.put(key, scan)
+          {:new, scan}
+
+        scan ->
+          {:seen, scan}
+      end
+    end)
+  end
+
+  defp scan_app do
+    paths =
+      for dir <- Mix.Project.config()[:elixirc_paths] || [],
+          path <- Path.wildcard(Path.join(dir, "**/*.ex")),
+          do: Path.expand(path)
+
+    result =
+      find_messages(for path <- paths, {:ok, contents} <- [File.read(path)], do: {path, contents})
+
+    Enum.each(result.interpolated, &warn_interpolated/1)
+    %{paths: MapSet.new(paths), messages: located(result)}
   end
 
   defp dsl_entities(resource) do
@@ -176,11 +214,12 @@ defmodule AshGettext.Extractor do
   end
 
   # Anything but third-party deps, so sibling umbrella and path-dep apps count.
-  defp module_messages(module) do
+  defp module_messages(module, scanned_paths) do
     with {:module, ^module} <- Code.ensure_compiled(module),
          source when is_list(source) <- module.module_info(:compile)[:source],
          path = List.to_string(source),
          true <- app_source?(path),
+         false <- MapSet.member?(scanned_paths, path),
          {:ok, contents} <- File.read(path) do
       result = find_messages([{path, contents}])
       Enum.each(result.interpolated, &warn_interpolated/1)
