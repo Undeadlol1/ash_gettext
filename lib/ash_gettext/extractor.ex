@@ -113,20 +113,33 @@ defmodule AshGettext.Extractor do
     end
   end
 
-  # ponytail: remembered for the VM's life, which is one `mix gettext.extract`
-  # run; a second run in the same VM would need the key cleared.
+  # One slot per key, holding the compiler run that filled it: a later run in
+  # the same VM scans again and replaces it.
   defp remembered(key, compute) do
+    run = compiler_run()
+
     :global.trans({key, self()}, fn ->
       case :persistent_term.get(key, nil) do
-        nil ->
-          value = compute.()
-          :persistent_term.put(key, value)
-          {:new, value}
-
-        value ->
+        {^run, value} ->
           {:seen, value}
+
+        _other_run_or_none ->
+          value = compute.()
+          :persistent_term.put(key, {run, value})
+          {:new, value}
       end
     end)
+  end
+
+  # Elixir's parallel compiler (what `mix compile` runs) gives every file of
+  # one run the same checker process. `Code.compile_file/1` is not that
+  # compiler, so its caller is the run, and several files it compiles share one.
+  defp compiler_run do
+    case {Process.get(:elixir_compiler_info), Process.get(:elixir_checker_info)} do
+      {{_parent, _file}, {_caller, {checker, _ref}}} -> checker
+      {_not_parallel, {caller, _checker}} -> caller
+      _not_compiling -> self()
+    end
   end
 
   defp scan_app(folders) do

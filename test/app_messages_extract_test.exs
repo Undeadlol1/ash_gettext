@@ -110,6 +110,28 @@ defmodule AshGettext.AppMessagesExtractTest do
     refute "Not enough coins" in msgids(pots, "scanned_fixture/no_scan")
   end
 
+  defp extract_in_one_compiler_run do
+    Gettext.Extractor.enable()
+
+    try do
+      capture_io(:stderr, fn -> Kernel.ParallelCompiler.compile([@fixture]) end)
+    after
+      Gettext.Extractor.disable()
+    end
+
+    :ash_gettext
+    |> Gettext.Extractor.pot_files([])
+    |> msgids("scanned_fixture/shared/ash.pot")
+    |> Enum.sort()
+  end
+
+  test "a second extraction in the same VM finds the same texts" do
+    first_run = extract_in_one_compiler_run()
+
+    assert "Not enough coins" in first_run
+    assert extract_in_one_compiler_run() == first_run
+  end
+
   test "a normal compile scans nothing", %{normal_compile_warnings: warnings} do
     refute warnings =~ interpolated_line()
   end
