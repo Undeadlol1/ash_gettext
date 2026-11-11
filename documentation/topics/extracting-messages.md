@@ -54,12 +54,17 @@ sentences.
 ## Upgrading from a version without `ash_builtin`
 
 Built-in sentences used to sit in your `text_domain` catalog (`ash.po`).
-After upgrading, run `mix gettext.extract --merge`: it creates
-`ash_builtin.pot` and an empty `ash_builtin.po` per language, and marks the
-built-in entries in `ash.po` obsolete (`#~`) because `ash.pot` no longer
-lists them. Move each translated one into `ash_builtin.po`, then delete the
-obsolete lines. A translation left in `ash.po` still works while it is
-there: `text_domain` is looked up first.
+`mix gettext.extract --merge` deletes entries a template no longer lists, so
+the first extract on the new version would throw their translations away.
+Before it, copy each language's old catalog to the built-in one:
+
+```
+cp priv/gettext/<locale>/LC_MESSAGES/ash.po priv/gettext/<locale>/LC_MESSAGES/ash_builtin.po
+```
+
+Then run `mix gettext.extract --merge`. It keeps the built-in entries,
+translated, in `ash_builtin.po`, and removes them from `ash.po`; your own
+entries stay in `ash.po` only.
 
 ## Fail CI when a template is stale
 

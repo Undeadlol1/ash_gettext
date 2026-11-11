@@ -139,7 +139,10 @@ defaults; add options only when a requirement demands them.
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Your errors, enum labels and
   attribute labels share it. The sentences Ash and AshGettext ship live in
   `ash_builtin.po` (`builtin_text_domain`); an error text is looked up in
-  `text_domain` first, then there.
+  `text_domain` first, then there. Upgrading from a version without
+  `ash_builtin`: before the first extract, `cp` each language's `ash.po` to
+  `ash_builtin.po` in the same folder; `--merge` deletes entries a template
+  no longer lists.
 - Run Gettext's own `mix gettext.extract --merge`. AshGettext makes every
   enum label, attribute label, literal `message` (in resources and in the
   validation, change and preparation modules they use) and Ash's error

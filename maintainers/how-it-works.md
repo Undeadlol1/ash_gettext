@@ -61,6 +61,10 @@ domain per run (`AshGettext.Extractor.builtin_messages/2`, kept in
 `:persistent_term` like the app scan). Each is made at one fixed place,
 `AshGettext.AshMessages.source/0`, so the `.pot` does not depend on which
 domain compiled first and two runs give the same file.
+Gettext 1.0's `--merge` deletes entries a template no longer lists
+(`deps/gettext/lib/mix/tasks/gettext.merge.ex:304`), so an app upgrading from
+a version without `ash_builtin` copies each `ash.po` to `ash_builtin.po`
+before its first extract.
 
 With `extract_messages_from` (default `["lib"]`, `[]` is off), the first domain
 per backend and text domain also reads every `.ex` file under those folders
