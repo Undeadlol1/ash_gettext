@@ -13,6 +13,8 @@ defmodule AshGettext.Info do
 
   use Spark.InfoGenerator, extension: AshGettext.Domain, sections: [:gettext]
 
+  require Logger
+
   @typedoc "Everything needed to translate for a domain."
   @type settings :: %{
           backend: module(),
@@ -78,7 +80,7 @@ defmodule AshGettext.Info do
   def language(domain, actor) do
     with {:ok, %{locale_resolver: resolver} = settings} when resolver != nil <-
            locale_settings(domain),
-         answer when is_binary(answer) <- resolver.resolve(actor) do
+         answer when is_binary(answer) <- resolve(resolver, actor) do
       {settings.backend,
        AshGettext.Locale.Normalizer.normalize(
          answer,
@@ -88,6 +90,19 @@ defmodule AshGettext.Info do
     else
       _no_answer -> nil
     end
+  end
+
+  defp resolve(resolver, actor) do
+    resolver.resolve(actor)
+  rescue
+    exception -> failed(resolver, Exception.format_banner(:error, exception))
+  catch
+    kind, reason -> failed(resolver, Exception.format_banner(kind, reason))
+  end
+
+  defp failed(resolver, reason) do
+    Logger.warning("#{inspect(resolver)} could not resolve a locale: #{reason}")
+    nil
   end
 
   @doc """
