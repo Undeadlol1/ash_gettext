@@ -32,15 +32,10 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
     end
   end
 
-  # Ask the domain's resolver; Gettext's current language is the fallback.
   defp translation_options(changeset, settings) do
     actor = get_in(changeset.context || %{}, [:private, :actor])
 
-    locale =
-      case Info.language(changeset.domain, actor) do
-        {_backend, locale} -> locale
-        nil -> Gettext.get_locale(settings.backend)
-      end
+    locale = Info.locale(changeset.domain, actor, settings.backend)
 
     [backend: settings.backend, text_domain: settings.text_domain, locale: locale]
   end

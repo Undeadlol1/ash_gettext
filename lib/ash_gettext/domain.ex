@@ -91,7 +91,6 @@ defmodule AshGettext.Domain do
     verifiers: [AshGettext.Domain.Verifiers.ValidateResourceExtensions],
     transformers: [
       AshGettext.Domain.Transformers.MarkTexts,
-      AshGettext.Domain.Transformers.TranslateJsonApiReplies,
-      AshGettext.Domain.Transformers.TranslateGraphqlReplies
+      AshGettext.Domain.Transformers.TranslateReplies
     ]
 end

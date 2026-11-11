@@ -11,7 +11,7 @@ if Code.ensure_loaded?(AshGraphql.Error) do
 
     There is nothing to set up. A domain with a `gettext` block that also uses
     `AshGraphql.Domain` gets this as its `error_handler`
-    (`AshGettext.Domain.Transformers.TranslateGraphqlReplies`).
+    (`AshGettext.Domain.Transformers.TranslateReplies`).
 
     AshGraphql hands the handler the request's context, and the actor is in it.
     The language is the one the domain's `locale_resolver` answers for that

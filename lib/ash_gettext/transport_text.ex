@@ -25,9 +25,7 @@ defmodule AshGettext.TransportText do
       (`AshGettext.AshMessages`) is tried. Needed where a transport bakes a
       value into the text, so the text can never be a msgid.
     * `:bindings` — values for `%{name}` in the text: the error's `vars`, or
-      what the transport made of them (`meta` in JSON:API). When they hold a
-      `:translation`, the error was already translated below the transport,
-      in its actor's language, and that sentence is the answer.
+      what the transport made of them (`meta` in JSON:API).
     * `:actor` — who reads the reply. The domain's `locale_resolver` is asked
       for their language. Without an actor, or without an answer, Gettext's
       current language is used.
@@ -51,12 +49,7 @@ defmodule AshGettext.TransportText do
   def translate(text, domain, opts) when is_binary(text) and not is_nil(domain) do
     case Info.settings(domain) do
       {:ok, settings} ->
-        bindings = bindings(Keyword.get(opts, :bindings))
-
-        case Keyword.get(bindings, :translation) do
-          carried when is_binary(carried) -> carried
-          _none -> looked_up(text, domain, settings, bindings, opts)
-        end
+        looked_up(text, domain, settings, bindings(Keyword.get(opts, :bindings)), opts)
 
       :error ->
         text
@@ -66,18 +59,11 @@ defmodule AshGettext.TransportText do
   def translate(text, _domain, _opts), do: text
 
   defp looked_up(text, domain, settings, bindings, opts) do
-    locale = locale(domain, settings, Keyword.get(opts, :actor))
+    locale = Info.locale(domain, Keyword.get(opts, :actor), settings.backend)
 
     [text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
     |> Enum.reject(&is_nil/1)
     |> Enum.find_value(text, &translation(&1, settings, bindings, locale))
-  end
-
-  defp locale(domain, settings, actor) do
-    case Info.language(domain, actor) do
-      {_backend, locale} -> locale
-      nil -> Gettext.get_locale(settings.backend)
-    end
   end
 
   defp translation(msgid, settings, bindings, locale) do
@@ -93,8 +79,8 @@ defmodule AshGettext.TransportText do
     end
   end
 
-  defp bindings(nil), do: []
-
-  defp bindings(values),
+  defp bindings(values) when is_list(values) or is_map(values),
     do: Enum.filter(values, &match?({key, _value} when is_atom(key), &1))
+
+  defp bindings(_none), do: []
 end

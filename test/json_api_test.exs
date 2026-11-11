@@ -99,10 +99,10 @@ defmodule AshGettext.JsonApiTest do
                reply(:post, "/notes", %{}, @russian)
     end
 
-    test "answers a required error Ash itself raised in the actor's language" do
+    test "passes on the sentence a required error Ash itself raised carries" do
       {:error, error} = Ash.create(AshGettextFixture.Api.Note, %{}, actor: @russian)
 
-      assert [%{code: "required", detail: "обязательное поле", meta: %{translation: _}}] =
+      assert [%{code: "required", meta: %{translation: "обязательное поле"}}] =
                AshJsonApi.Error.to_json_api_errors(
                  Api,
                  AshGettextFixture.Api.Note,

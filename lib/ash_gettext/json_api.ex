@@ -10,7 +10,7 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
 
     There is nothing to set up. A domain with a `gettext` block that also uses
     `AshJsonApi.Domain` gets this as its `error_handler`
-    (`AshGettext.Domain.Transformers.TranslateJsonApiReplies`).
+    (`AshGettext.Domain.Transformers.TranslateReplies`).
 
     The language is the one the domain's `locale_resolver` answers for the
     request's actor. AshJsonApi does not tell an `error_handler` who the actor

@@ -175,10 +175,10 @@ defmodule AshGettext.GraphqlTest do
                %{error() | message: "обязательное поле", short_message: "обязательное поле"}
     end
 
-    test "uses the sentence the error carries in its vars" do
-      carried = error(vars: [translation: "уже переведено"])
+    test "answers in the reader's language, whatever sentence the error carries" do
+      carried = error(vars: [translation: "written for someone else"])
 
-      assert %{message: "уже переведено"} =
+      assert %{message: "обязательное поле"} =
                AshGettext.Graphql.translate_error(carried, context(@russian))
     end
 

@@ -73,7 +73,7 @@ defmodule AshGettextFixture.Rules.Entry do
     create :create do
       primary?(true)
       accept([:code, :quantity, :slug, :handle, :nickname, :stock, :weight, :note, :locked])
-      argument(:size, :integer)
+      argument(:size, :integer, constraints: [min: 1])
       validate({AshGettextFixture.MinimumWeight, []})
       validate({AshGettextFixture.UnlistedSentence, []})
       validate({AshGettextFixture.UnknownRule, []})

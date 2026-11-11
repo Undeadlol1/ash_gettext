@@ -17,6 +17,7 @@ defmodule AshGettext.AshMessages do
   ]
 
   @sentences [
+    "has already been taken",
     "invalid filter value",
     "Invalid filter value %{value}",
     "Invalid value provided as a keyset for %{key}: %{value}"
@@ -54,7 +55,7 @@ defmodule AshGettext.AshMessages do
   | --- | --- |
   #{for {code, msgid} <- @replies, into: "", do: "| `#{code}` | #{msgid} |\n"}
 
-  AshGraphql also writes these, which have no code of their own:
+  These have no code of their own:
 
   #{for msgid <- @sentences, into: "", do: "- #{msgid}\n"}
   """
