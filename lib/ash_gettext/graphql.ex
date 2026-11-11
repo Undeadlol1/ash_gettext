@@ -33,6 +33,8 @@ if Code.ensure_loaded?(AshGraphql.Error) do
 
     An `error_handler` you wrote keeps running. It is called first, with the
     arguments you gave it, and the error it returns is then translated.
+    AshGraphql's default handler, which fills `%{name}` values into the text,
+    runs last instead: filled in first, the text would no longer be a msgid.
     """
 
     @doc """
@@ -61,8 +63,15 @@ if Code.ensure_loaded?(AshGraphql.Error) do
 
     @doc """
     Run the app's own `error_handler`, then translate the error it returns.
+    AshGraphql's default handler runs after the translation.
     """
     @spec translate_error(term(), map(), {module(), atom(), [term()]}) :: term()
+    def translate_error(error, context, {AshGraphql.DefaultErrorHandler, function, arguments}) do
+      error
+      |> translate_error(context)
+      |> then(&apply(AshGraphql.DefaultErrorHandler, function, [&1, context | arguments]))
+    end
+
     def translate_error(error, context, {module, function, arguments}) do
       module
       |> apply(function, [error, context | arguments])
