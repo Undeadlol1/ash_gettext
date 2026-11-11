@@ -297,10 +297,15 @@ defmodule AshGettextFixture.Crate do
 end
 
 defmodule AshGettextFixture.ActorLanguage do
-  @moduledoc "A resolver that reads the language off the actor."
+  @moduledoc "A resolver that reads the language off the actor, and tells a test it was asked."
   @behaviour AshGettext.Locale.Resolver
 
   @impl true
+  def resolve(%{tell: test} = actor) do
+    send(test, :language_asked)
+    resolve(Map.delete(actor, :tell))
+  end
+
   def resolve(%{language: language}), do: language
   def resolve(_actor), do: nil
 end

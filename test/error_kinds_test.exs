@@ -540,6 +540,32 @@ defmodule AshGettext.ErrorKindsTest do
     end
   end
 
+  describe "the reader's language is looked up only for an error" do
+    test "a read that works never asks for it" do
+      stored_entry()
+
+      Ash.read!(Entry, actor: %{language: "ru", tell: self()})
+
+      refute_received :language_asked
+    end
+
+    test "a create that works never asks for it" do
+      Ash.create!(Entry, valid(%{}), actor: %{language: "ru", tell: self()})
+
+      refute_received :language_asked
+    end
+
+    test "a read that fails asks for it" do
+      result =
+        Entry
+        |> Ash.Query.for_read(:heavier, %{than: 0}, actor: %{language: "ru", tell: self()})
+        |> Ash.read()
+
+      assert [text(@minimum_sentence, :ru)] == leaf_messages(result)
+      assert_received :language_asked
+    end
+  end
+
   describe "a policy with a message of its own" do
     for {reader_name, actor, reader} <- @readers do
       test "shows a #{reader_name} reader that message through json_api" do

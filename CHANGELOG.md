@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-11-11
+
+### Fixed
+
+- A read no longer asks your `locale_resolver` for the actor's language
+  unless it has an error to translate. In 0.2.0 every read asked, so a
+  resolver that reads from the database ran a query on each read.
+
 ## 0.2.0 — 2026-11-11
 
 ### Breaking

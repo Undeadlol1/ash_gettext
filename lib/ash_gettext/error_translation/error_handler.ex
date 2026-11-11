@@ -23,6 +23,8 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   Translate `error` into the action's language.
   """
   @spec translate_error(Ash.Changeset.t() | Ash.ActionInput.t(), term()) :: term()
+  def translate_error(_subject, []), do: []
+
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->
