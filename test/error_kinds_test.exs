@@ -590,6 +590,31 @@ defmodule AshGettext.ErrorKindsTest do
     end
   end
 
+  describe "a policy message that was translated already" do
+    setup do
+      id = {__MODULE__, make_ref()}
+      test_pid = self()
+
+      :telemetry.attach(
+        id,
+        [:ash_gettext, :translation, :missing],
+        fn _event, _measurements, metadata, _ ->
+          if self() == test_pid, do: send(test_pid, {:missing, metadata})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+    end
+
+    test "fires no missing-translation event and stays in the reader's language" do
+      result = Ash.create(Locker, %{}, action: :open_sealed, actor: @russian)
+
+      assert class_text(result) =~ text(@sealed_sentence, :ru)
+      refute_received {:missing, _metadata}
+    end
+  end
+
   describe "known gaps" do
     for {reader_name, actor, _reader} <- @readers do
       test "a policy failure shows a #{reader_name} reader no field error on a phoenix_form and logs a warning" do
