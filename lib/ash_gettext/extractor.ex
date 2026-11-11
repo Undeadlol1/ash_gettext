@@ -12,7 +12,9 @@ defmodule AshGettext.Extractor do
   A validation or change module a resource uses is read from its source file:
   every `message:` whose value is a plain string is found there. An
   interpolated message (`message: "too heavy: \#{weight}"`) cannot be a msgid,
-  so it is reported as a compile warning instead.
+  so it is reported as a compile warning instead. The scan of the app's whole
+  source (`app_messages/2`) skips interpolated messages silently: most are
+  logs and other texts that are not Ash errors.
   """
 
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
@@ -114,7 +116,6 @@ defmodule AshGettext.Extractor do
     result =
       find_messages(for path <- paths, {:ok, contents} <- [File.read(path)], do: {path, contents})
 
-    Enum.each(result.interpolated, &warn_interpolated/1)
     %{paths: MapSet.new(paths), messages: located(result)}
   end
 
@@ -220,11 +221,10 @@ defmodule AshGettext.Extractor do
          source when is_list(source) <- module.module_info(:compile)[:source],
          path = List.to_string(source),
          true <- app_source?(path),
-         false <- MapSet.member?(scanned_paths, path),
          {:ok, contents} <- File.read(path) do
       result = find_messages([{path, contents}])
       Enum.each(result.interpolated, &warn_interpolated/1)
-      located(result)
+      if MapSet.member?(scanned_paths, path), do: [], else: located(result)
     else
       _not_the_apps -> []
     end

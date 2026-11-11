@@ -79,7 +79,10 @@ Elixir code. Gettext's usual rules apply: see
 ## Fix a message with a variable in it
 
 A message written with `#{...}` is not a constant, so it cannot be a msgid.
-`mix gettext.extract` prints a warning with its file and line. Rewrite it with
+When it is in a resource or in a validation, change or other module a
+resource uses, `mix gettext.extract` prints a warning with its file and line.
+In any other module it is skipped without a warning: those are mostly logs
+and texts that are not Ash errors. Rewrite it with
 a placeholder and pass the value in `vars`:
 
 ```elixir

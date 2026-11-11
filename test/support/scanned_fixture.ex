@@ -32,6 +32,7 @@ defmodule ScannedFixture.Parcel do
 
     create :create do
       validate(present(:weight), message: "scanned and walked")
+      validate({ScannedFixture.HeavyCheck, []})
     end
   end
 

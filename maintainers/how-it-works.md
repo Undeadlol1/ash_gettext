@@ -169,7 +169,9 @@ arguments, so you can call it yourself.
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`
-  has no stable msgid. `mix gettext.extract` warns about these.
+  has no stable msgid. `mix gettext.extract` warns about these when a
+  resource or a module it names holds one; the app-wide scan skips them
+  silently, since most are logs and other text that is not an Ash error.
 - **An entry that equals its msgid counts as missing.** In a non-source
   locale, a translation that is identical to the msgid cannot be told apart
   from a miss.

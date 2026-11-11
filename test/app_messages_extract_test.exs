@@ -5,6 +5,7 @@ defmodule AshGettext.AppMessagesExtractTest do
   import ExUnit.CaptureIO
 
   @fixture "test/support/scanned_fixture.ex"
+  @heavy_check "test/support/scanned_fixture_heavy_check.ex"
 
   setup_all do
     normal_compile_warnings = capture_io(:stderr, fn -> Code.compile_file(@fixture) end)
@@ -40,10 +41,12 @@ defmodule AshGettext.AppMessagesExtractTest do
     List.flatten(message.references)
   end
 
-  defp line_of(snippet),
-    do: Enum.find_index(String.split(File.read!(@fixture), "\n"), &(&1 =~ snippet)) + 1
+  defp line_of(file \\ @fixture, snippet),
+    do: Enum.find_index(String.split(File.read!(file), "\n"), &(&1 =~ snippet)) + 1
 
   defp interpolated_line, do: "#{@fixture}:#{line_of("Coins left")}"
+
+  defp walked_interpolated_line, do: "#{@heavy_check}:#{line_of(@heavy_check, "too heavy: ")}"
 
   test "a message written in a plain module, at its own line", %{pots: pots} do
     assert references(pots, "scanned_fixture/shared", "Not enough coins") == [
@@ -57,8 +60,16 @@ defmodule AshGettext.AppMessagesExtractTest do
            ]
   end
 
-  test "an interpolated message is warned about once", %{extraction_warnings: warnings} do
-    occurrences = warnings |> String.split(interpolated_line()) |> length()
+  test "an interpolated message in a plain module is skipped silently", %{
+    extraction_warnings: warnings
+  } do
+    refute warnings =~ interpolated_line()
+  end
+
+  test "an interpolated message in a module a resource names is warned about once", %{
+    extraction_warnings: warnings
+  } do
+    occurrences = warnings |> String.split(walked_interpolated_line()) |> length()
 
     assert occurrences == 2
   end
