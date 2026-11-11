@@ -195,7 +195,11 @@ A transport that tells its hook who the actor is needs nothing more.
   `vars[:policy_message]`, which AshGraphql passes on. AshJsonApi passes
   nothing on (`ash_json_api/lib/ash_json_api/error/error.ex`, the
   `Ash.Error.Forbidden.Policy` implementation sets `meta: %{}`), so the
-  handler tells `AshGettext.JsonApi` the msgid, kept with the request's actor.
+  handler tells `AshGettext.JsonApi` the msgid, kept with the request's actor
+  under the refused resource. A reply shows only its own resource's message,
+  so a refusal that a nested read of another resource met and tolerated is
+  never shown in its place. A tolerated refusal on the reply's own resource,
+  whose action skips this library's handler, still can be.
   Phoenix forms show no error for a policy failure: AshPhoenix drops it.
 - Calls from code that Ash gives no hook for. Each was tried:
   - Bulk actions run as one statement. `Ash.Changeset.fully_atomic_changeset`

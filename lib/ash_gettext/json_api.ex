@@ -36,7 +36,9 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
       with %{} = request <- Process.get(@serving) do
         own = Keyword.get(List.wrap(policy.vars), :policy_message, policy.custom_message)
 
-        Process.put(@serving, Map.put(request, :policy_message, own))
+        messages = Map.put(request[:policy_messages] || %{}, policy.resource, own)
+
+        Process.put(@serving, Map.put(request, :policy_messages, messages))
       end
     end
 
@@ -45,11 +47,11 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
 
     def remember_refusal(_error), do: :ok
 
-    defp carried(%{code: "forbidden"}),
-      do: %{policy_message: Process.get(@serving)[:policy_message]}
+    defp carried(%{code: "forbidden"}, resource),
+      do: %{policy_message: Process.get(@serving)[:policy_messages][resource]}
 
-    defp carried(%{meta: meta}) when is_map(meta), do: meta
-    defp carried(_error), do: %{}
+    defp carried(%{meta: meta}, _resource) when is_map(meta), do: meta
+    defp carried(_error, _resource), do: %{}
 
     @doc """
     Translate `error`'s `detail` into the language of the request's actor.
@@ -59,13 +61,13 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
     error's `code`. With neither, the error comes back unchanged.
     """
     @spec translate_error(term(), map()) :: term()
-    def translate_error(%AshJsonApi.Error{} = error, %{domain: domain}) do
+    def translate_error(%AshJsonApi.Error{} = error, %{domain: domain} = context) do
       %{
         error
         | detail:
             AshGettext.TransportText.translate(error.detail, domain,
               code: error.code,
-              bindings: Map.put(carried(error), :id, error.id),
+              bindings: Map.put(carried(error, context[:resource]), :id, error.id),
               actor: request_actor(),
               remember_in: @serving
             )
