@@ -38,7 +38,7 @@ defmodule AshGettext.TransportText do
   end
 
   defp translation(msgid, settings, bindings, locale) do
-    case AshGettext.translate_or_missing(
+    case AshGettext.translate_error_text(
            settings.backend,
            settings.text_domain,
            msgid,

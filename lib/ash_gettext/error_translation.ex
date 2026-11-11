@@ -69,16 +69,9 @@ defmodule AshGettext.ErrorTranslation do
     text_domain = Keyword.fetch!(opts, :text_domain)
     locale = Keyword.fetch!(opts, :locale)
 
-    lookup = &AshGettext.translate_or_missing(backend, text_domain, &1, &2, locale)
-    bindings = bindings(error)
-
-    with {:missing, _untranslated} <- lookup.(message, bindings),
-         {msgid, written} when msgid != message <- with_names_for_values(message, bindings),
-         {:ok, translated} <- lookup.(msgid, Keyword.merge(bindings, written)) do
-      %{error | message: translated}
-    else
+    case AshGettext.translate_error_text(backend, text_domain, message, bindings(error), locale) do
       {:ok, translated} -> %{error | message: translated}
-      _no_sentence -> error
+      {:missing, _untranslated} -> error
     end
   end
 
@@ -100,19 +93,6 @@ defmodule AshGettext.ErrorTranslation do
 
         put_sentence(error, sentence)
     end
-  end
-
-  # Ash writes some values straight into the text ("must match ~r/a/") and
-  # still lists them in `vars`. Putting `%{name}` back gives the msgid.
-  # ponytail: plain text replace; only ever used when the result is in the catalog.
-  defp with_names_for_values(message, bindings) do
-    Enum.reduce(bindings, {message, []}, fn {name, value}, {text, written} ->
-      shown = inspect(value)
-
-      if String.contains?(text, shown),
-        do: {String.replace(text, shown, "%{#{name}}"), [{name, shown} | written]},
-        else: {text, written}
-    end)
   end
 
   defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence),

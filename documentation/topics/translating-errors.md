@@ -113,8 +113,8 @@ action but a read. Over JSON:API it renders as:
 - A policy's custom message. A direct Ash call shows it. Over JSON:API and
   GraphQL the reader gets the general "You are not allowed to do this"
   sentence, and a Phoenix form shows no error for a policy failure.
-- GraphQL's own query checks and "Something went wrong. Error id: ..."
-  replies stay in English.
+- GraphQL's own query checks, and GraphQL's "something went wrong" reply
+  for an error type it does not know, stay in English.
 - Errors from a direct `Ash.bulk_destroy` call stay in the source language.
   Over JSON:API and GraphQL they are translated.
 - An action with its own `error_handler` is not translated.

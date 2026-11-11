@@ -274,6 +274,18 @@ defmodule AshGettext.JsonApiTest do
                error()
     end
 
+    test "keeps the stack trace an app switched on for an error it does not know" do
+      with_trace = %AshJsonApi.Error{
+        id: "e-1",
+        code: "something_went_wrong",
+        detail: "Raised error: e-1\n\n** (RuntimeError) boom\n    lib/shop.ex:7"
+      }
+
+      Gettext.put_locale(Backend, "ru")
+
+      assert AshGettext.JsonApi.translate_error(with_trace, %{domain: Api}) == with_trace
+    end
+
     test "passes anything that is not a JSON:API error through" do
       assert AshGettext.JsonApi.translate_error(:not_an_error, %{domain: Api}) == :not_an_error
     end

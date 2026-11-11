@@ -72,3 +72,6 @@ msgstr "должно быть равно %{value}"
 
 msgid "must match %{match}"
 msgstr "должно соответствовать %{match}"
+
+msgid "Something went wrong. Error id: %{id}"
+msgstr "Что-то пошло не так. Номер ошибки: %{id}"

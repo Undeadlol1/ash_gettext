@@ -45,7 +45,7 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
         | detail:
             AshGettext.TransportText.translate(error.detail, domain,
               code: error.code,
-              bindings: error.meta,
+              bindings: Map.put(if(is_map(error.meta), do: error.meta, else: %{}), :id, error.id),
               actor: request_actor()
             )
       }

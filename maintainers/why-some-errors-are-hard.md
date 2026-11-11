@@ -204,7 +204,10 @@ A transport that tells its hook who the actor is needs nothing more.
   `vars` written into it.
 - GraphQL checks the document against the schema before Ash runs. Those
   Absinthe errors are not translated. JSON:API's unknown-error reply
-  ("Something went wrong. Error id: ...") is not translated either.
+  ("Something went wrong. Error id: ...") is translated, with the id put
+  back as `%{id}`; a reply with a stack trace is left alone. AshGraphql
+  hands its "something went wrong" text to no handler
+  (`deps/ash_graphql/lib/graphql/errors.ex`), so that one stays English.
 - An error type the library has never seen passes through unchanged, on
   every transport.
 

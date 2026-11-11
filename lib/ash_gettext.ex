@@ -64,6 +64,34 @@ defmodule AshGettext do
     end)
   end
 
+  @doc false
+  # An error text may have a value written into it that the error still lists
+  # ("must match ~r/a/" with `match: ~r/a/`). Putting `%{match}` back gives
+  # the msgid.
+  # ponytail: plain text replace; it only counts when the result is in the catalog.
+  @spec translate_error_text(backend(), text_domain(), String.t(), bindings(), locale()) ::
+          {:ok, String.t()} | {:missing, String.t()}
+  def translate_error_text(backend, text_domain, text, bindings, locale) do
+    with {:missing, _untranslated} <-
+           translate_or_missing(backend, text_domain, text, bindings, locale),
+         {msgid, written} when msgid != text <- with_names_for_values(text, bindings) do
+      translate_or_missing(backend, text_domain, msgid, Keyword.merge(bindings, written), locale)
+    else
+      _found_or_nothing_written ->
+        translate_or_missing(backend, text_domain, text, bindings, locale)
+    end
+  end
+
+  defp with_names_for_values(text, bindings) do
+    Enum.reduce(bindings, {text, []}, fn {name, value}, {text, written} ->
+      shown = if is_binary(value), do: value, else: inspect(value)
+
+      if shown != "" and String.contains?(text, shown),
+        do: {String.replace(text, shown, "%{#{name}}"), [{name, shown} | written]},
+        else: {text, written}
+    end)
+  end
+
   @doc """
   Translate a pluralised `msgid`, returning the string.
 

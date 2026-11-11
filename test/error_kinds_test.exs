@@ -41,6 +41,10 @@ defmodule AshGettext.ErrorKindsTest do
     en: "must match ~r/^[a-z]+$/"
   }
   @taken_sentence %{ru: "уже занято", en: "has already been taken"}
+  @went_wrong_json %{
+    ru: ~r/^Что-то пошло не так\. Номер ошибки: [0-9a-f-]+$/,
+    en: ~r/^Something went wrong\. Error id: [0-9a-f-]+$/
+  }
   @not_found_sentence %{ru: "не найдено", en: "could not be found"}
   @not_found_json %{ru: "не найдено", en: "No entry record found with"}
   @forbidden_on_the_wire %{ru: "Вам нельзя это делать", en: "forbidden"}
@@ -374,7 +378,7 @@ defmodule AshGettext.ErrorKindsTest do
   end
 
   describe "an error no catalog and no transport has heard of" do
-    for {reader_name, actor, _reader} <- @readers do
+    for {reader_name, actor, reader} <- @readers do
       test "comes back from plain_ash to a #{reader_name} reader untouched" do
         result = Ash.create(Entry, valid(%{note: "unknown"}), actor: unquote(Macro.escape(actor)))
 
@@ -404,11 +408,11 @@ defmodule AshGettext.ErrorKindsTest do
           end)
 
         assert {400, [%{"code" => "something_went_wrong", "detail" => detail}]} = reply
-        assert detail =~ ~r/^Something went wrong\. Error id: [0-9a-f-]+$/
+        assert detail =~ Map.fetch!(@went_wrong_json, unquote(reader))
         assert log =~ "AshJsonApi.Error not implemented"
       end
 
-      test "answers a #{reader_name} reader with something went wrong through graphql" do
+      test "answers a #{reader_name} reader in English through graphql, which hands the text to no handler" do
         {[message], log} =
           with_log(fn ->
             %{note: "unknown"}
