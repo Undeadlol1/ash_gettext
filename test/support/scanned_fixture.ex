@@ -13,6 +13,11 @@ defmodule ScannedFixture.NoScanGettext do
   use Gettext.Backend, otp_app: :ash_gettext, priv: "tmp/scanned_fixture/no_scan"
 end
 
+defmodule ScannedFixture.DefaultGettext do
+  @moduledoc false
+  use Gettext.Backend, otp_app: :ash_gettext, priv: "tmp/scanned_fixture/default"
+end
+
 defmodule ScannedFixture.Coins do
   @moduledoc false
 
@@ -65,6 +70,7 @@ defmodule ScannedFixture.Shop do
   gettext do
     backend(ScannedFixture.Gettext)
     locale_resolver(AshGettextFixture.ActorLanguage)
+    extract_messages_from(["test/support"])
   end
 
   resources do
@@ -79,6 +85,7 @@ defmodule ScannedFixture.Warehouse do
   gettext do
     backend(ScannedFixture.Gettext)
     locale_resolver(AshGettextFixture.ActorLanguage)
+    extract_messages_from(["test/support"])
   end
 
   resources do
@@ -150,10 +157,45 @@ defmodule ScannedFixture.NoScan do
   gettext do
     backend(ScannedFixture.NoScanGettext)
     locale_resolver(AshGettextFixture.ActorLanguage)
-    extract_app_messages?(false)
+    extract_messages_from([])
   end
 
   resources do
     resource(ScannedFixture.NoScanParcel)
+  end
+end
+
+defmodule ScannedFixture.DefaultParcel do
+  @moduledoc false
+  use Ash.Resource,
+    domain: ScannedFixture.Default,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshGettext.Resource]
+
+  actions do
+    defaults([:read])
+
+    create :create do
+      validate(present(:weight), message: "walked, default folders")
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:weight, :integer, public?: true)
+  end
+end
+
+defmodule ScannedFixture.Default do
+  @moduledoc false
+  use Ash.Domain, extensions: [AshGettext.Domain], validate_config_inclusion?: false
+
+  gettext do
+    backend(ScannedFixture.DefaultGettext)
+    locale_resolver(AshGettextFixture.ActorLanguage)
+  end
+
+  resources do
+    resource(ScannedFixture.DefaultParcel)
   end
 end

@@ -83,13 +83,14 @@ defmodule AshGettext.Domain do
         default: true,
         doc: "Whether resources in this domain translate their action errors."
       ],
-      extract_app_messages?: [
-        type: :boolean,
-        default: true,
+      extract_messages_from: [
+        type: {:list, :string},
+        default: ["lib"],
         doc: """
-        Whether `mix gettext.extract` also reads the app's own source files (its
-        `elixirc_paths`) for every literal `message:`, so a message written in a
-        plain module reaches the template too.
+        The folders, relative to the project root, whose `.ex` files
+        `mix gettext.extract` reads for every literal `message:`, so a message
+        written in a plain module reaches the template too. `[]` turns the
+        scan off.
         """
       ],
       require_resource_extension?: [

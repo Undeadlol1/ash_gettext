@@ -62,8 +62,8 @@ domain per run (`AshGettext.Extractor.builtin_messages/2`, kept in
 `AshGettext.AshMessages.source/0`, so the `.pot` does not depend on which
 domain compiled first and two runs give the same file.
 
-With `extract_app_messages?` (the default), the first domain per backend and
-text domain also reads every `.ex` file under the project's `elixirc_paths`
+With `extract_messages_from` (default `["lib"]`, `[]` is off), the first domain
+per backend and text domain also reads every `.ex` file under those folders
 for literal `message:` strings (`AshGettext.Extractor.app_messages/2`). The
 result is kept in `:persistent_term` for the rest of the run, under a
 `:global` lock, so domains compiled in parallel read the files once. A text

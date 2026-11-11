@@ -94,6 +94,22 @@ defmodule AshGettext.AppMessagesExtractTest do
     refute "Not enough coins" in no_scan
   end
 
+  test "a message in a folder the domain does not list is not extracted", %{pots: pots} do
+    default = msgids(pots, "scanned_fixture/default")
+
+    assert "walked, default folders" in default
+    refute "Not enough coins" in default
+  end
+
+  test "the folders scanned default to lib" do
+    assert Spark.Dsl.Extension.get_opt(ScannedFixture.Default, [:gettext], :extract_messages_from) ==
+             ["lib"]
+  end
+
+  test "an empty folder list extracts nothing from plain modules", %{pots: pots} do
+    refute "Not enough coins" in msgids(pots, "scanned_fixture/no_scan")
+  end
+
   test "a normal compile scans nothing", %{normal_compile_warnings: warnings} do
     refute warnings =~ interpolated_line()
   end

@@ -62,7 +62,7 @@ end
 | [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for the app's own texts: its error messages, enum labels, attribute names. |
 | [`builtin_text_domain`](#gettext-builtin_text_domain){: #gettext-builtin_text_domain } | `String.t` | `"ash_builtin"` | The gettext text domain for the sentences Ash and AshGettext ship ("must be present", "could not be found" and the rest). An error text is looked up in `text_domain` first, then here. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
-| [`extract_app_messages?`](#gettext-extract_app_messages?){: #gettext-extract_app_messages? } | `boolean` | `true` | Whether `mix gettext.extract` also reads the app's own source files (its `elixirc_paths`) for every literal `message:`, so a message written in a plain module reaches the template too. |
+| [`extract_messages_from`](#gettext-extract_messages_from){: #gettext-extract_messages_from } | `list(String.t)` | `["lib"]` | The folders, relative to the project root, whose `.ex` files `mix gettext.extract` reads for every literal `message:`, so a message written in a plain module reaches the template too. `[]` turns the scan off. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |
 
 

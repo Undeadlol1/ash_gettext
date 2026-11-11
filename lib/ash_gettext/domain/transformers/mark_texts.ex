@@ -3,7 +3,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
   Shows `mix gettext.extract` every text this domain's resources translate:
   written attribute labels, literal `message`s in their DSL and in the app's
   own validation, change and preparation modules they use, every literal
-  `message:` in the app's own source (`extract_app_messages?`) go to
+  `message:` in the app's own source (`extract_messages_from`) go to
   `text_domain`. The sentences Ash ships in its own template and the ones for
   Ash's errors that have no message (`AshGettext.AshMessages`) go to
   `builtin_text_domain`, once per backend. See `AshGettext.Extractor`.
@@ -35,11 +35,11 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
     text_domain = Transformer.get_option(dsl_state, [:gettext], :text_domain, "ash")
     errors? = Transformer.get_option(dsl_state, [:gettext], :translate_errors?, true)
 
-    app? = Transformer.get_option(dsl_state, [:gettext], :extract_app_messages?, true)
+    folders = Transformer.get_option(dsl_state, [:gettext], :extract_messages_from, ["lib"])
 
     {scan_is, scan} =
-      if errors? and app?,
-        do: Extractor.app_messages(backend, text_domain),
+      if errors? and folders != [],
+        do: Extractor.app_messages(backend, text_domain, folders),
         else: {:seen, %{paths: MapSet.new(), messages: []}}
 
     scanned = MapSet.new(scan.messages, &{&1.msgid, &1.path})

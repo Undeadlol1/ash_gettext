@@ -86,13 +86,13 @@ defmodule AshGettext.Extractor do
 
   @doc """
   Every literal `message` in the app's own source: the `.ex` files under the
-  project's `elixirc_paths`. Read once per backend and text domain: the first
+  given folders, relative to the project root. Read once per backend and text domain: the first
   call returns `{:new, scan}`, every later one `{:seen, scan}`.
   """
-  @spec app_messages(module(), String.t()) ::
+  @spec app_messages(module(), String.t(), [String.t()]) ::
           {:new | :seen, %{paths: MapSet.t(String.t()), messages: [located()]}}
-  def app_messages(backend, text_domain),
-    do: remembered({__MODULE__, :app_messages, backend, text_domain}, &scan_app/0)
+  def app_messages(backend, text_domain, folders),
+    do: remembered({__MODULE__, :app_messages, backend, text_domain}, fn -> scan_app(folders) end)
 
   @doc """
   The sentences Ash and AshGettext ship, each referenced once at
@@ -129,9 +129,9 @@ defmodule AshGettext.Extractor do
     end)
   end
 
-  defp scan_app do
+  defp scan_app(folders) do
     paths =
-      for dir <- Mix.Project.config()[:elixirc_paths] || [],
+      for dir <- folders,
           path <- Path.wildcard(Path.join(dir, "**/*.ex")),
           do: Path.expand(path)
 
