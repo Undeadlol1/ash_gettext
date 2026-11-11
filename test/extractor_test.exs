@@ -110,4 +110,22 @@ defmodule AshGettext.ExtractorTest do
       assert result.messages == []
     end
   end
+
+  describe "following the modules a resource points at" do
+    setup do
+      %{texts: Extractor.resource_texts(ExtractorFixture.Parcel, true)}
+    end
+
+    test "reads the run module of a generic action", %{texts: texts} do
+      assert "the run module refused" in texts
+    end
+
+    test "reads the module of a manual action", %{texts: texts} do
+      assert "the manual action refused" in texts
+    end
+
+    test "reads the module of a calculation", %{texts: texts} do
+      assert "the calculation refused" in texts
+    end
+  end
 end

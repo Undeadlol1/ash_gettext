@@ -28,8 +28,8 @@ text domain that is `priv/gettext/ash.pot`.
 - Every `label` in a resource's `gettext` block.
 - Every `message` in a resource's DSL: validations, identities and the rest,
   and every policy's `error_message`.
-- Every literal `message:` in the validation, change and preparation modules
-  a resource uses. Their source files are read.
+- Every literal `message:` in the validation, change, preparation, generic-action
+  `run`, `manual` action and calculation modules a resource uses. Their source files are read.
 - Every sentence Ash writes itself: "must be present", "length must be less
   than or equal to %{max}" and the rest (about 60 today), plus "has already
   been taken".

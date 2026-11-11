@@ -48,7 +48,7 @@ defmodule AshGettext.Extractor do
   @doc """
   The texts a resource shows: its written attribute labels and, with
   `messages?`, every literal `message` in its DSL and in the app's own
-  validation, change and preparation modules it uses.
+  validation, change, preparation, generic-action run, manual-action and calculation modules it uses.
   """
   @spec resource_texts(module(), boolean()) :: [String.t()]
   def resource_texts(resource, messages?) do
@@ -69,13 +69,14 @@ defmodule AshGettext.Extractor do
   end
 
   # Any `message` (a policy's is `error_message`) holding a string, and any `{module, opts}` implementing a
-  # validation, change or preparation, wherever the DSL nests it.
+  # validation, change, preparation, run, manual action or calculation, wherever the DSL nests it.
   defp walk({key, text}, {messages, modules})
        when key in [:message, :error_message] and is_binary(text),
        do: {[text | messages], modules}
 
   defp walk({key, {module, opts}}, {messages, modules})
-       when key in [:validation, :change, :preparation] and is_atom(module),
+       when key in [:validation, :change, :preparation, :run, :manual, :calculation] and
+              is_atom(module),
        do: walk(opts, {messages, [module | modules]})
 
   defp walk(%_{} = struct, acc), do: walk(Map.from_struct(struct), acc)
