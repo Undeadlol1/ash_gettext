@@ -194,3 +194,14 @@ defmodule AshGettextFixture.ApiRouter do
       AshGettextFixture.StockApi
     ]
 end
+
+defmodule AshGettextFixture.CrashingRouter do
+  use Plug.Router
+
+  plug(:match)
+  plug(:dispatch)
+
+  get "/crash" do
+    raise "boom #{conn.request_path}"
+  end
+end

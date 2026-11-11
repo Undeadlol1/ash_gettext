@@ -22,20 +22,7 @@ defmodule AshGettext.JsonApiTest do
              pass: ["*/*"]
            )
 
-  defp reply(method, path, attributes, actor, domain \\ Api),
-    do:
-      request(
-        method,
-        path,
-        attributes,
-        actor,
-        &AshGettext.Plug.call(&1, AshGettext.Plug.init(domain: domain))
-      )
-
-  defp reply_without_the_plug(method, path, attributes, actor),
-    do: request(method, path, attributes, actor, & &1)
-
-  defp request(method, path, attributes, actor, set_language) do
+  defp reply(method, path, attributes, actor) do
     body = attributes && Jason.encode!(%{data: %{type: type_of(path), attributes: attributes}})
 
     conn =
@@ -43,7 +30,6 @@ defmodule AshGettext.JsonApiTest do
       |> put_req_header("content-type", "application/vnd.api+json")
       |> put_req_header("accept", "application/vnd.api+json")
       |> Ash.PlugHelpers.set_actor(actor)
-      |> set_language.()
       |> Plug.Parsers.call(@parsers)
       |> ApiRouter.call(ApiRouter.init([]))
 
@@ -103,9 +89,14 @@ defmodule AshGettext.JsonApiTest do
   end
 
   describe "an app that never set the request's language" do
-    test "answers a missing required value as AshJsonApi wrote it" do
-      assert %{"code" => "required", "detail" => "is required", "meta" => %{}} =
-               reply_without_the_plug(:post, "/notes", %{}, @russian)
+    setup do
+      Gettext.put_locale(Backend, "en")
+      :ok
+    end
+
+    test "answers a missing required value in the actor's language" do
+      assert %{"code" => "required", "detail" => "обязательное поле"} =
+               reply(:post, "/notes", %{}, @russian)
     end
 
     test "answers a required error Ash itself raised in the actor's language" do
@@ -120,14 +111,43 @@ defmodule AshGettext.JsonApiTest do
                )
     end
 
-    test "still answers a validation in the actor's language" do
+    test "answers a validation in the actor's language" do
       assert %{"detail" => "Вес должен быть не менее 30 кг"} =
-               reply_without_the_plug(:post, "/notes", %{title: "t", weight: 5}, @russian)
+               reply(:post, "/notes", %{title: "t", weight: 5}, @russian)
     end
 
-    test "answers a record that is not there as AshJsonApi wrote it" do
-      assert %{"detail" => "No note record found with `id: " <> _} =
-               reply_without_the_plug(:get, missing_note(), nil, @russian)
+    test "answers a record that is not there in the actor's language" do
+      assert %{"detail" => "не найдено"} = reply(:get, missing_note(), nil, @russian)
+    end
+
+    test "leaves Gettext's language as it was" do
+      reply(:post, "/notes", %{}, @russian)
+
+      assert Gettext.get_locale(Backend) == "en"
+    end
+  end
+
+  describe "one connection serving two readers in turn" do
+    test "answers the second reader in their own language, not the first one's" do
+      reply(:post, "/notes", %{}, @russian)
+
+      assert %{"detail" => "is required"} = reply(:post, "/notes", %{}, @english)
+    end
+
+    test "remembers no reader once the reply is sent" do
+      reply(:post, "/notes", %{}, @russian)
+
+      assert AshGettext.JsonApi.request_actor() == nil
+    end
+
+    test "remembers no reader after a request that crashed" do
+      assert_raise Plug.Conn.WrapperError, fn ->
+        conn(:get, "/crash")
+        |> Ash.PlugHelpers.set_actor(@russian)
+        |> AshGettextFixture.CrashingRouter.call([])
+      end
+
+      assert AshGettext.JsonApi.request_actor() == nil
     end
   end
 
@@ -158,7 +178,7 @@ defmodule AshGettext.JsonApiTest do
 
     test "replies as AshJsonApi does on its own, even to a Russian reader" do
       assert %{"code" => "required", "detail" => "is required"} =
-               reply(:post, "/stock_notes", %{}, @russian, AshGettextFixture.StockApi)
+               reply(:post, "/stock_notes", %{}, @russian)
     end
   end
 
@@ -171,7 +191,7 @@ defmodule AshGettext.JsonApiTest do
 
     test "keeps what it added to meta, next to the translated sentence" do
       assert %{"detail" => "обязательное поле", "meta" => %{"support_code" => "S-1"}} =
-               reply(:post, "/own_notes", %{}, @russian, AshGettextFixture.OwnHandlerApi)
+               reply(:post, "/own_notes", %{}, @russian)
     end
 
     test "keeps the error's own values in meta too" do
@@ -180,8 +200,7 @@ defmodule AshGettext.JsonApiTest do
                  :post,
                  "/own_notes",
                  %{title: "t", weight: 5},
-                 @russian,
-                 AshGettextFixture.OwnHandlerApi
+                 @russian
                )
     end
   end
@@ -257,54 +276,6 @@ defmodule AshGettext.JsonApiTest do
 
     test "passes anything that is not a JSON:API error through" do
       assert AshGettext.JsonApi.translate_error(:not_an_error, %{domain: Api}) == :not_an_error
-    end
-  end
-
-  describe "the plug" do
-    defp through_plug(actor, domain \\ Api) do
-      conn(:get, "/")
-      |> Ash.PlugHelpers.set_actor(actor)
-      |> AshGettext.Plug.call(AshGettext.Plug.init(domain: domain))
-    end
-
-    test "sets the actor's language, as the domain's resolver answers it" do
-      through_plug(@russian)
-
-      assert Gettext.get_locale(Backend) == "ru"
-    end
-
-    test "puts the language back once the reply is sent" do
-      before = Gettext.get_locale(Backend)
-
-      @russian |> through_plug() |> send_resp(200, "")
-
-      assert Gettext.get_locale(Backend) == before
-    end
-
-    test "leaves the language alone with no actor" do
-      Gettext.put_locale(Backend, "ru")
-
-      through_plug(nil)
-
-      assert Gettext.get_locale(Backend) == "ru"
-    end
-
-    test "leaves the language alone for a domain with no gettext block" do
-      before = Gettext.get_locale(Backend)
-
-      through_plug(@russian, AshGettextFixture.Untranslated)
-
-      assert Gettext.get_locale(Backend) == before
-    end
-
-    test "returns the conn it was given" do
-      conn = conn(:get, "/") |> Ash.PlugHelpers.set_actor(nil)
-
-      assert AshGettext.Plug.call(conn, AshGettext.Plug.init(domain: Api)) == conn
-    end
-
-    test "raises at init without a domain" do
-      assert_raise KeyError, fn -> AshGettext.Plug.init([]) end
     end
   end
 end

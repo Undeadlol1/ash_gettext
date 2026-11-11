@@ -12,9 +12,12 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
     `AshJsonApi.Domain` gets this as its `error_handler`
     (`AshGettext.Domain.Transformers.TranslateJsonApiReplies`).
 
-    The text is translated into Gettext's current language for the request.
-    If your app does not set it already, `AshGettext.Plug` sets it from the
-    actor.
+    The language is the one the domain's `locale_resolver` answers for the
+    request's actor. AshJsonApi does not tell an `error_handler` who the actor
+    is, so this module listens to the event `Plug.Router` sends when a request
+    enters a router and remembers the actor (`Ash.PlugHelpers.get_actor/1`)
+    until the request ends. Without an actor, Gettext's current language is
+    used.
 
     Only `detail` changes. `code`, `title`, `meta`, `source_pointer` and the
     status stay as they were, so a client that reads them keeps working.
@@ -28,8 +31,32 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
     arguments you gave it, and the error it returns is then translated.
     """
 
+    @actor {__MODULE__, :request_actor}
+    @request [:plug, :router_dispatch]
+
+    @doc false
+    def remember_request_actors do
+      :telemetry.attach_many(
+        __MODULE__,
+        [@request ++ [:start], @request ++ [:stop], @request ++ [:exception]],
+        &__MODULE__.handle_request/4,
+        nil
+      )
+    end
+
+    @doc false
+    def handle_request([:plug, :router_dispatch, :start], _measurements, %{conn: conn}, _config),
+      do: Process.put(@actor, Ash.PlugHelpers.get_actor(conn))
+
+    def handle_request(_request_ended, _measurements, _metadata, _config),
+      do: Process.delete(@actor)
+
+    @doc "The actor of the request this process is serving, or `nil`."
+    @spec request_actor() :: term()
+    def request_actor, do: Process.get(@actor)
+
     @doc """
-    Translate `error`'s `detail` into Gettext's current language.
+    Translate `error`'s `detail` into the language of the request's actor.
 
     The rules are `AshGettext.TransportText`'s: the `detail` is looked up as
     a msgid, with `meta` as its values, then the written sentence for the
@@ -42,7 +69,8 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
         | detail:
             AshGettext.TransportText.translate(error.detail, domain,
               code: error.code,
-              bindings: error.meta
+              bindings: error.meta,
+              actor: request_actor()
             )
       }
     end

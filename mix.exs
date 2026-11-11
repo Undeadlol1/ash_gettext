@@ -22,7 +22,7 @@ defmodule AshGettext.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger], mod: {AshGettext.Application, []}]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -36,7 +36,6 @@ defmodule AshGettext.MixProject do
       {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
       {:ash_graphql, "~> 1.0", optional: true},
-      {:plug, "~> 1.14", optional: true},
       {:ash_phoenix, "~> 2.3", only: :test},
       # AshJsonApi needs it to serve a POST route in the HTTP tests.
       {:open_api_spex, "~> 3.16", only: :test},
@@ -101,7 +100,6 @@ defmodule AshGettext.MixProject do
           AshGettext.TransportText,
           AshGettext.JsonApi,
           AshGettext.Graphql,
-          AshGettext.Plug,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
