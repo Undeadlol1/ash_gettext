@@ -127,13 +127,57 @@ on Ash's structs keeps working.
 
 `Ash.Error.Changes.Required` is left untouched. It has no text field, so the
 only way to translate it would be to swap it for another struct, which breaks
-every `%Ash.Error.Changes.Required{}` match. JSON:API and AshPhoenix render
-it as "is required"; translate that where you show it.
+every `%Ash.Error.Changes.Required{}` match. AshJsonApi writes its text
+("is required") in the reply; see the next section.
 
 `mix gettext.extract` adds these sentences to the template. A
 policy with its own message keeps it, and that message is its msgid. A stale
 record error comes from the data layer after the handler, so it is not
 translated.
+
+## Translate what JSON:API writes
+
+AshJsonApi writes the text of some errors itself, after every error handler
+has run: "is required" for a missing value, "No note record found with ..."
+for a record that is not there. Errors from reads never reach an action's
+error handler at all. So the reply is translated in one more place.
+
+Add the handler to your `json_api` block:
+
+```elixir
+json_api do
+  error_handler {AshGettext.JsonApi, :translate_error, []}
+end
+```
+
+And set the request's language after the plug that sets the actor:
+
+```elixir
+plug :set_actor
+plug AshGettext.Plug, domain: MyApp.Shop
+```
+
+The plug asks your `locale_resolver` with the actor, sets Gettext's language
+for the request, and puts the old one back when the reply is sent.
+
+Only `detail` changes. `code`, `title`, `meta`, the source pointer and the
+status stay as they were. The `detail` is looked up as a msgid. If your
+catalog has no entry, the written sentence for the error's `code` is tried
+(see `AshGettext.AshMessages`). With neither, the reply goes out as
+AshJsonApi wrote it. A reader in your own language always gets AshJsonApi's
+text unchanged.
+
+Both steps are opt-in. Without them nothing about your replies changes.
+
+If you already have an `error_handler`, call this one from yours:
+
+```elixir
+def handle_error(error, context) do
+  error
+  |> add_my_meta()
+  |> AshGettext.JsonApi.translate_error(context)
+end
+```
 
 ## Put values in a message
 

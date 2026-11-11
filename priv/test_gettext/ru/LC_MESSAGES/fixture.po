@@ -45,3 +45,6 @@ msgstr "неверное значение"
 
 msgid "You are not allowed to do this"
 msgstr "Вам нельзя это делать"
+
+msgid "could not be found"
+msgstr "не найдено"

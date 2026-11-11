@@ -35,7 +35,12 @@ defmodule AshGettext.MixProject do
       {:gettext, "~> 1.0"},
       {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
+      {:plug, "~> 1.14", optional: true},
       {:ash_phoenix, "~> 2.3", only: :test},
+      # AshJsonApi needs it to serve a POST route in the HTTP tests.
+      {:open_api_spex, "~> 3.16", only: :test},
+      # Ash needs a SAT solver to check the policy in the HTTP tests.
+      {:simple_sat, "~> 0.1", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Only for `mix spark.cheat_sheets`, which generates the DSL reference.
       {:igniter, "~> 0.6", only: :dev, runtime: false}
@@ -91,7 +96,8 @@ defmodule AshGettext.MixProject do
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
           AshGettext.AshMessages,
-          AshGettext.AshMessages.Translated,
+          AshGettext.JsonApi,
+          AshGettext.Plug,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,

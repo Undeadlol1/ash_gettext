@@ -5,6 +5,15 @@ defmodule AshGettext.AshMessages do
     {Ash.Error.Forbidden.Policy, "You are not allowed to do this"}
   ]
 
+  @replies [
+    {"required", "is required"},
+    {"not_found", "could not be found"},
+    {"forbidden", "You are not allowed to do this"},
+    {"invalid_primary_key", "invalid primary key provided"},
+    {"invalid_keyset", "invalid keyset"},
+    {"no_such_input", "no such input"}
+  ]
+
   @moduledoc """
   The sentences shown for Ash's own errors when they carry no message.
 
@@ -23,6 +32,16 @@ defmodule AshGettext.AshMessages do
 
   An error that already has a message keeps it; that message is its msgid.
   A policy with its own message keeps that message too.
+
+  ## Sentences a transport writes
+
+  AshJsonApi writes the text of some errors itself, after every Ash error
+  handler has run. `AshGettext.JsonApi` translates those in the reply. Each
+  error code has a written sentence here too, so it is in your template:
+
+  | Code | Sentence |
+  | --- | --- |
+  #{for {code, msgid} <- @replies, into: "", do: "| `#{code}` | #{msgid} |\n"}
   """
 
   @doc "Every `{error_module, msgid}` pair."
@@ -31,7 +50,15 @@ defmodule AshGettext.AshMessages do
 
   @doc "Every msgid, each once."
   @spec msgids() :: [String.t()]
-  def msgids, do: @messages |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+  def msgids, do: (@messages ++ @replies) |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+
+  @doc """
+  The msgid for a reply with this error `code`, or `nil` when none is listed.
+  """
+  @spec reply_msgid(term()) :: String.t() | nil
+  def reply_msgid(code) do
+    Enum.find_value(@replies, fn {listed, msgid} -> listed == code && msgid end)
+  end
 
   @doc """
   The msgid for `error`, or `nil` when it already has a message or is not listed.

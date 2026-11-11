@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changes
+
+- `AshGettext.JsonApi.translate_error/2` is an `error_handler` for the
+  `json_api` block. It translates the `detail` of every error in a reply,
+  including the text AshJsonApi writes itself ("is required", record not
+  found) and errors from reads. `code`, `title`, `meta` and the source
+  pointer are kept. Text with no catalog entry goes out unchanged.
+- `AshGettext.Plug` sets Gettext's language to the actor's for one request,
+  using the domain's `locale_resolver`, and puts it back when the reply is
+  sent.
+- `mix gettext.extract` adds the sentences AshJsonApi writes ("is required",
+  "could not be found" and others listed in `AshGettext.AshMessages`).
+
 ### Fixes
 
 - Ash's own errors stay Ash's own structs. A value that does not cast and a
@@ -10,8 +23,9 @@
   `AshGettext.AshMessages.Translated`, which is gone. Code that matches on
   `%Ash.Error.Changes.InvalidAttribute{}` or `%Ash.Error.Forbidden.Policy{}`
   keeps working, and AshPhoenix forms show the sentence again.
-- `Ash.Error.Changes.Required` is left untouched. It has no text field, so it
-  is no longer translated; "is required" is no longer an extracted msgid.
+- `Ash.Error.Changes.Required` is left untouched. It has no text field, so
+  the error itself is no longer translated. Over JSON:API, the reply is; see
+  `AshGettext.JsonApi`.
 
 ## 0.1.0 — 2026-11-11
 
