@@ -188,7 +188,7 @@ A transport that tells its hook who the actor is needs nothing more.
   when an update adds a fixed sentence that is not listed for translators.
   It runs in the library's own checks, never in yours.
 - **New Ash sentences arrive on the next extract.** `mix gettext.extract`
-  reads the template Ash ships, so a sentence added in a later Ash release
+  reads Ash's own list of sentences, so a sentence added in a later Ash release
   lands in yours the next time you run it.
 
 ## Known limits

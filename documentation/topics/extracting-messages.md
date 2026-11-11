@@ -29,14 +29,15 @@ text domain that is `priv/gettext/ash.pot`.
 
 - Every `label` and `description` you wrote on an `AshGettext.Enum` value.
 - Every `label` in a resource's `gettext` block.
-- Every `message` in a resource's DSL: validations, identities and the rest.
+- Every `message` in a resource's DSL: validations, identities and the rest,
+  and every policy's `error_message`.
 - Every literal `message:` in the validation, change and preparation modules
   a resource uses. Their source files are read.
 - Every sentence Ash writes itself: "must be present", "length must be less
-  than or equal to %{max}" and the rest (57 today), plus "has already been
-  taken". They are read from the template Ash ships (`priv/gettext/ash.pot`
-  in the ash package), so a new Ash release that adds a sentence adds it to
-  your template the next time you extract.
+  than or equal to %{max}" and the rest (about 60 today), plus "has already
+  been taken". They are read from Ash itself (the template it ships and the
+  sentences marked in its source), so a new Ash release that adds a sentence
+  adds it to your template the next time you extract.
 - The sentences for errors that carry no text, and the ones AshJsonApi and
   AshGraphql write (`AshGettext.AshMessages`), such as "could not be found".
 

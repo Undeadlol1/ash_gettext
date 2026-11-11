@@ -27,10 +27,12 @@
   `error_handler` you wrote still runs first.
 - `AshGettext.TransportText.translate/3` holds the rules for translating a
   text a transport wrote itself. Another transport needs one call.
-- `mix gettext.extract` also adds every sentence Ash ships in its own
-  template (57 today) and "has already been taken". New sentences in a later
-  Ash release arrive on the next extract. It also adds the sentences
-  AshJsonApi and AshGraphql write ("is required", "could not be found").
+- `mix gettext.extract` also adds every sentence Ash marks as translatable
+  ("must be present" and about 60 more, read from Ash's shipped template and
+  its source) and "has already been taken". New sentences in a later Ash
+  release arrive on the next extract. It also adds every policy's
+  `error_message`, and the sentences AshJsonApi and AshGraphql write
+  ("is required", "could not be found").
 - A new guide, "Why some errors are hard to translate", says which errors are
   translated where, why, and the known limits.
 

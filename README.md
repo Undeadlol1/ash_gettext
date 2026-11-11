@@ -37,12 +37,12 @@ Every enum attribute gets a translated `_label` field that clients can load. Err
 
 ## Installation
 
-Not on Hex yet, so take it from GitHub:
+Add it to your deps:
 
 ```elixir
 def deps do
   [
-    {:ash_gettext, github: "Undeadlol1/ash_gettext"}
+    {:ash_gettext, "~> 0.2"}
   ]
 end
 ```

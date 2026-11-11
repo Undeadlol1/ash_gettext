@@ -68,10 +68,11 @@ defmodule AshGettext.Extractor do
         do: entities
   end
 
-  # Any `message` holding a string, and any `{module, opts}` implementing a
+  # Any `message` (a policy's is `error_message`) holding a string, and any `{module, opts}` implementing a
   # validation, change or preparation, wherever the DSL nests it.
-  defp walk({:message, text}, {messages, modules}) when is_binary(text),
-    do: {[text | messages], modules}
+  defp walk({key, text}, {messages, modules})
+       when key in [:message, :error_message] and is_binary(text),
+       do: {[text | messages], modules}
 
   defp walk({key, {module, opts}}, {messages, modules})
        when key in [:validation, :change, :preparation] and is_atom(module),

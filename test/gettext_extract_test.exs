@@ -44,7 +44,8 @@ defmodule AshGettext.GettextExtractTest do
     use Ash.Resource,
       domain: ExtractFixture.Shop,
       data_layer: Ash.DataLayer.Ets,
-      extensions: [AshGettext.Resource]
+      extensions: [AshGettext.Resource],
+      authorizers: [Ash.Policy.Authorizer]
 
     actions do
       defaults([:read])
@@ -60,6 +61,13 @@ defmodule AshGettext.GettextExtractTest do
       uuid_primary_key(:id)
       attribute(:weight, :integer, public?: true)
       attribute(:status, ExtractFixture.Status, public?: true)
+    end
+
+    policies do
+      policy action(:create) do
+        error_message("this shop is closed")
+        authorize_if(always())
+      end
     end
 
     gettext do
@@ -164,6 +172,10 @@ defmodule AshGettext.GettextExtractTest do
     assert "pick a status" in msgids(pots, "ash")
   end
 
+  test "a policy's own message", %{pots: pots} do
+    assert "this shop is closed" in msgids(pots, "ash")
+  end
+
   test "a message inside a validation module the resource uses", %{pots: pots} do
     assert "must weigh at least 30 kg" in msgids(pots, "ash")
   end
@@ -175,7 +187,7 @@ defmodule AshGettext.GettextExtractTest do
 
   test "every sentence Ash ships in its own template", %{pots: pots} do
     ids = msgids(pots, "ash")
-    shipped = AshGettext.AshMessages.ash_template_msgids()
+    shipped = AshGettext.AshMessages.ash_sentences()
 
     assert "must be present" in shipped
     assert "length must be less than or equal to %{max}" in shipped

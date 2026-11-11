@@ -9,8 +9,7 @@ defaults; add options only when a requirement demands them.
 
 ## Setup
 
-- AshGettext is not on Hex yet. Add
-  `{:ash_gettext, github: "Undeadlol1/ash_gettext"}` to deps. It needs `:ash`,
+- Add `{:ash_gettext, "~> 0.2"}` to deps. It needs `:ash`,
   `:spark` and `:gettext` (a Gettext backend, `use Gettext.Backend`, must
   already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
   only if the app serves JSON:API.

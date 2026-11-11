@@ -71,13 +71,18 @@ defmodule AshGettext.AshMessages do
       (@messages ++ @replies) |> Enum.map(&elem(&1, 1)) |> Enum.concat(@sentences) |> Enum.uniq()
 
   @doc """
-  Every sentence Ash marks as translatable, read from the template Ash ships
-  (`priv/gettext/ash.pot`): "must be present", "must match the pattern
-  %{regex}" and the rest. A later Ash release that adds a sentence adds it
-  here too. An Ash without the template gives an empty list.
+  Every sentence Ash marks as translatable: "must be present", "must match the
+  pattern %{regex}" and the rest.
+
+  They are read from Ash itself, so a later Ash release that adds a sentence
+  adds it here too: from the template Ash ships (`priv/gettext/ash.pot`) and
+  from each `error_message("...")` in Ash's source, which the template can
+  lag behind.
   """
-  @spec ash_template_msgids() :: [String.t()]
-  def ash_template_msgids do
+  @spec ash_sentences() :: [String.t()]
+  def ash_sentences, do: Enum.uniq(shipped_template() ++ marked_in_source())
+
+  defp shipped_template do
     case Expo.PO.parse_file(Application.app_dir(:ash, "priv/gettext/ash.pot")) do
       {:ok, template} ->
         for %{msgid: msgid} <- template.messages, do: IO.iodata_to_binary(msgid)
@@ -86,6 +91,17 @@ defmodule AshGettext.AshMessages do
         []
     end
   end
+
+  @marked ~r/error_message\(\s*"((?:[^"\\]|\\.)*)"/
+
+  defp marked_in_source do
+    for file <- Path.wildcard(Path.join(ash_source(), "**/*.ex")),
+        [sentence] <- Regex.scan(@marked, File.read!(file), capture: :all_but_first),
+        sentence =~ ~r/\p{L}/u,
+        do: Macro.unescape_string(sentence)
+  end
+
+  defp ash_source, do: Ash.module_info(:compile)[:source] |> List.to_string() |> Path.dirname()
 
   @doc """
   The msgid for a reply with this error `code`, or `nil` when none is listed.

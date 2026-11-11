@@ -42,7 +42,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
 
     texts =
       if errors?,
-        do: texts ++ AshMessages.msgids() ++ AshMessages.ash_template_msgids(),
+        do: texts ++ AshMessages.msgids() ++ AshMessages.ash_sentences(),
         else: texts
 
     Transformer.eval(
