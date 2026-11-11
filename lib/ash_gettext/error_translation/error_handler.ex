@@ -4,9 +4,14 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   Reads have no `error_handler`; a preparation calls this for them.
 
   Ash calls this with the changeset (the action input, for a generic action)
-  and each error it collects, and takes the
-  return value as the error to keep. The error is translated into the language
-  of the action's actor, else Gettext's current language.
+  and each error it collects. The error is translated into the language of the
+  action's actor, else Gettext's current language.
+
+  For a changeset or action input it returns `{subject, translated_error}`, the
+  shape Ash accepts from an `error_handler`: the subject keeps the language it
+  found in its context, so the other errors of the same action do not ask the
+  `locale_resolver` again. A language whose lookup failed is not kept. For a
+  query it returns the translated error alone.
 
   It sits below every transport by design. An error from a custom validation,
   a builtin constraint, a value that does not cast, a missing required value or
@@ -22,17 +27,36 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @doc """
   Translate `error` into the action's language.
   """
-  @spec translate_error(Ash.Changeset.t() | Ash.ActionInput.t(), term()) :: term()
-  def translate_error(changeset, error) do
-    case Info.settings(changeset.domain) do
+  @spec translate_error(Ash.Changeset.t() | Ash.ActionInput.t() | Ash.Query.t(), term()) ::
+          {Ash.Changeset.t() | Ash.ActionInput.t(), term()} | term()
+  def translate_error(_subject, []), do: []
+
+  def translate_error(subject, error) do
+    case Info.settings(subject.domain) do
       {:ok, settings} ->
         remember_refusal(error)
-        ErrorTranslation.translate(error, translation_options(changeset, settings))
+        {subject, locale} = locale(subject, settings.backend)
+
+        translated =
+          ErrorTranslation.translate(error,
+            backend: settings.backend,
+            text_domain: settings.text_domain,
+            locale: locale
+          )
+
+        kept(subject, translated)
 
       :error ->
         error
     end
   end
+
+  @answer {__MODULE__, :resolved_language}
+
+  defp kept(%struct{} = subject, error) when struct in [Ash.Changeset, Ash.ActionInput],
+    do: {subject, error}
+
+  defp kept(_query, error), do: error
 
   @json_api AshGettext.JsonApi
 
@@ -41,11 +65,22 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
     if Code.ensure_loaded?(@json_api), do: @json_api.remember_refusal(error)
   end
 
-  defp translation_options(changeset, settings) do
-    actor = get_in(changeset.context || %{}, [:private, :actor])
+  defp locale(subject, backend) do
+    context = subject.context || %{}
+    actor = get_in(context, [:private, :actor])
 
-    locale = Info.locale(changeset.domain, actor, settings.backend)
+    {subject, answer} =
+      case context do
+        %{@answer => {^actor, answer}} ->
+          {subject, answer}
 
-    [backend: settings.backend, text_domain: settings.text_domain, locale: locale]
+        _not_asked_yet ->
+          case Info.resolved(subject.domain, actor) do
+            :failed -> {subject, :failed}
+            answer -> {%{subject | context: Map.put(context, @answer, {actor, answer})}, answer}
+          end
+      end
+
+    {subject, Info.locale_from(subject.domain, answer, backend)}
   end
 end

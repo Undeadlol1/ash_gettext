@@ -54,7 +54,13 @@ three things:
 2. It works out the language. It asks the domain's `locale_resolver` with
    the action's actor, and cuts the answer to a language the backend has.
    With no actor or no answer it uses Gettext's current language. It never
-   changes the process language.
+   changes the process language. Ash calls the handler once when an error is
+   added and again when it collects the errors at the end, so the handler
+   keeps the resolver's answer in the changeset's (or action input's) context
+   and hands that changeset back to Ash; every later error of the same action
+   reuses it. A failed lookup is never kept, so the next call asks again. An
+   error added inside the commit is collected on the changeset from before the
+   commit, which never saw the kept answer, so that path asks twice.
 3. It looks the error's `message` up in the backend, under the domain's
    `text_domain`, with the error's `vars` as values.
 
@@ -79,6 +85,14 @@ error's code, else leave it alone. `AshGettext.JsonApi` and
 `AshGettext.Graphql` are thin adapters over it, installed for you by
 `AshGettext.Domain.Transformers.TranslateReplies`. Another transport needs one call to
 `AshGettext.TransportText.translate/3` from its own error hook.
+
+Each reply asks the resolver once, not once per error. `AshGettext.JsonApi`
+keeps the answer in the map it holds for the request (set and cleared by
+Plug's `[:plug, :router_dispatch]` events); `AshGettext.Graphql` keeps it in a
+map that Absinthe's `[:absinthe, :execute, :operation]` events set and clear.
+Both pass that map's key to `TransportText.translate/3` as `:remember_in`.
+Nothing outlives the request, so a reader who changes language is read
+afresh on the next one.
 
 ## Why transport does not matter
 

@@ -192,7 +192,8 @@ defmodule AshGettextFixture.ApiRouter do
       AshGettextFixture.Api,
       AshGettextFixture.Rules,
       AshGettextFixture.OwnHandlerApi,
-      AshGettextFixture.StockApi
+      AshGettextFixture.StockApi,
+      AshGettextFixture.Flaky
     ]
 end
 

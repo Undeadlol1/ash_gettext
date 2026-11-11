@@ -123,8 +123,9 @@ defmodule AshGettext.AshMessages do
   @spec msgid(term()) :: String.t() | nil
   def msgid(%{message: message}) when is_binary(message), do: nil
 
-  def msgid(%Ash.Error.Forbidden.Policy{custom_message: custom}) when is_binary(custom),
-    do: custom
+  def msgid(%Ash.Error.Forbidden.Policy{custom_message: custom, vars: vars})
+      when is_binary(custom),
+      do: Keyword.get(List.wrap(vars), :policy_message, custom)
 
   def msgid(%module{}) do
     Enum.find_value(@messages, fn {listed, msgid} -> listed == module && msgid end)

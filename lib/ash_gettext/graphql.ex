@@ -7,6 +7,31 @@ if Code.ensure_loaded?(AshGraphql.Error) do
     Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
     """
 
+    @operation {__MODULE__, :operation}
+    @event [:absinthe, :execute, :operation]
+
+    @doc false
+    def remember_operations do
+      :telemetry.attach_many(
+        __MODULE__,
+        [@event ++ [:start], @event ++ [:stop]],
+        &__MODULE__.handle_operation/4,
+        nil
+      )
+    end
+
+    @doc false
+    def handle_operation(
+          [:absinthe, :execute, :operation, :start],
+          _measurements,
+          _meta,
+          _config
+        ),
+        do: Process.put(@operation, %{})
+
+    def handle_operation(_operation_ended, _measurements, _metadata, _config),
+      do: Process.delete(@operation)
+
     @doc """
     Translate `error`'s `message` and `short_message` into the actor's language.
 
@@ -22,7 +47,8 @@ if Code.ensure_loaded?(AshGraphql.Error) do
         AshGettext.TransportText.translate(text, context[:domain],
           code: code,
           bindings: error[:vars],
-          actor: context[:actor]
+          actor: context[:actor],
+          remember_in: @operation
         )
       end
 

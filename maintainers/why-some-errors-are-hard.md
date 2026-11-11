@@ -15,7 +15,7 @@ AshGraphql, an AshPhoenix form.
 | The error has a text field | "must weigh at least 30 kg", "is invalid" | In the error, for every transport | The actor's |
 | The error has no text field | Ash's own "is required" | Carried in `vars[:translation]`, for Phoenix forms and any transport that passes `vars` on | The actor's |
 | The transport writes it | AshJsonApi's "is required" from its body check, "No note record found with ..." | In the reply, per transport | The request's actor's |
-| A read action fails | an argument error or a failed policy on a read | In the error, by a preparation and its `after_transaction` hook | The actor's |
+| A read action fails | an argument error, a failed policy, or an error from the read's own `prepare` or `validate` | In the error, by a preparation and its `after_transaction` hook | The actor's |
 
 None of these need setup from you; see
 [the request's language](#the-request-s-language).
@@ -195,7 +195,11 @@ A transport that tells its hook who the actor is needs nothing more.
   `vars[:policy_message]`, which AshGraphql passes on. AshJsonApi passes
   nothing on (`ash_json_api/lib/ash_json_api/error/error.ex`, the
   `Ash.Error.Forbidden.Policy` implementation sets `meta: %{}`), so the
-  handler tells `AshGettext.JsonApi` the msgid, kept with the request's actor.
+  handler tells `AshGettext.JsonApi` the msgid, kept with the request's actor
+  under the refused resource. A reply shows only its own resource's message,
+  so a refusal that a nested read of another resource met and tolerated is
+  never shown in its place. A tolerated refusal on the reply's own resource,
+  whose action skips this library's handler, still can be.
   Phoenix forms show no error for a policy failure: AshPhoenix drops it.
 - Calls from code that Ash gives no hook for. Each was tried:
   - Bulk actions run as one statement. `Ash.Changeset.fully_atomic_changeset`
@@ -210,6 +214,27 @@ A transport that tells its hook who the actor is needs nothing more.
   - A query that is already invalid returns before any hook
     (`ash/lib/ash/actions/read/read.ex`, first `run/3` clause). Its errors
     were translated when it was prepared, for the actor known then.
+    That is also why a read with its own `prepare` or `validate` gets the
+    library's preparation a second time, last in the action: Ash runs the
+    resource's preparations first, then the action's
+    (`ash/lib/ash/query/query.ex`, `run_preparations/6`). Only that last run
+    translates. A primary read without its own preparations gets nothing
+    extra, so Ash's "Primary read action has preparations" warning
+    (`ash/lib/ash/resource/verifiers/verify_primary_read_action_has_no_arguments.ex`)
+    never fires because of the library.
+  - A read validation on the whole resource (`validations do ... on:
+    [:read]`) stays as written. Ash checks those after every preparation
+    (`ash/lib/ash/query/query.ex`, `run_preparations/6`, the
+    `Enum.concat(global_validations)` line), and a validation can only add
+    an error, not rewrite one (`do_validation/5`). The list it reads is
+    persisted from the `validations` section alone
+    (`ash/lib/ash/resource/transformers/validations_and_changes_for_type.ex`),
+    by a persister that claims to run after every other one (`after?(_)`
+    is `true` there), so a persister of ours cannot be ordered after it:
+    tried, and the appended preparation never ran. Even if it did, it would
+    be a foreign struct in Ash's private data. When the query was not prepared
+    first, the read still returns at the invalid-query clause of
+    `ash/lib/ash/actions/read/read.ex` before any hook.
 - GraphQL's "something went wrong" reply for an error type it does not know
   calls no `error_handler` (`ash_graphql/lib/graphql/errors.ex`, the `else`
   branch of `to_errors/6`), and `AshGraphql.Error` has no fallback.

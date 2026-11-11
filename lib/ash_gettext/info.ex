@@ -13,6 +13,8 @@ defmodule AshGettext.Info do
 
   use Spark.InfoGenerator, extension: AshGettext.Domain, sections: [:gettext]
 
+  require Logger
+
   @typedoc "Everything needed to translate for a domain."
   @type settings :: %{
           backend: module(),
@@ -73,12 +75,21 @@ defmodule AshGettext.Info do
   `nil`. Nothing here changes the process language.
   """
   @spec language(module() | map(), term()) :: {module(), String.t()} | nil
-  def language(_domain, nil), do: nil
-
   def language(domain, actor) do
+    case resolved(domain, actor) do
+      {_backend, _locale} = language -> language
+      _no_answer -> nil
+    end
+  end
+
+  @doc false
+  @spec resolved(module() | map(), term()) :: {module(), String.t()} | nil | :failed
+  def resolved(_domain, nil), do: nil
+
+  def resolved(domain, actor) do
     with {:ok, %{locale_resolver: resolver} = settings} when resolver != nil <-
            locale_settings(domain),
-         answer when is_binary(answer) <- resolver.resolve(actor) do
+         answer when is_binary(answer) <- resolve(resolver, actor) do
       {settings.backend,
        AshGettext.Locale.Normalizer.normalize(
          answer,
@@ -86,8 +97,38 @@ defmodule AshGettext.Info do
          settings.default_locale
        )}
     else
+      :failed -> :failed
       _no_answer -> nil
     end
+  end
+
+  defp process_locale(domain, backend) do
+    current = Gettext.get_locale(backend)
+
+    case locale_settings(domain) do
+      {:ok, settings} ->
+        AshGettext.Locale.Normalizer.normalize(
+          current,
+          settings.supported_locales,
+          settings.default_locale
+        )
+
+      :error ->
+        current
+    end
+  end
+
+  defp resolve(resolver, actor) do
+    resolver.resolve(actor)
+  rescue
+    exception -> failed(resolver, Exception.format_banner(:error, exception))
+  catch
+    kind, reason -> failed(resolver, Exception.format_banner(kind, reason))
+  end
+
+  defp failed(resolver, reason) do
+    Logger.warning("#{inspect(resolver)} could not resolve a locale: #{reason}")
+    :failed
   end
 
   @doc """
@@ -95,12 +136,13 @@ defmodule AshGettext.Info do
   current language.
   """
   @spec locale(module() | map(), term(), module()) :: String.t()
-  def locale(domain, actor, backend) do
-    case language(domain, actor) do
-      {_backend, locale} -> locale
-      nil -> Gettext.get_locale(backend)
-    end
-  end
+  def locale(domain, actor, backend), do: locale_from(domain, resolved(domain, actor), backend)
+
+  @doc false
+  @spec locale_from(module() | map(), {module(), String.t()} | nil | :failed, module()) ::
+          String.t()
+  def locale_from(_domain, {_backend, locale}, _backend_module), do: locale
+  def locale_from(domain, _no_answer, backend), do: process_locale(domain, backend)
 
   @doc """
   The written label of a resource's attribute from its `gettext` block, or `nil`.

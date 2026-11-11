@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.1 — 2026-11-11
+
+### Fixed
+
+- A read no longer asks your `locale_resolver` for the actor's language unless it has an error to translate. In 0.2.0 every read asked, so a resolver that reads from the database ran a query on each read.
+- A `locale_resolver` that raises, exits or throws no longer replaces the real error. A warning is logged and the process language is used.
+- A failed action asks the `locale_resolver` once, not twice per error. A JSON:API or GraphQL reply asks once more, not once per error.
+- Errors from a read action's own `prepare` or `validate` are translated, also through a code interface or a query prepared with `for_read`.
+- Actions added by another extension's transformer always get translated errors.
+- A policy's translated message no longer fires a false missing-translation event.
+- A process language such as `ru_RU` is fitted to your catalogs (`ru`) when no actor language is known.
+- A JSON:API refusal no longer shows the message of a different resource's refusal from the same request.
+- `mix gettext.extract` finds `message:` texts in generic-action `run` modules, `manual` modules and calculation modules, and in your other umbrella apps and path dependencies.
+- A message with `\n` or a unicode escape is extracted as exactly the text users see. Run `mix gettext.extract --merge` after upgrading.
+
+### Changed
+
+- AshJsonApi must be 1.6 or newer (the range said 1.4, which never worked).
+
+### Still not translated
+
+- A read validation declared for the whole resource (`validations do validate ..., on: [:read] end`). Put it inside the read action.
+
 ## 0.2.0 — 2026-11-11
 
 ### Breaking

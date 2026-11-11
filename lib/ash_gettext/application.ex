@@ -3,9 +3,12 @@ defmodule AshGettext.Application do
 
   use Application
 
+  @compile {:no_warn_undefined, [AshGettext.JsonApi, AshGettext.Graphql]}
+
   @impl true
   def start(_type, _args) do
     if Code.ensure_loaded?(AshGettext.JsonApi), do: AshGettext.JsonApi.remember_request_actors()
+    if Code.ensure_loaded?(AshGettext.Graphql), do: AshGettext.Graphql.remember_operations()
 
     Supervisor.start_link([], strategy: :one_for_one, name: AshGettext.Supervisor)
   end

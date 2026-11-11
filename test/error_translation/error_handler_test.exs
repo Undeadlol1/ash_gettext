@@ -26,8 +26,8 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
       error =
         InvalidAttribute.exception(field: :weight, message: "weight_too_low", vars: [min: 30])
 
-      assert ErrorHandler.translate_error(changeset, error).message ==
-               "Вес должен быть не менее 30 кг"
+      assert {%Ash.Changeset{}, %{message: "Вес должен быть не менее 30 кг"}} =
+               ErrorHandler.translate_error(changeset, error)
     end
 
     test "returns the error in the actor's language" do
@@ -92,7 +92,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandlerTest do
       error = InvalidAttribute.exception(message: "weight_too_low", vars: [min: 30])
 
       Gettext.with_locale(AshGettextFixture.Gettext, "ru", fn ->
-        assert %{message: "Вес должен быть не менее 30 кг"} =
+        assert {%Ash.Changeset{}, %{message: "Вес должен быть не менее 30 кг"}} =
                  ErrorHandler.translate_error(changeset, error)
       end)
     end

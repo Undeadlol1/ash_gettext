@@ -65,8 +65,6 @@ defmodule AshGettext.Resource do
   use Spark.Dsl.Extension,
     sections: [@gettext],
     verifiers: [AshGettext.Resource.Verifiers.ValidateLabels],
-    transformers: [
-      AshGettext.Resource.Transformers.AttachErrorHandler,
-      AshGettext.Resource.Transformers.AddEnumLabels
-    ]
+    transformers: [AshGettext.Resource.Transformers.AddEnumLabels],
+    persisters: [AshGettext.Resource.Transformers.AttachErrorHandler]
 end
