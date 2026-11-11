@@ -66,7 +66,8 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
             AshGettext.TransportText.translate(error.detail, domain,
               code: error.code,
               bindings: Map.put(carried(error), :id, error.id),
-              actor: request_actor()
+              actor: request_actor(),
+              remember_in: @serving
             )
       }
     end

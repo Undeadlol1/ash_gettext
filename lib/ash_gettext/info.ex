@@ -75,9 +75,18 @@ defmodule AshGettext.Info do
   `nil`. Nothing here changes the process language.
   """
   @spec language(module() | map(), term()) :: {module(), String.t()} | nil
-  def language(_domain, nil), do: nil
-
   def language(domain, actor) do
+    case resolved(domain, actor) do
+      {_backend, _locale} = language -> language
+      _no_answer -> nil
+    end
+  end
+
+  @doc false
+  @spec resolved(module() | map(), term()) :: {module(), String.t()} | nil | :failed
+  def resolved(_domain, nil), do: nil
+
+  def resolved(domain, actor) do
     with {:ok, %{locale_resolver: resolver} = settings} when resolver != nil <-
            locale_settings(domain),
          answer when is_binary(answer) <- resolve(resolver, actor) do
@@ -88,6 +97,7 @@ defmodule AshGettext.Info do
          settings.default_locale
        )}
     else
+      :failed -> :failed
       _no_answer -> nil
     end
   end
@@ -118,7 +128,7 @@ defmodule AshGettext.Info do
 
   defp failed(resolver, reason) do
     Logger.warning("#{inspect(resolver)} could not resolve a locale: #{reason}")
-    nil
+    :failed
   end
 
   @doc """
@@ -126,12 +136,13 @@ defmodule AshGettext.Info do
   current language.
   """
   @spec locale(module() | map(), term(), module()) :: String.t()
-  def locale(domain, actor, backend) do
-    case language(domain, actor) do
-      {_backend, locale} -> locale
-      nil -> process_locale(domain, backend)
-    end
-  end
+  def locale(domain, actor, backend), do: locale_from(domain, resolved(domain, actor), backend)
+
+  @doc false
+  @spec locale_from(module() | map(), {module(), String.t()} | nil | :failed, module()) ::
+          String.t()
+  def locale_from(_domain, {_backend, locale}, _backend_module), do: locale
+  def locale_from(domain, _no_answer, backend), do: process_locale(domain, backend)
 
   @doc """
   The written label of a resource's attribute from its `gettext` block, or `nil`.

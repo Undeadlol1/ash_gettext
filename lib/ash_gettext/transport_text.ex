@@ -9,10 +9,17 @@ defmodule AshGettext.TransportText do
   alias AshGettext.AshMessages
   alias AshGettext.Info
 
-  @type option :: {:code, term()} | {:bindings, Enumerable.t()} | {:actor, term()}
+  @type option ::
+          {:code, term()}
+          | {:bindings, Enumerable.t()}
+          | {:actor, term()}
+          | {:remember_in, term()}
 
   @doc """
   The text in the reader's language, or the text itself when there is no translation.
+
+  With `:remember_in`, the reader's language is kept for the rest of the
+  request in the map the transport holds under that process dictionary key.
   """
   @spec translate(term(), module() | nil, [option()]) :: term()
   def translate(text, domain, opts \\ [])
@@ -30,13 +37,34 @@ defmodule AshGettext.TransportText do
   def translate(text, _domain, _opts), do: text
 
   defp looked_up(text, domain, settings, bindings, opts) do
-    locale = Info.locale(domain, Keyword.get(opts, :actor), settings.backend)
+    locale = locale(domain, Keyword.get(opts, :actor), settings.backend, opts[:remember_in])
 
     policy_message = bindings[:policy_message]
 
     [policy_message, text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
     |> Enum.reject(&is_nil/1)
     |> Enum.find_value(policy_message || text, &translation(&1, settings, bindings, locale))
+  end
+
+  defp locale(domain, actor, backend, request) do
+    Info.locale_from(domain, answer(domain, actor, request), backend)
+  end
+
+  defp answer(domain, actor, request) do
+    case Process.get(request) do
+      %{answers: %{{^domain, ^actor} => answer}} ->
+        answer
+
+      %{} = serving ->
+        with answer when answer != :failed <- Info.resolved(domain, actor) do
+          answers = Map.put(serving[:answers] || %{}, {domain, actor}, answer)
+          Process.put(request, Map.put(serving, :answers, answers))
+          answer
+        end
+
+      _no_request ->
+        Info.resolved(domain, actor)
+    end
   end
 
   defp translation(msgid, settings, bindings, locale) do
