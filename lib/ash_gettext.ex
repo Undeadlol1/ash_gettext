@@ -23,11 +23,11 @@ defmodule AshGettext do
 
       assert {:ok, _} = AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order shipped", [], "ru")
 
-  The detection is gettext's own signal: a lookup that misses returns the msgid
-  unchanged, with its bindings filled in. In the source locale
-  `translate_or_missing/5` always reports `:ok`. In a translated locale, an
-  *identity* translation (a catalog mapping a msgid to itself) is
-  indistinguishable from a miss and is reported as `:missing`. Use
+  The detection is gettext's own signal: the backend answers a hit as found
+  and a miss through its `handle_missing_translation` callback, which a hit
+  never calls. In the source locale `translate_or_missing/5` always reports
+  `:ok`. When a binding the text needs is left out, gettext answers both
+  alike, so a text equal to the untranslated msgid counts as `:missing`. Use
   `translate/5` when you only want the string.
 
   To translate Ash's error messages as well, see `AshGettext.Domain`.
@@ -57,23 +57,11 @@ defmodule AshGettext do
           {:ok, String.t()} | {:missing, String.t()}
   def translate_or_missing(backend, text_domain, msgid, bindings, locale) do
     msgid = to_msgid(msgid)
+    bindings = bindings |> to_bindings() |> Map.new()
 
-    bindings = to_bindings(bindings)
-
-    Gettext.with_locale(backend, locale, fn ->
-      missed =
-        backend.handle_missing_translation(
-          Gettext.get_locale(backend),
-          text_domain,
-          nil,
-          msgid,
-          Map.new(bindings)
-        )
-
-      :dgettext
-      |> lookup_in_backend([backend, text_domain, msgid, bindings])
-      |> mark_covered_or_missing(missed, backend, locale)
-    end)
+    locale
+    |> backend.lgettext(text_domain, nil, msgid, bindings)
+    |> covered_or_missing(backend, {locale, text_domain, msgid}, msgid, bindings)
   end
 
   @doc false
@@ -104,13 +92,21 @@ defmodule AshGettext do
   end
 
   defp translate_error_text_in(backend, text_domain, text, bindings, locale) do
-    with {:missing, _untranslated} <-
-           translate_or_missing(backend, text_domain, text, bindings, locale),
-         {msgid, written} when msgid != text <- with_names_for_values(text, bindings) do
-      translate_or_missing(backend, text_domain, msgid, Keyword.merge(bindings, written), locale)
-    else
-      _found_or_nothing_written ->
-        translate_or_missing(backend, text_domain, text, bindings, locale)
+    with {:missing, _untranslated} = missing <-
+           translate_or_missing(backend, text_domain, text, bindings, locale) do
+      case with_names_for_values(text, bindings) do
+        {msgid, written} when msgid != text ->
+          translate_or_missing(
+            backend,
+            text_domain,
+            msgid,
+            Keyword.merge(bindings, written),
+            locale
+          )
+
+        _nothing_written ->
+          missing
+      end
     end
   end
 
@@ -170,24 +166,12 @@ defmodule AshGettext do
       ) do
     msgid = to_msgid(msgid)
     msgid_plural = to_msgid(msgid_plural)
-    bindings = bindings |> to_bindings() |> Keyword.put_new(:count, count)
+    bindings = bindings |> to_bindings() |> Map.new() |> Map.put_new(:count, count)
+    form = if count == 1, do: msgid, else: msgid_plural
 
-    Gettext.with_locale(backend, locale, fn ->
-      missed =
-        backend.handle_missing_plural_translation(
-          Gettext.get_locale(backend),
-          text_domain,
-          nil,
-          msgid,
-          msgid_plural,
-          count,
-          Map.new(bindings)
-        )
-
-      :dngettext
-      |> lookup_in_backend([backend, text_domain, msgid, msgid_plural, count, bindings])
-      |> mark_covered_or_missing(missed, backend, locale)
-    end)
+    locale
+    |> backend.lngettext(text_domain, nil, msgid, msgid_plural, count, bindings)
+    |> covered_or_missing(backend, {locale, text_domain, msgid}, form, bindings)
   end
 
   @doc """
@@ -260,23 +244,50 @@ defmodule AshGettext do
   defp text_of({:ok, translated}), do: translated
   defp text_of({:missing, fallback}), do: fallback
 
-  # A miss is the text the backend answers with when it has no entry.
-  defp mark_covered_or_missing(translated, missed, backend, locale) do
-    if translated == elem(missed, 1) and not source_locale?(backend, locale),
-      do: {:missing, translated},
-      else: {:ok, translated}
+  defp covered_or_missing({:ok, translated}, _backend, _lookup, _form, _bindings),
+    do: {:ok, translated}
+
+  defp covered_or_missing({:default, fallback}, backend, {locale, _, _}, _form, _bindings),
+    do: missing_unless_source(backend, locale, fallback)
+
+  # Gettext answers a hit and a miss alike when a binding is left out, so the
+  # text is compared with what a miss would read.
+  defp covered_or_missing(
+         {:missing_bindings, incomplete, missing},
+         backend,
+         {locale, text_domain, msgid},
+         form,
+         bindings
+       ) do
+    text =
+      backend.handle_missing_bindings(
+        %Gettext.MissingBindingsError{
+          backend: backend,
+          locale: locale,
+          domain: text_domain,
+          msgctxt: nil,
+          msgid: msgid,
+          missing: missing
+        },
+        incomplete
+      )
+
+    if incomplete == untranslated(backend, form, bindings),
+      do: missing_unless_source(backend, locale, text),
+      else: {:ok, text}
+  end
+
+  defp untranslated(backend, form, bindings) do
+    case backend.__gettext__(:interpolation).runtime_interpolate(form, bindings) do
+      {:ok, text} -> text
+      {:missing_bindings, incomplete, _missing} -> incomplete
+    end
   end
 
   # In gettext the source text IS the msgid, so an echoed msgid in the source
   # locale is a hit.
-  defp source_locale?(backend, locale), do: locale == source_locale(backend)
-
-  # Gettext's runtime entry points are reached through apply/3 so the compiler
-  # treats the msgid as data. Calling them directly makes gettext's extraction
-  # macros try to record a msgid that is only known at runtime.
-  defp lookup_in_backend(entry_point, args) do
-    # credo:disable-for-next-line Credo.Check.Refactor.Apply
-    apply(Gettext, entry_point, args)
+  defp missing_unless_source(backend, locale, text) do
+    if locale == source_locale(backend), do: {:ok, text}, else: {:missing, text}
   end
 
   defp attribute_lookup!(resource, attribute) do

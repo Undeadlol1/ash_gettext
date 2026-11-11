@@ -99,6 +99,18 @@ naming `text_domain`, for a sentence from `AshGettext.AshMessages`.
 `AshGettext.translate_or_missing/5` and `translate_plural_or_missing/7` look
 in the one domain they are given; only the error lookup tries two.
 
+A lookup asks the backend's `lgettext`/`lngettext` once. A hit answers
+`{:ok, text}` and never calls the backend's `handle_missing_translation` or
+`handle_missing_plural_translation`; a miss answers through that callback, so
+an app that overrides it sees one call per miss, as with a plain Gettext
+lookup. Gettext has no way to look in a catalog without that callback firing
+on a miss (`deps/gettext/lib/gettext/compiler.ex:537` and `:547`, the
+fallback clause compiled into each catalog). So a sentence found only in
+`builtin_text_domain` fires the callback once, for `text_domain`; the app's
+catalog is still asked first so its translations win. An error text with a
+value written into it ("must match ~r/a/") is asked a second time under its
+msgid, which can fire it once more.
+
 An Ash error with no message, such as a value that does not cast, takes its
 sentence from `AshGettext.AshMessages` instead, written into its own text
 field. Every error keeps its struct; `Ash.Error.Changes.Required`, which has
@@ -184,9 +196,9 @@ arguments, so you can call it yourself.
   has no stable msgid. `mix gettext.extract` warns about these when a
   resource or a module it names holds one; the app-wide scan skips them
   silently, since most are logs and other text that is not an Ash error.
-- **An entry that equals its msgid counts as missing.** In a non-source
-  locale, a translation that is identical to the msgid cannot be told apart
-  from a miss.
+- **With a binding left out, an entry that equals its msgid counts as
+  missing.** Gettext answers a hit and a miss the same way when a binding is
+  missing, so the text is compared with the untranslated msgid.
 - **A resource needs the extension.** The domain block alone translates
   nothing. Set `require_resource_extension?` to find the resources that
   forgot.
