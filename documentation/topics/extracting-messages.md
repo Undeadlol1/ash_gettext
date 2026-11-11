@@ -32,8 +32,12 @@ text domain that is `priv/gettext/ash.pot`.
 - Every `message` in a resource's DSL: validations, identities and the rest.
 - Every literal `message:` in the validation, change and preparation modules
   a resource uses. Their source files are read.
-- The sentences for Ash's own errors (`AshGettext.AshMessages`), such as
-  "is required".
+- Every sentence Ash writes itself: "must be present", "length must be less
+  than or equal to %{max}" and the rest. They are read from the template Ash
+  ships, so a new Ash release that adds a sentence adds it to your template
+  the next time you extract.
+- The sentences for errors that carry no text, and the ones AshJsonApi and
+  AshGraphql write (`AshGettext.AshMessages`), such as "could not be found".
 
 Resources count when they use `AshGettext.Resource` and their domain has a
 `gettext` block. A domain without one adds nothing. With

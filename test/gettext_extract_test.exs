@@ -173,6 +173,15 @@ defmodule AshGettext.GettextExtractTest do
     for msgid <- AshGettext.AshMessages.msgids(), do: assert(msgid in ids)
   end
 
+  test "every sentence Ash ships in its own template", %{pots: pots} do
+    ids = msgids(pots, "ash")
+    shipped = AshGettext.AshMessages.ash_template_msgids()
+
+    assert "must be present" in shipped
+    assert "length must be less than or equal to %{max}" in shipped
+    assert shipped -- ids == []
+  end
+
   test "nothing from a domain without a gettext block", %{pots: pots} do
     all =
       pots |> Enum.map(fn {_, {_, contents}} -> IO.iodata_to_binary(contents) end) |> Enum.join()
