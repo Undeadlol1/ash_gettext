@@ -85,7 +85,7 @@ defmodule AshGettext.Extractor do
   defp walk(tuple, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), acc)
   defp walk(_other, acc), do: acc
 
-  # Only the app's own modules: Ash's built-in ones live under deps.
+  # Anything but third-party deps, so sibling umbrella and path-dep apps count.
   defp module_messages(module) do
     with {:module, ^module} <- Code.ensure_compiled(module),
          source when is_list(source) <- module.module_info(:compile)[:source],
@@ -100,10 +100,8 @@ defmodule AshGettext.Extractor do
     end
   end
 
-  defp app_source?(path) do
-    cwd = File.cwd!()
-    String.starts_with?(path, cwd <> "/") and not String.starts_with?(path, cwd <> "/deps/")
-  end
+  defp app_source?(path),
+    do: not String.starts_with?(path, Mix.Project.deps_path() <> "/")
 
   defp warn_interpolated(%{path: path, line: line}) do
     IO.warn(

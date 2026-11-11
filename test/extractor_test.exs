@@ -158,4 +158,48 @@ defmodule AshGettext.ExtractorTest do
       assert "the calculation refused" in texts
     end
   end
+
+  describe "modules from a sibling app outside the working directory" do
+    test "reads the messages of a validation module compiled elsewhere" do
+      dir = Path.join(System.tmp_dir!(), "sibling_app_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      on_exit(fn -> File.rm_rf!(dir) end)
+      source = Path.join(dir, "sibling.ex")
+
+      File.write!(source, """
+      defmodule SiblingApp.Rule do
+        use Ash.Resource.Validation
+
+        @impl true
+        def validate(_changeset, _opts, _context), do: {:error, message: "the sibling refused"}
+      end
+
+      defmodule SiblingApp.Parcel do
+        use Ash.Resource, domain: SiblingApp.Domain, data_layer: Ash.DataLayer.Ets
+
+        actions do
+          create :create do
+            validate SiblingApp.Rule
+          end
+        end
+
+        attributes do
+          uuid_primary_key :id
+        end
+      end
+
+      defmodule SiblingApp.Domain do
+        use Ash.Domain, validate_config_inclusion?: false
+
+        resources do
+          resource SiblingApp.Parcel
+        end
+      end
+      """)
+
+      ExUnit.CaptureIO.capture_io(:stderr, fn -> Code.compile_file(source) end)
+
+      assert "the sibling refused" in Extractor.resource_texts(SiblingApp.Parcel, true)
+    end
+  end
 end
