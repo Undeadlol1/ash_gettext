@@ -4,7 +4,9 @@ defmodule AshGettext.Resource.Preparations.TranslateErrors do
   `AshGettext.Resource`; you never call it.
 
   Read actions have no `error_handler`. This translates the errors the query
-  has when it is prepared, and the errors of the read itself.
+  has when it is prepared, and the errors of the read itself. A read with its
+  own preparations or validations runs it again as its last preparation
+  (`late?: true`), and only that run translates.
   """
 
   use Ash.Resource.Preparation
@@ -12,7 +14,18 @@ defmodule AshGettext.Resource.Preparations.TranslateErrors do
   alias AshGettext.ErrorTranslation.ErrorHandler
 
   @impl true
-  def prepare(query, _opts, _context) do
+  def prepare(query, opts, _context) do
+    if opts[:late?] || not late_pass?(query.action),
+      do: translating(query),
+      else: query
+  end
+
+  defp late_pass?(%{preparations: preparations}),
+    do: Enum.any?(preparations, &match?(%{preparation: {__MODULE__, [late?: true]}}, &1))
+
+  defp late_pass?(_action), do: false
+
+  defp translating(query) do
     query
     |> translated()
     |> Ash.Query.after_transaction(fn

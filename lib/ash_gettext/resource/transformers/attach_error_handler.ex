@@ -4,10 +4,14 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
 
   Doing this at compile time is what makes translation a property of the resource
   rather than a thing each action has to remember. Adding an action to a resource
-  that uses `AshGettext.Resource` cannot forget to translate.
+  that uses `AshGettext.Resource` cannot forget to translate. It runs as a
+  persister, after every extension's transformers, so it also sees the actions
+  those add.
 
   * **Read actions** have no `error_handler` in Ash. The resource gets one
     preparation, `AshGettext.Resource.Preparations.TranslateErrors`, instead.
+    A read with its own preparations or validations also gets it last in the
+    action, because Ash runs those after the resource's preparations.
   * **An action that already declares an `error_handler` is left alone.** The
     app asked for that handler explicitly; silently replacing it would be a worse
     surprise than an untranslated message.
@@ -19,10 +23,8 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
 
   @with_an_error_handler [:create, :update, :destroy, :action]
   @read_preparation {AshGettext.Resource.Preparations.TranslateErrors, []}
+  @late_read_preparation {AshGettext.Resource.Preparations.TranslateErrors, [late?: true]}
   @handler {AshGettext.ErrorTranslation.ErrorHandler, :translate_error, []}
-
-  @doc false
-  def after?(_transformer), do: true
 
   @doc false
   def transform(dsl_state) do
@@ -49,16 +51,27 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
   defp translatable?(%{type: type, error_handler: nil}) when type in @with_an_error_handler,
     do: true
 
+  defp translatable?(%{type: :read, preparations: [_ | _] = preparations}),
+    do: not Enum.any?(preparations, &match?(%{preparation: @late_read_preparation}, &1))
+
   defp translatable?(_action), do: false
 
   defp install(action, dsl_state) do
     Transformer.replace_entity(
       dsl_state,
       [:actions],
-      %{action | error_handler: @handler},
+      installed(action),
       &same_action?(&1, action)
     )
   end
+
+  defp installed(%{type: :read} = action) do
+    {:ok, preparation} = Ash.Resource.Builder.build_preparation(@late_read_preparation)
+
+    %{action | preparations: action.preparations ++ [preparation]}
+  end
+
+  defp installed(action), do: %{action | error_handler: @handler}
 
   defp same_action?(%{name: name, type: type}, %{name: name, type: type}), do: true
   defp same_action?(_candidate, _action), do: false

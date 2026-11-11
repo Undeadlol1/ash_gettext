@@ -124,6 +124,10 @@ Use `AshGettext.ErrorTranslation.translate/2` where you render their errors:
 - `Ash.count` and the other aggregates.
 - A read whose actor is passed only to `Ash.read`. Pass `actor:` to
   `Ash.Query.for_read` and its errors are translated.
+- A read validation written for the whole resource
+  (`validations do validate ..., on: [:read]`). Ash checks it after every
+  preparation, so its error stays as written. Put the `validate` inside the
+  read action instead and it is translated.
 
 An `error_handler` you wrote on a JSON:API or GraphQL domain keeps running.
 

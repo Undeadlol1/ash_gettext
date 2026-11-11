@@ -56,7 +56,7 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandlerTest do
 
   describe "ordering against other transformers" do
     test "runs last, so it sees actions other transformers added" do
-      assert AttachErrorHandler.after?(Ash.Resource.Transformers.CacheActionInputs)
+      assert AttachErrorHandler in AshGettext.Resource.persisters()
     end
   end
 end
