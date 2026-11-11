@@ -96,6 +96,7 @@ defmodule AshGettext.MixProject do
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
           AshGettext.AshMessages,
+          AshGettext.TransportText,
           AshGettext.JsonApi,
           AshGettext.Plug,
           AshGettext.Extractor,

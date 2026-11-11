@@ -1,8 +1,9 @@
 defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @moduledoc """
-  The `error_handler` that `AshGettext.Resource` installs on write actions.
+  The `error_handler` that `AshGettext.Resource` installs on every action but reads.
 
-  Ash calls this with the changeset and each error it collects, and takes the
+  Ash calls this with the changeset (the action input, for a generic action)
+  and each error it collects, and takes the
   return value as the error to keep. The error is translated into the language
   of the action's actor, else Gettext's current language.
 
@@ -20,7 +21,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @doc """
   Translate `error` into the action's language.
   """
-  @spec translate_error(Ash.Changeset.t(), term()) :: term()
+  @spec translate_error(Ash.Changeset.t() | Ash.ActionInput.t(), term()) :: term()
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->

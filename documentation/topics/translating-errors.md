@@ -34,7 +34,7 @@ use Ash.Resource,
 ```
 
 The domain block says how to translate. The resource extension turns it on
-for that resource's create, update and destroy actions.
+for that resource's create, update, destroy and generic actions.
 
 `mix ash_gettext.install` makes both edits in every domain and resource. Run
 it alone to see the edits, and with `--apply` to write them. If the app has
@@ -82,8 +82,8 @@ create :register do
 end
 ```
 
-The resource extension adds the handler to every create, update and destroy
-action, including actions you add later. An action that declares its own
+The resource extension adds the handler to every create, update, destroy
+and generic action, including actions you add later. An action that declares its own
 `error_handler` keeps it, and is not translated.
 
 ## The message is the msgid
@@ -169,6 +169,23 @@ An `error_handler` you wrote keeps running. It is called first, and the
 error it returns is then translated. `translate_errors? false` switches all
 of this off for the domain.
 
+### Another transport
+
+The rules are not JSON:API's. They live in `AshGettext.TransportText`, and
+any transport that writes its own error text can use them from its error
+hook:
+
+```elixir
+AshGettext.TransportText.translate(error.message, domain,
+  code: error.code,
+  bindings: error.vars,
+  actor: context[:actor]
+)
+```
+
+A transport that sends the error's own `message` needs nothing: that message
+is already translated in the error.
+
 ## Put values in a message
 
 Write `%{name}` in the message and pass the values with `vars`:
@@ -192,11 +209,11 @@ with `%{name}` and `vars`.
 
 ## Know which actions are translated
 
-Only create, update and destroy actions are translated. Ash gives those three
-an `error_handler` and gives read and generic actions none. Errors from a
-read or a generic action reach the caller as written. If you need a
-translated read error, translate it where you render it, with
-`AshGettext.ErrorTranslation.translate/2`.
+Create, update, destroy and generic (`action`) actions are translated. Ash
+gives those an `error_handler` and gives read actions none, so an error from
+a read reaches the caller as written. Over JSON:API the reply is translated
+anyway (see above). Elsewhere, translate a read error where you render it,
+with `AshGettext.ErrorTranslation.translate/2`.
 
 ## Choose the catalog file
 
@@ -259,7 +276,7 @@ and a `message` that is translated:
 
 `code` is required. Leaving it out raises `ArgumentError`. `field` and `vars`
 are optional. The message is translated like any other, so return the error
-from a create, update or destroy action.
+from any action but a read.
 
 With `:ash_json_api` installed, this error renders as:
 

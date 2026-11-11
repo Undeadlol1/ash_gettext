@@ -36,7 +36,7 @@ defmodule AshGettext.ResourceTest do
   test "adds no action" do
     actions = Parcel |> Info.actions() |> Enum.map(& &1.name) |> Enum.sort()
 
-    assert actions == [:create, :destroy, :read, :relabel]
+    assert actions == [:create, :destroy, :read, :relabel, :weigh, :weigh_the_apps_way]
   end
 
   test "leaves attribute types exactly as declared" do

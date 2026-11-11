@@ -1,6 +1,6 @@
 defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
   @moduledoc """
-  Point every write action's `error_handler` at `AshGettext.ErrorTranslation.ErrorHandler`.
+  Point every action's `error_handler` at `AshGettext.ErrorTranslation.ErrorHandler`.
 
   Doing this at compile time is what makes translation a property of the resource
   rather than a thing each action has to remember. Adding an action to a resource
@@ -8,9 +8,9 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
 
   Two deliberate limits:
 
-  * **Write actions only.** Ash 3.29 exposes `error_handler` on `create`,
-    `update` and `destroy` — the changeset-based actions. Read and generic
-    actions have no equivalent hook, so their errors are not translated here.
+  * **Not read actions.** Ash exposes `error_handler` on `create`, `update`,
+    `destroy` and generic (`action`) actions. Read actions have no equivalent
+    hook, so their errors are not translated here.
   * **An action that already declares an `error_handler` is left alone.** The
     app asked for that handler explicitly; silently replacing it would be a worse
     surprise than an untranslated message.
@@ -20,7 +20,7 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
 
   alias Spark.Dsl.Transformer
 
-  @writes [:create, :update, :destroy]
+  @with_an_error_handler [:create, :update, :destroy, :action]
   @handler {AshGettext.ErrorTranslation.ErrorHandler, :translate_error, []}
 
   @doc false
@@ -35,7 +35,9 @@ defmodule AshGettext.Resource.Transformers.AttachErrorHandler do
     |> then(&{:ok, &1})
   end
 
-  defp translatable?(%{type: type, error_handler: nil}) when type in @writes, do: true
+  defp translatable?(%{type: type, error_handler: nil}) when type in @with_an_error_handler,
+    do: true
+
   defp translatable?(_action), do: false
 
   defp install(action, dsl_state) do

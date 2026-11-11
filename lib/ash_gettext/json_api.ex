@@ -28,24 +28,23 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
     arguments you gave it, and the error it returns is then translated.
     """
 
-    alias AshGettext.AshMessages
-    alias AshGettext.Info
-
     @doc """
     Translate `error`'s `detail` into Gettext's current language.
 
-    The `detail` is looked up as a msgid, with `meta` as its values. When the
-    catalog has no entry for it, the written sentence for the error's `code`
-    (`AshGettext.AshMessages`) is looked up instead. With neither, the error
-    comes back unchanged.
+    The rules are `AshGettext.TransportText`'s: the `detail` is looked up as
+    a msgid, with `meta` as its values, then the written sentence for the
+    error's `code`. With neither, the error comes back unchanged.
     """
     @spec translate_error(term(), map()) :: term()
-    def translate_error(%AshJsonApi.Error{detail: detail} = error, %{domain: domain})
-        when is_binary(detail) and not is_nil(domain) do
-      case Info.settings(domain) do
-        {:ok, settings} -> %{error | detail: translated_detail(error, settings)}
-        :error -> error
-      end
+    def translate_error(%AshJsonApi.Error{} = error, %{domain: domain}) do
+      %{
+        error
+        | detail:
+            AshGettext.TransportText.translate(error.detail, domain,
+              code: error.code,
+              bindings: error.meta
+            )
+      }
     end
 
     def translate_error(error, _context), do: error
@@ -59,29 +58,5 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
       |> apply(function, [error, context | arguments])
       |> translate_error(context)
     end
-
-    defp translated_detail(%{detail: detail} = error, settings) do
-      [detail, AshMessages.reply_msgid(error.code)]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.find_value(detail, &translation(&1, error, settings))
-    end
-
-    defp translation(msgid, error, settings) do
-      case AshGettext.translate_or_missing(
-             settings.backend,
-             settings.text_domain,
-             msgid,
-             bindings(error.meta),
-             Gettext.get_locale(settings.backend)
-           ) do
-        {:ok, translated} -> translated
-        {:missing, _untranslated} -> nil
-      end
-    end
-
-    defp bindings(meta) when is_map(meta),
-      do: Enum.filter(meta, fn {key, _value} -> is_atom(key) end)
-
-    defp bindings(_no_meta), do: []
   end
 end

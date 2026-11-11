@@ -124,10 +124,10 @@ defaults; add options only when a requirement demands them.
   catalog.
 - A message no catalog covers is left unchanged. Adopting AshGettext never
   rewrites an existing message into something worse.
-- Translation runs only for errors raised in `create`, `update` and `destroy`
-  actions, through the `error_handler` the resource extension sets. Errors
-  from read and generic actions are not translated. Do not expect or promise
-  otherwise.
+- Translation in the error itself runs for `create`, `update`, `destroy` and
+  generic (`action`) actions, through the `error_handler` the resource
+  extension sets. Read actions have no such hook in Ash, so a read error is
+  not translated in the error; over JSON:API its reply still is.
 - An action that already declares its own `error_handler` is left alone and
   its errors are not translated.
 - Validation errors, builtin constraint errors, cast errors, missing required
@@ -164,7 +164,9 @@ defaults; add options only when a requirement demands them.
 - AshJsonApi writes some error text itself ("is required", record not found),
   and read errors skip the action error handler. A domain with a `gettext` block and
   `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`
-  automatically; do not add it by hand. The reply is translated into
+  automatically; do not add it by hand. For any other transport that writes
+  its own error text, call `AshGettext.TransportText.translate/3` on that
+  text; do not copy the lookup rules. The reply is translated into
   Gettext's current language: if the app does not already set it per
   request, add `plug AshGettext.Plug, domain: MyApp.Shop` after the plug
   that sets the actor. Only `detail` changes; `code` and `meta` are kept. An
@@ -193,7 +195,7 @@ defaults; add options only when a requirement demands them.
   `source.pointer` set to `/data/attributes/<field>` when `field` is set. Its status class is
   `:invalid`.
 - It is translated by the same handler as any other error, so it follows the
-  same limit: create, update and destroy only.
+  same limit: every action but reads.
 
 ## Rules
 

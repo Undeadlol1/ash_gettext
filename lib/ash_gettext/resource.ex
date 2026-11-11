@@ -9,7 +9,7 @@ defmodule AshGettext.Resource do
       end
 
   No attribute is rewritten and no enum is replaced; the `attributes do` block
-  stays as it is. The extension points each write action's `error_handler` at
+  stays as it is. The extension points each action's `error_handler` (reads have none) at
   the library, and adds one public calculation, `<attribute>_label`, for each
   attribute whose type is an `AshGettext.Enum` (see
   `AshGettext.Resource.Transformers.AddEnumLabels`). Load it to get the label

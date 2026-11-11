@@ -11,6 +11,13 @@
   not found) and errors from reads. `code`, `title`, `meta` and the source
   pointer are kept. Text with no catalog entry goes out unchanged. An
   `error_handler` you wrote still runs, first.
+- Errors from generic actions (`action :name, :type`) are translated in the
+  error, like create, update and destroy errors. Ash gives them an
+  `error_handler` since 3.30.
+- `AshGettext.TransportText.translate/3` holds the rules for translating a
+  text a transport wrote itself. They belong to no transport;
+  `AshGettext.JsonApi` is a thin adapter over them, and another transport
+  needs one call.
 - `AshGettext.Plug` sets Gettext's language to the actor's for one request,
   using the domain's `locale_resolver`, and puts it back when the reply is
   sent.
