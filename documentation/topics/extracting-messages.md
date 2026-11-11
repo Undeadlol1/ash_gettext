@@ -33,7 +33,7 @@ text domain that is `priv/gettext/ash.pot`.
 - Every literal `message:` in the validation, change and preparation modules
   a resource uses. Their source files are read.
 - The sentences for Ash's own errors (`AshGettext.AshMessages`), such as
-  "is invalid".
+  "is required".
 
 Resources count when they use `AshGettext.Resource` and their domain has a
 `gettext` block. A domain without one adds nothing. With
