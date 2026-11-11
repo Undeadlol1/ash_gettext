@@ -175,6 +175,16 @@ An `error_handler` you wrote keeps running. It is called first, and the
 error it returns is then translated. `translate_errors? false` switches all
 of this off for the domain.
 
+### GraphQL
+
+A domain with a `gettext` block that also uses `AshGraphql.Domain` gets
+`AshGettext.Graphql` as its `error_handler`, with nothing to add. It translates
+`message` and `short_message` of every error in the reply. Unlike JSON:API,
+AshGraphql hands the handler the request's context, so the actor is known and
+the domain's `locale_resolver` picks the language: no plug is needed. A handler
+you wrote still runs first. Errors Absinthe raises before Ash runs ("Argument
+... has invalid value") are not Ash's and are not translated.
+
 ### Another transport
 
 The rules are not JSON:API's. They live in `AshGettext.TransportText`, and

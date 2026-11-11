@@ -12,7 +12,14 @@ defmodule AshGettext.AshMessages do
     {"forbidden", "You are not allowed to do this"},
     {"invalid_primary_key", "invalid primary key provided"},
     {"invalid_keyset", "invalid keyset"},
-    {"no_such_input", "no such input"}
+    {"no_such_input", "no such input"},
+    {"forbidden_field", "forbidden field"}
+  ]
+
+  @sentences [
+    "invalid filter value",
+    "Invalid filter value %{value}",
+    "Invalid value provided as a keyset for %{key}: %{value}"
   ]
 
   @moduledoc """
@@ -38,13 +45,18 @@ defmodule AshGettext.AshMessages do
 
   ## Sentences a transport writes
 
-  AshJsonApi writes the text of some errors itself, after every Ash error
-  handler has run. `AshGettext.JsonApi` translates those in the reply. Each
-  error code has a written sentence here too, so it is in your template:
+  AshJsonApi and AshGraphql write the text of some errors themselves, after
+  every Ash error handler has run. `AshGettext.JsonApi` and
+  `AshGettext.Graphql` translate those in the reply. Each error code has a
+  written sentence here too, so it is in your template:
 
   | Code | Sentence |
   | --- | --- |
   #{for {code, msgid} <- @replies, into: "", do: "| `#{code}` | #{msgid} |\n"}
+
+  AshGraphql also writes these, which have no code of their own:
+
+  #{for msgid <- @sentences, into: "", do: "- #{msgid}\n"}
   """
 
   @doc "Every `{error_module, msgid}` pair."
@@ -53,7 +65,9 @@ defmodule AshGettext.AshMessages do
 
   @doc "Every msgid, each once."
   @spec msgids() :: [String.t()]
-  def msgids, do: (@messages ++ @replies) |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+  def msgids,
+    do:
+      (@messages ++ @replies) |> Enum.map(&elem(&1, 1)) |> Enum.concat(@sentences) |> Enum.uniq()
 
   @doc """
   The msgid for a reply with this error `code`, or `nil` when none is listed.

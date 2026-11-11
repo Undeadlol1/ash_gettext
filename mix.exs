@@ -35,6 +35,7 @@ defmodule AshGettext.MixProject do
       {:gettext, "~> 1.0"},
       {:telemetry, "~> 1.1"},
       {:ash_json_api, "~> 1.4", optional: true},
+      {:ash_graphql, "~> 1.0", optional: true},
       {:plug, "~> 1.14", optional: true},
       {:ash_phoenix, "~> 2.3", only: :test},
       # AshJsonApi needs it to serve a POST route in the HTTP tests.
@@ -99,12 +100,14 @@ defmodule AshGettext.MixProject do
           AshGettext.AshMessages,
           AshGettext.TransportText,
           AshGettext.JsonApi,
+          AshGettext.Graphql,
           AshGettext.Plug,
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
           AshGettext.Domain.Transformers.MarkTexts,
           AshGettext.Domain.Transformers.TranslateJsonApiReplies,
+          AshGettext.Domain.Transformers.TranslateGraphqlReplies,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
         ],
         "Mix tasks": [Mix.Tasks.AshGettext.Install]

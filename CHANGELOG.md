@@ -4,6 +4,12 @@
 
 ### Changes
 
+- GraphQL replies are translated. A domain with a `gettext` block that also
+  uses `AshGraphql.Domain` gets `AshGettext.Graphql` as its `error_handler`,
+  with nothing to set up. It translates `message` and `short_message`,
+  including the text AshGraphql writes itself, in the actor's language (the
+  actor is in the handler's context, so no plug is needed). `code`, `fields`
+  and `path` are kept. An `error_handler` you wrote still runs, first.
 - JSON:API replies are translated. A domain with a `gettext` block that also
   uses `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`,
   with nothing to set up. It translates the `detail` of every error in a
