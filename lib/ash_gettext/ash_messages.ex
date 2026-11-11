@@ -1,5 +1,4 @@
 defmodule AshGettext.AshMessages do
-  @source {"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", __ENV__.line + 1}
   @messages [
     {Ash.Error.Changes.Required, "is required"},
     {Ash.Error.Changes.InvalidAttribute, "is invalid"},
@@ -67,9 +66,36 @@ defmodule AshGettext.AshMessages do
   #{for msgid <- @sentences, into: "", do: "- #{msgid}\n"}
   """
 
-  @doc false
-  @spec source() :: {String.t(), pos_integer()}
-  def source, do: @source
+  @written (@messages ++ @replies)
+           |> Enum.map(&elem(&1, 1))
+           |> Enum.concat(@sentences)
+           |> Enum.uniq()
+
+  # The path is written out: a dependency sits there in every app that has
+  # one, whatever machine compiled it.
+  @located (
+             lines = __ENV__.file |> File.read!() |> String.split("\n")
+
+             for msgid <- @written do
+               %{
+                 msgid: msgid,
+                 path: "deps/ash_gettext/lib/ash_gettext/ash_messages.ex",
+                 line: Enum.find_index(lines, &String.contains?(&1, inspect(msgid))) + 1
+               }
+             end
+           )
+
+  @typedoc "A sentence and the file and line it is written at."
+  @type located :: %{msgid: String.t(), path: String.t(), line: pos_integer()}
+
+  @doc "Every built-in sentence with the place it is written at: here or in Ash."
+  @spec located() :: [located()]
+  def located do
+    in_code = marked_in_source()
+    found = MapSet.new(in_code, & &1.msgid)
+
+    @located ++ in_code ++ Enum.reject(shipped_template(), &(&1.msgid in found))
+  end
 
   @doc "Every `{error_module, msgid}` pair."
   @spec messages() :: [{module(), String.t()}]
@@ -77,9 +103,7 @@ defmodule AshGettext.AshMessages do
 
   @doc "Every msgid, each once."
   @spec msgids() :: [String.t()]
-  def msgids,
-    do:
-      (@messages ++ @replies) |> Enum.map(&elem(&1, 1)) |> Enum.concat(@sentences) |> Enum.uniq()
+  def msgids, do: @written
 
   @doc """
   Every sentence Ash marks as translatable: "must be present", "must match the
@@ -91,12 +115,21 @@ defmodule AshGettext.AshMessages do
   lag behind.
   """
   @spec ash_sentences() :: [String.t()]
-  def ash_sentences, do: Enum.uniq(shipped_template() ++ marked_in_source())
+  def ash_sentences,
+    do: (shipped_template() ++ marked_in_source()) |> Enum.map(& &1.msgid) |> Enum.uniq()
 
   defp shipped_template do
-    case Expo.PO.parse_file(Application.app_dir(:ash, "priv/gettext/ash.pot")) do
+    path = Path.expand("../priv/gettext/ash.pot", ash_source())
+
+    case Expo.PO.parse_file(path) do
       {:ok, template} ->
-        for %{msgid: msgid} <- template.messages, do: IO.iodata_to_binary(msgid)
+        for message <- template.messages do
+          %{
+            msgid: IO.iodata_to_binary(message.msgid),
+            path: path,
+            line: Expo.Message.source_line_number(message, :msgid)
+          }
+        end
 
       {:error, _no_template} ->
         []
@@ -106,13 +139,20 @@ defmodule AshGettext.AshMessages do
   @marked ~r/error_message\(\s*"((?:[^"\\]|\\.)*)"/
 
   defp marked_in_source do
-    for file <- Path.wildcard(Path.join(ash_source(), "**/*.ex")),
-        [sentence] <- Regex.scan(@marked, File.read!(file), capture: :all_but_first),
-        sentence =~ ~r/\p{L}/u,
-        do: Macro.unescape_string(sentence)
+    for path <- Path.wildcard(Path.join(ash_source(), "**/*.ex")),
+        source = File.read!(path),
+        [{start, length}] <- Regex.scan(@marked, source, capture: :all_but_first, return: :index),
+        sentence = binary_part(source, start, length),
+        sentence =~ ~r/\p{L}/u do
+      %{
+        msgid: Macro.unescape_string(sentence),
+        path: path,
+        line: length(:binary.matches(binary_part(source, 0, start), "\n")) + 1
+      }
+    end
   end
 
-  defp ash_source, do: Ash.module_info(:compile)[:source] |> List.to_string() |> Path.dirname()
+  defp ash_source, do: Path.join(Mix.Project.deps_paths()[:ash], "lib")
 
   @doc """
   The msgid for a reply with this error `code`, or `nil` when none is listed.

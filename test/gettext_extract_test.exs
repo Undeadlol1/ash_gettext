@@ -217,6 +217,8 @@ defmodule AshGettext.GettextExtractTest do
   defp line_of(source \\ @app, snippet),
     do: Enum.find_index(String.split(source, "\n"), &(&1 =~ snippet)) + 1
 
+  defp line_at(path, line), do: path |> File.read!() |> String.split("\n") |> Enum.at(line - 1)
+
   defp msgids(pots, text_domain),
     do: Enum.map(messages(pots, text_domain), &IO.iodata_to_binary(&1.msgid))
 
@@ -310,19 +312,39 @@ defmodule AshGettext.GettextExtractTest do
              ]
     end
 
-    test "a sentence Ash writes itself, once, at the library's list of them", %{pots: pots} do
-      {path, line} = AshGettext.AshMessages.source()
+    test "a sentence Ash writes itself, at its own line in Ash's files", %{pots: pots} do
+      places = references(pots, "ash_builtin", "must be present")
 
-      assert references(pots, "ash_builtin", "must be present") == [
-               {Path.relative_to_cwd(path), line}
-             ]
+      assert places != []
+
+      for {path, line} <- places do
+        assert String.starts_with?(path, "deps/ash/")
+        assert line_at(path, line) =~ "must be present"
+      end
     end
 
-    test "a sentence Ash writes itself, at the same relative path on every machine", %{
-      pots: pots
-    } do
-      assert [{"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", _line}] =
-               references(pots, "ash_builtin", "must be present")
+    test "a sentence found in Ash's code is not also sent to Ash's template", %{pots: pots} do
+      for message <- messages(pots, "ash_builtin"),
+          paths = for({path, _line} <- List.flatten(message.references), do: path),
+          Enum.any?(paths, &String.ends_with?(&1, ".ex")) do
+        refute "deps/ash/priv/gettext/ash.pot" in paths
+      end
+    end
+
+    test "a sentence the library writes, at its own line in the library's list", %{pots: pots} do
+      assert [{"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", line}] =
+               references(pots, "ash_builtin", "could not be found")
+
+      assert line_at("lib/ash_gettext/ash_messages.ex", line) =~ ~s|"could not be found"|
+    end
+
+    test "the sentences the library writes, each at a place of its own", %{pots: pots} do
+      places =
+        for msgid <- AshGettext.AshMessages.msgids(),
+            place <- references(pots, "ash_builtin", msgid),
+            do: place
+
+      assert places == Enum.uniq(places)
     end
 
     test "a text from a file outside the project, relative to it", %{pots: pots} do

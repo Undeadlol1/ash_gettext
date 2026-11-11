@@ -108,10 +108,7 @@ defmodule AshGettext.Extractor do
   def builtin_messages(backend, text_domain) do
     case remembered({__MODULE__, :builtin_messages, backend, text_domain}, fn -> :marked end) do
       {:new, :marked} ->
-        {path, line} = AshMessages.source()
-
-        for msgid <- Enum.uniq(AshMessages.msgids() ++ AshMessages.ash_sentences()),
-            do: %{msgid: msgid, path: path, line: line}
+        AshMessages.located()
 
       {:seen, :marked} ->
         []

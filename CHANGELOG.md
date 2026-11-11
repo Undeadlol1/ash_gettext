@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Every built-in sentence in `ash_builtin.pot` now points at the place it is really written: its own line in Ash's code (`deps/ash/lib/...`), in Ash's template when it is only there, or its own line in this library's list. Before, all of them carried one identical reference line. Run `mix gettext.extract --merge` to refresh the file.
+
 ## 0.3.0 — 2026-11-11
 
 ### Upgrading
