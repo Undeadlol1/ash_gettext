@@ -301,15 +301,16 @@ defmodule AshGettext.Extractor do
   # Without it a string in a keyword list is a bare binary with nowhere to hang a
   # source reference, and a `.pot` entry without a reference is much harder to act on.
   defp parse(contents) do
-    contents
-    |> Code.string_to_quoted(
-      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
-      token_metadata: true,
-      emit_warnings: false
-    )
-    |> case do
-      {:ok, ast} -> {:ok, ast}
-      {:error, _reason} -> :error
+    with true <- String.valid?(contents),
+         {:ok, ast} <-
+           Code.string_to_quoted(contents,
+             literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+             token_metadata: true,
+             emit_warnings: false
+           ) do
+      {:ok, ast}
+    else
+      _not_elixir -> :error
     end
   end
 

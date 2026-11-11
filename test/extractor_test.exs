@@ -152,6 +152,20 @@ defmodule AshGettext.ExtractorTest do
       assert result.messages == []
     end
 
+    test "the app scan skips a file that is not UTF-8 or does not parse" do
+      dir = Path.join(["tmp", inspect(__MODULE__), "unreadable_sources"])
+      File.rm_rf!(dir)
+      File.mkdir_p!(dir)
+      File.write!(Path.join(dir, "latin1.ex"), <<"defmodule L do\n  @x \"", 255, "\"\nend\n">>)
+      File.write!(Path.join(dir, "broken.ex"), ~s|defmodule B do\n  [message: "is broken"\n|)
+      File.write!(Path.join(dir, "fine.ex"), ~s|defmodule F do\n  @x [message: "found"]\nend\n|)
+
+      assert {_new_or_seen, %{messages: messages}} =
+               Extractor.app_messages(__MODULE__.UnreadableSources, "ash", [dir])
+
+      assert Enum.map(messages, & &1.msgid) == ["found"]
+    end
+
     test "returns nothing for a file with no messages" do
       result = find_messages("defmodule Sample do\n  def a, do: :ok\nend\n")
 
