@@ -1,40 +1,10 @@
 if Code.ensure_loaded?(AshGraphql.Error) do
   defmodule AshGettext.Graphql do
     @moduledoc """
-    Translate the errors a GraphQL reply carries.
+    Translates `message` and `short_message` of every error in a GraphQL reply.
+    Installed on the domain's `error_handler` for you; you never call it.
 
-    AshGraphql writes the text of some errors itself: "is required" for a
-    missing value, "could not be found" for a record that is not there. It does
-    so when it turns the Ash error into a GraphQL one, after every Ash error
-    handler has run, and for reads too, so the reply is the one place every
-    error passes with its final text.
-
-    There is nothing to set up. A domain with a `gettext` block that also uses
-    `AshGraphql.Domain` gets this as its `error_handler`
-    (`AshGettext.Domain.Transformers.TranslateReplies`).
-
-    AshGraphql hands the handler the request's context, and the actor is in it.
-    The language is the one the domain's `locale_resolver` answers for that
-    actor, so no plug or `Gettext.put_locale/2` is needed. Without an actor,
-    Gettext's current language is used.
-
-    Only `message` and `short_message` change. `code`, `fields`, `path` and
-    everything else stay as they were, so a client that reads them keeps
-    working.
-
-    A text your catalog has no entry for is left exactly as it was. So is every
-    reply in the source language, a domain with no `gettext` block and one with
-    `translate_errors? false`. A new error from a later Ash release passes
-    through until you translate it.
-
-    GraphQL checks the document against the schema before Ash sees it. Those
-    errors ("Argument ... has invalid value ...") come from Absinthe and are not
-    translated here.
-
-    An `error_handler` you wrote keeps running. It is called first, with the
-    arguments you gave it, and the error it returns is then translated.
-    AshGraphql's default handler, which fills `%{name}` values into the text,
-    runs last instead: filled in first, the text would no longer be a msgid.
+    Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
     """
 
     @doc """

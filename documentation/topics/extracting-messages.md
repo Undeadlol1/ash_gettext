@@ -1,17 +1,14 @@
 # Extracting messages
 
-This page shows how to put every text AshGettext translates into your `.pot`
-templates, and how to keep them current. You use Gettext's own command.
-
 ## Run Gettext's command
 
 ```
 mix gettext.extract --merge
 ```
 
-AshGettext makes your enum labels, attribute labels, `message:` strings and
-Ash's error sentences visible to it, so they land in your templates with
-everything else. There is no list to keep by hand and no second command.
+It finds your enum labels, attribute labels, `message:` strings and Ash's
+error sentences. Run it again after upgrading Ash or AshGettext: new
+sentences land in your template, and you translate them.
 
 `--merge` also updates each language's `.po` file. Translators fill in the
 `msgstr` lines, for example in `priv/gettext/ru/LC_MESSAGES/ash.po`:
@@ -35,11 +32,9 @@ text domain that is `priv/gettext/ash.pot`.
   a resource uses. Their source files are read.
 - Every sentence Ash writes itself: "must be present", "length must be less
   than or equal to %{max}" and the rest (about 60 today), plus "has already
-  been taken". They are read from Ash itself (the template it ships and the
-  sentences marked in its source), so a new Ash release that adds a sentence
-  adds it to your template the next time you extract.
+  been taken".
 - The sentences for errors that carry no text, and the ones AshJsonApi and
-  AshGraphql write (`AshGettext.AshMessages`), such as "could not be found".
+  AshGraphql write, such as "could not be found".
 
 Resources count when they use `AshGettext.Resource` and their domain has a
 `gettext` block. A domain without one adds nothing. With

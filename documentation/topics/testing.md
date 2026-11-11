@@ -44,8 +44,7 @@ test "creating a light parcel fails in Russian" do
 end
 ```
 
-This goes through the real action, so it also proves the resource has the
-`AshGettext.Resource` extension. Read actions are not translated.
+Read actions are not translated in a direct call.
 
 ## Fail a test on a missing translation
 

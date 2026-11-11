@@ -8,42 +8,25 @@
   is gone. If you matched on it, match on the Ash struct again
   (`%Ash.Error.Changes.InvalidAttribute{}`, `%Ash.Error.Forbidden.Policy{}`).
   The translated sentence is in the struct's own text field (`message`, or
-  `custom_message` for a policy), so AshPhoenix forms show it.
+  `custom_message` for a policy).
 
 ### Added
 
-- JSON:API replies are translated, with nothing to set up. A domain with a
-  `gettext` block that also uses `AshJsonApi.Domain` gets `AshGettext.JsonApi`
-  as its `error_handler`. It translates the `detail` of every error, including
-  the text AshJsonApi writes itself ("is required", record not found) and
-  errors from reads, in the language the domain's `locale_resolver` gives for
-  the request's actor. `code`, `title`, `meta` and the source pointer are kept.
-- GraphQL replies are translated, with nothing to set up. A domain that also
-  uses `AshGraphql.Domain` gets `AshGettext.Graphql`. It translates `message`
-  and `short_message` in the actor's language; `code`, `fields` and `path`
-  are kept.
-- One transformer, `AshGettext.Domain.Transformers.TranslateReplies`, installs
-  both. A text with no catalog entry goes out unchanged, and an
-  `error_handler` you wrote still runs first.
-- `AshGettext.TransportText.translate/3` holds the rules for translating a
-  text a transport wrote itself. Another transport needs one call.
-- `mix gettext.extract` also adds every sentence Ash marks as translatable
-  ("must be present" and about 60 more, read from Ash's shipped template and
-  its source) and "has already been taken". New sentences in a later Ash
-  release arrive on the next extract. It also adds every policy's
-  `error_message`, and the sentences AshJsonApi and AshGraphql write
-  ("is required", "could not be found").
-- A new guide, "Why some errors are hard to translate", says which errors are
-  translated where, why, and the known limits.
+- Errors are now translated in JSON:API and GraphQL replies, in the actor's
+  language, including the text those libraries write themselves ("is
+  required", record not found).
+- Errors from generic actions are translated, like create, update and
+  destroy errors.
+- `mix gettext.extract` now also adds the sentences Ash and the JSON:API and
+  GraphQL replies use ("must be present", "is required", "could not be found"
+  and about 60 more), and every policy's `error_message`. Run it and
+  translate the new entries.
 
 ### Changed
 
-- Errors from generic actions (`action :name, :type`) are translated, like
-  create, update and destroy errors. The minimum Ash is `~> 3.32`.
-- `Ash.Error.Changes.Required` carries its sentence in `vars[:translation]`,
-  next to the app's own values. AshPhoenix passes `vars` on, so a form can
-  show it. JSON:API and GraphQL always use the reader's language, not that
-  sentence.
+- The minimum Ash is `~> 3.32`.
+- `Ash.Error.Changes.Required` carries its translated sentence in
+  `vars[:translation]`. AshPhoenix passes `vars` on, so a form can show it.
 
 ## 0.1.0 — 2026-11-11
 

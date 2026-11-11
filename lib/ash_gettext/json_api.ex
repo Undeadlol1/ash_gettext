@@ -1,34 +1,10 @@
 if Code.ensure_loaded?(AshJsonApi.Error) do
   defmodule AshGettext.JsonApi do
     @moduledoc """
-    Translate the errors a JSON:API reply carries.
+    Translates the `detail` of every error in a JSON:API reply. Installed on the
+    domain's `error_handler` for you; you never call it.
 
-    AshJsonApi writes the text of some errors itself: "is required" for a
-    missing value, "No note record found with ..." for a record that is not
-    there. It does so after every Ash error handler has run, and for reads too,
-    so the reply is the one place every error passes with its final text.
-
-    There is nothing to set up. A domain with a `gettext` block that also uses
-    `AshJsonApi.Domain` gets this as its `error_handler`
-    (`AshGettext.Domain.Transformers.TranslateReplies`).
-
-    The language is the one the domain's `locale_resolver` answers for the
-    request's actor. AshJsonApi does not tell an `error_handler` who the actor
-    is, so this module listens to the event `Plug.Router` sends when a request
-    enters a router and remembers the actor (`Ash.PlugHelpers.get_actor/1`)
-    until the request ends. Without an actor, Gettext's current language is
-    used.
-
-    Only `detail` changes. `code`, `title`, `meta`, `source_pointer` and the
-    status stay as they were, so a client that reads them keeps working.
-
-    A `detail` your catalog has no entry for is left exactly as it was. So is
-    every reply in the source language, a domain with no `gettext` block and
-    one with `translate_errors? false`. A new error from a later Ash release
-    passes through until you translate it.
-
-    An `error_handler` you wrote keeps running. It is called first, with the
-    arguments you gave it, and the error it returns is then translated.
+    Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
     """
 
     @actor {__MODULE__, :request_actor}

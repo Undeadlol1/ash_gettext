@@ -1,38 +1,9 @@
 defmodule AshGettext.TransportText do
   @moduledoc """
-  Translate a text a transport wrote itself.
+  Translates a text a transport wrote itself. Used by `AshGettext.JsonApi` and
+  `AshGettext.Graphql`; you never call it.
 
-  Most errors are translated in the error, below every transport
-  (`AshGettext.ErrorTranslation`), so a transport that sends the error's own
-  message needs nothing from here. But a transport also writes some text
-  itself: JSON:API and GraphQL each put "is required" on a missing value, and
-  neither takes it from the error. Such a text exists only once the transport
-  has written it, so it is translated there.
-
-  The rules live here, once, and belong to no transport. `AshGettext.JsonApi`
-  is the adapter for AshJsonApi. An adapter for another transport is one call:
-
-      AshGettext.TransportText.translate(error.message, domain,
-        code: error.code,
-        bindings: error.vars,
-        actor: context[:actor]
-      )
-
-  ## Options
-
-    * `:code` — the transport's code for the error. When the text has no
-      catalog entry, the written sentence for the code
-      (`AshGettext.AshMessages`) is tried. Needed where a transport bakes a
-      value into the text, so the text can never be a msgid.
-    * `:bindings` — values for `%{name}` in the text: the error's `vars`, or
-      what the transport made of them (`meta` in JSON:API).
-    * `:actor` — who reads the reply. The domain's `locale_resolver` is asked
-      for their language. Without an actor, or without an answer, Gettext's
-      current language is used.
-
-  A text with no entry, a reply in the source language, a domain with no
-  `gettext` block and one with `translate_errors? false` all give the text
-  back exactly as it was. Nothing here raises for a text it does not know.
+  Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
   """
 
   alias AshGettext.AshMessages

@@ -65,10 +65,8 @@ defmodule AshGettext.MixProject do
         "documentation/topics/translating-text.md",
         "documentation/topics/locales.md",
         "documentation/topics/translating-errors.md",
-        "documentation/topics/why-some-errors-are-hard.md",
         "documentation/topics/extracting-messages.md",
         "documentation/topics/testing.md",
-        "documentation/topics/how-it-works.md",
         {"documentation/dsls/DSL-AshGettext.Domain.md",
          search_data: Spark.Docs.search_data_for(AshGettext.Domain)},
         {"documentation/dsls/DSL-AshGettext.Resource.md",
@@ -92,7 +90,8 @@ defmodule AshGettext.MixProject do
           AshGettext.Locale.Resolver,
           AshGettext.Locale.Normalizer
         ],
-        "How it works": [
+        "Mix tasks": [Mix.Tasks.AshGettext.Install],
+        Internals: [
           AshGettext.Info,
           AshGettext.ErrorTranslation,
           AshGettext.ErrorTranslation.ErrorHandler,
@@ -106,8 +105,7 @@ defmodule AshGettext.MixProject do
           AshGettext.Domain.Transformers.MarkTexts,
           AshGettext.Domain.Transformers.TranslateReplies,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions
-        ],
-        "Mix tasks": [Mix.Tasks.AshGettext.Install]
+        ]
       ]
     ]
   end

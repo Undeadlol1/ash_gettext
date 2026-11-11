@@ -33,7 +33,7 @@ hd(error_for_russian_user.errors).message  #=> "не может быть пус�
 hd(error_for_english_user.errors).message  #=> "can't be blank"
 ```
 
-Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key. That's it.
+Every enum attribute gets a translated `_label` field that clients can load. Errors come back in the user's language. The English you write is the key.
 
 ## Installation
 
@@ -214,8 +214,6 @@ hd(error.errors).message
 #=> "не может быть пустым"
 ```
 
-No code on the action. Create, update and destroy errors are translated.
-
 ### Hand the texts to translators
 
 ```
@@ -252,31 +250,26 @@ The metadata has `backend`, `text_domain`, `msgid` and `locale`.
   strings, plurals and attribute names.
 - [Locales](documentation/topics/locales.md): where the user's language comes
   from, and how it is matched to your catalogs.
-- [Translating errors](documentation/topics/translating-errors.md): which
-  errors are translated, coded errors, and turning it on one domain at a time.
+- [Translating errors](documentation/topics/translating-errors.md): writing
+  messages, coded errors, and what is not translated.
 - [Extracting messages](documentation/topics/extracting-messages.md): what
   `mix gettext.extract` finds, and checking it in CI.
 - [How to test with AshGettext](documentation/topics/testing.md): check that
   an action returns the translated text.
-- [How AshGettext works](documentation/topics/how-it-works.md): the path of a
-  lookup, the path of an error, and the limits.
 - [DSL reference](documentation/dsls/DSL-AshGettext.Domain.md): every option
   in the `gettext` block.
 
 ## Limits
 
-- **Read errors are not translated in the error itself.** Ash gives read
-  actions no error handler; every other action has one. Over
-  JSON:API and GraphQL the reply is translated for every action, into the
-  actor's language; see [Translating errors](documentation/topics/translating-errors.md).
+- **Read errors are not translated in a direct call.** Over JSON:API and
+  GraphQL they are. See [Translating errors](documentation/topics/translating-errors.md).
 - **Text passed to `AshGettext.translate/5` is not extracted.** `mix gettext.extract`
   does not see it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute
   labels and `message:` strings are extracted.
 - **A message built with `#{...}` cannot be translated.** Write `%{name}` in
   the text and pass the value instead.
-- **A handler you wrote is kept.** An action with its own `error_handler`
-  is not translated.
+- **An action with its own `error_handler` is not translated.**
 
 ## For AI assistants
 

@@ -1,16 +1,10 @@
 defmodule AshGettext.Domain.Transformers.TranslateReplies do
   @moduledoc """
-  Point the domain's JSON:API and GraphQL `error_handler` at `AshGettext.JsonApi`
-  and `AshGettext.Graphql`.
+  Points the domain's JSON:API and GraphQL `error_handler` at
+  `AshGettext.JsonApi` and `AshGettext.Graphql`. An `error_handler` the app
+  wrote keeps running first.
 
-  A domain with a `gettext` block that also serves JSON:API or GraphQL gets its
-  replies translated with nothing to set up. A handler the app wrote keeps
-  running: it is called first, and the error it returns is then translated.
-  With none, AshGraphql's default handler (which fills in `%{name}` values)
-  runs first.
-
-  A domain without a `gettext` backend, or with `translate_errors? false`, is
-  left as it was.
+  Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
   """
 
   use Spark.Dsl.Transformer

@@ -9,7 +9,7 @@ defmodule AshGettext do
 
   Every input is an argument, including the language, and nothing is read
   from global state. So a translation works the same from any process, and a
-  test of one is a single assertion with no setup.
+  test of one is a single assertion.
 
   The text you write is the msgid. In the source language (the backend's
   configured `:default_locale`, else the global `:gettext` one, else `"en"`)
