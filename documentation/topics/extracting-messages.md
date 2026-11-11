@@ -43,7 +43,8 @@ writes itself that equals a built-in sentence is in both.
 Each entry's `#:` line points at the file and line where the text is written:
 the resource for a label or a DSL `message`, the validation or change module
 for a message written there. Ash's own sentences are written in none of your
-files, so each points once at the list in AshGettext's own source
+files, so each points at its own line in Ash (`deps/ash/lib/...`, or Ash's
+template when it is only there) or in AshGettext's list of them
 (`deps/ash_gettext/lib/ash_gettext/ash_messages.ex`).
 
 Resources count when they use `AshGettext.Resource` and their domain has a
