@@ -67,10 +67,11 @@ a version without `ash_builtin` copies each `ash.po` to `ash_builtin.po`
 before its first extract.
 
 With `extract_messages_from` (default `["lib"]`, `[]` is off), the first domain
-per backend and text domain also reads every `.ex` file under those folders
+per backend, text domain and folder list also reads every `.ex` file under those folders
 for literal `message:` strings (`AshGettext.Extractor.app_messages/2`). The
 result is kept in `:persistent_term` for the rest of the run, under a
-`:global` lock, so domains compiled in parallel read the files once. A text
+`:global` lock, so domains compiled in parallel read the files once. The
+entry remembers the compiler run that made it, so the next run reads again. A text
 the scan already found at the same file is not marked again from the
 resource walk, and a module in a scanned file is not read twice.
 

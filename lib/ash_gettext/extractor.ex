@@ -86,13 +86,18 @@ defmodule AshGettext.Extractor do
 
   @doc """
   Every literal `message` in the app's own source: the `.ex` files under the
-  given folders, relative to the project root. Read once per backend and text domain: the first
-  call returns `{:new, scan}`, every later one `{:seen, scan}`.
+  given folders, relative to the project root. Read once per backend, text
+  domain and folder list in a run: the first call returns `{:new, scan}`,
+  every later one `{:seen, scan}`.
   """
   @spec app_messages(module(), String.t(), [String.t()]) ::
           {:new | :seen, %{paths: MapSet.t(String.t()), messages: [located()]}}
   def app_messages(backend, text_domain, folders),
-    do: remembered({__MODULE__, :app_messages, backend, text_domain}, fn -> scan_app(folders) end)
+    do:
+      remembered(
+        {__MODULE__, :app_messages, backend, text_domain, Enum.sort(Enum.uniq(folders))},
+        fn -> scan_app(folders) end
+      )
 
   @doc """
   The sentences Ash and AshGettext ship, each referenced once at

@@ -166,6 +166,22 @@ defmodule AshGettext.ExtractorTest do
       assert Enum.map(messages, & &1.msgid) == ["found"]
     end
 
+    test "the app scan reads each folder list a domain names, for the same backend" do
+      root = Path.join(["tmp", inspect(__MODULE__), "folder_sets"])
+      File.rm_rf!(root)
+      File.mkdir_p!(Path.join(root, "first"))
+      File.mkdir_p!(Path.join(root, "second"))
+      File.write!(Path.join([root, "first", "a.ex"]), ~s|@x [message: "in first"]\n|)
+      File.write!(Path.join([root, "second", "b.ex"]), ~s|@x [message: "in second"]\n|)
+      backend = __MODULE__.FolderSets
+
+      assert {:new, first} = Extractor.app_messages(backend, "ash", [Path.join(root, "first")])
+      assert {:new, second} = Extractor.app_messages(backend, "ash", [Path.join(root, "second")])
+
+      assert Enum.map(first.messages, & &1.msgid) == ["in first"]
+      assert Enum.map(second.messages, & &1.msgid) == ["in second"]
+    end
+
     test "returns nothing for a file with no messages" do
       result = find_messages("defmodule Sample do\n  def a, do: :ok\nend\n")
 
