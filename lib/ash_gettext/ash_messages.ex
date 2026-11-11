@@ -18,6 +18,7 @@ defmodule AshGettext.AshMessages do
 
   @sentences [
     "has already been taken",
+    "must match %{match}",
     "invalid filter value",
     "Invalid filter value %{value}",
     "Invalid value provided as a keyset for %{key}: %{value}"

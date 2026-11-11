@@ -129,8 +129,7 @@ defaults; add options only when a requirement demands them.
 - Ash's errors stay Ash's own structs; match on them as usual.
   `Ash.Error.Changes.Required` has no `message`: its translated sentence is
   in `vars[:translation]`.
-- Not translated: `validate match(...)` with no `message:` (write one);
-  GraphQL's own query checks; "Something went wrong. Error id: ..." replies;
+- Not translated: GraphQL's own query checks; "Something went wrong. Error id: ..." replies;
   errors from a direct `Ash.bulk_destroy` call. Over JSON:API and GraphQL a
   policy's custom message becomes the general "You are not allowed to do
   this" sentence.

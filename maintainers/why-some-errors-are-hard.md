@@ -198,8 +198,10 @@ A transport that tells its hook who the actor is needs nothing more.
   "You are not allowed to do this" sentence there. Phoenix forms show no
   error for a policy failure: AshPhoenix drops it.
 - `validate match(...)` with no `message:` makes a text with the pattern in
-  it ("must match ~r/.../"). That cannot be a msgid. Write your own
-  `message:`.
+  it ("must match ~r/.../"). The pattern is still in `vars`, so
+  `AshGettext.ErrorTranslation` puts `%{match}` back and looks up
+  "must match %{match}". The same works for any text with a value from
+  `vars` written into it.
 - GraphQL checks the document against the schema before Ash runs. Those
   Absinthe errors are not translated. JSON:API's unknown-error reply
   ("Something went wrong. Error id: ...") is not translated either.

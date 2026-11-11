@@ -110,7 +110,6 @@ action but a read. Over JSON:API it renders as:
 
 ## What is not translated
 
-- `validate match(...)` with no `message:`. Write your own `message:`.
 - A policy's custom message. A direct Ash call shows it. Over JSON:API and
   GraphQL the reader gets the general "You are not allowed to do this"
   sentence, and a Phoenix form shows no error for a policy failure.

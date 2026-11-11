@@ -69,3 +69,6 @@ msgstr "уже занято"
 
 msgid "must equal %{value}"
 msgstr "должно быть равно %{value}"
+
+msgid "must match %{match}"
+msgstr "должно соответствовать %{match}"

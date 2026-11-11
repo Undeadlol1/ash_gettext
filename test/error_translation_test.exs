@@ -67,4 +67,29 @@ defmodule AshGettext.ErrorTranslationTest do
       assert ErrorTranslation.translate(:some_atom, @opts) == :some_atom
     end
   end
+
+  describe "a message with a value already written into it" do
+    defp baked(message, vars),
+      do: Ash.Error.Changes.InvalidAttribute.exception(field: :slug, message: message, vars: vars)
+
+    defp in_russian(error),
+      do:
+        AshGettext.ErrorTranslation.translate(error,
+          backend: AshGettextFixture.Gettext,
+          text_domain: "fixture",
+          locale: "ru"
+        )
+
+    test "is found by the sentence with the value's name in its place" do
+      error = baked("must match ~r/^[a-z]+$/", match: ~r/^[a-z]+$/)
+
+      assert in_russian(error).message == "должно соответствовать ~r/^[a-z]+$/"
+    end
+
+    test "stays as written when no sentence fits" do
+      error = baked("nothing like 7 is listed", count: 7)
+
+      assert in_russian(error).message == "nothing like 7 is listed"
+    end
+  end
 end

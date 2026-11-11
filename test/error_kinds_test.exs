@@ -36,6 +36,10 @@ defmodule AshGettext.ErrorKindsTest do
     ru: "должно соответствовать шаблону ~r/^[a-z]+$/",
     en: "must match the pattern ~r/^[a-z]+$/"
   }
+  @pattern_check_sentence %{
+    ru: "должно соответствовать ~r/^[a-z]+$/",
+    en: "must match ~r/^[a-z]+$/"
+  }
   @taken_sentence %{ru: "уже занято", en: "has already been taken"}
   @not_found_sentence %{ru: "не найдено", en: "could not be found"}
   @not_found_json %{ru: "не найдено", en: "No entry record found with"}
@@ -441,10 +445,10 @@ defmodule AshGettext.ErrorKindsTest do
     end
   end
 
-  describe "known gaps" do
-    for {reader_name, actor, _reader} <- @readers, transport <- @transports do
-      test "a match validation with no message shows a #{reader_name} reader the regex in English through #{transport}" do
-        assert ["must match ~r/^[a-z]+$/"] ==
+  describe "a match validation with no message, whose pattern Ash writes into the text" do
+    for {reader_name, actor, reader} <- @readers, transport <- @transports do
+      test "reads to a #{reader_name} reader in their language through #{transport}" do
+        assert [@pattern_check_sentence[unquote(reader)]] ==
                  create_sentences(
                    unquote(transport),
                    %{slug: "A1"},
@@ -452,7 +456,9 @@ defmodule AshGettext.ErrorKindsTest do
                  )
       end
     end
+  end
 
+  describe "known gaps" do
     for {reader_name, actor, _reader} <- @readers do
       test "a policy's own message gives a #{reader_name} reader the generic sentence through json_api" do
         reply = json_reply(:post, "/lockers/sealed", locker_body(), unquote(Macro.escape(actor)))
