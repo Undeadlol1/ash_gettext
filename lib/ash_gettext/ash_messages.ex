@@ -1,5 +1,5 @@
 defmodule AshGettext.AshMessages do
-  @source {__ENV__.file, __ENV__.line + 1}
+  @source {"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", __ENV__.line + 1}
   @messages [
     {Ash.Error.Changes.Required, "is required"},
     {Ash.Error.Changes.InvalidAttribute, "is invalid"},

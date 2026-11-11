@@ -181,6 +181,10 @@ defmodule AshGettext.GettextExtractTest do
           Code.compile_file(untranslated)
           Code.put_compiler_option(:debug_info, true)
           Code.compile_file(annotated)
+
+          AshGettext.Extractor.mark(__ENV__, ExtractFixture.Gettext, "ash", [
+            %{msgid: "from a sibling app", path: Path.expand("../sibling_app/lib/s.ex"), line: 3}
+          ])
         end)
       after
         Code.put_compiler_option(:debug_info, debug_info?)
@@ -312,6 +316,17 @@ defmodule AshGettext.GettextExtractTest do
       assert references(pots, "ash_builtin", "must be present") == [
                {Path.relative_to_cwd(path), line}
              ]
+    end
+
+    test "a sentence Ash writes itself, at the same relative path on every machine", %{
+      pots: pots
+    } do
+      assert [{"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", _line}] =
+               references(pots, "ash_builtin", "must be present")
+    end
+
+    test "a text from a file outside the project, relative to it", %{pots: pots} do
+      assert references(pots, "from a sibling app") == [{"../sibling_app/lib/s.ex", 3}]
     end
   end
 

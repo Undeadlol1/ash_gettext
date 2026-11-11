@@ -48,7 +48,7 @@ defmodule AshGettext.Extractor do
         Code.eval_quoted(
           {:__block__, [], [quote(do: require(Gettext.Macros)) | calls]},
           [],
-          %{env | file: path}
+          %{env | file: Path.relative_to_cwd(path, force: true)}
         )
       end)
     end
