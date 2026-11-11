@@ -154,12 +154,13 @@ defmodule AshGettext.Extractor do
       anno_location(Spark.Dsl.Entity.anno(entity)) || outer
   end
 
-  defp anno_location(nil), do: nil
+  @doc false
+  def anno_location(nil), do: nil
 
-  defp anno_location(anno) do
+  def anno_location(anno) do
     case :erl_anno.file(anno) do
       :undefined -> nil
-      file -> {List.to_string(file), :erl_anno.line(anno)}
+      file -> {to_string(file), :erl_anno.line(anno)}
     end
   end
 

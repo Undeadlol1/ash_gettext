@@ -5,6 +5,24 @@ defmodule AshGettext.ExtractorTest do
 
   defp find_messages(source), do: Extractor.find_messages([{"lib/sample.ex", source}])
 
+  describe "the place a Spark annotation names" do
+    test "a file Spark recorded as a binary" do
+      anno = :erl_anno.set_file("lib/parcel.ex", :erl_anno.new(7))
+
+      assert Extractor.anno_location(anno) == {"lib/parcel.ex", 7}
+    end
+
+    test "a file Spark recorded as a charlist" do
+      anno = :erl_anno.set_file(~c"lib/parcel.ex", :erl_anno.new(7))
+
+      assert Extractor.anno_location(anno) == {"lib/parcel.ex", 7}
+    end
+
+    test "an annotation without a file" do
+      assert Extractor.anno_location(:erl_anno.new(7)) == nil
+    end
+  end
+
   describe "finding messages written as keyword options" do
     test "finds a message given as a keyword option" do
       result =
