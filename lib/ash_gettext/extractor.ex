@@ -149,7 +149,6 @@ defmodule AshGettext.Extractor do
     |> Code.string_to_quoted(
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
-      unescape: false,
       emit_warnings: false
     )
     |> case do

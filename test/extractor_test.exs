@@ -46,6 +46,36 @@ defmodule AshGettext.ExtractorTest do
     end
   end
 
+  describe "extracting the text the runtime sees" do
+    test "unescapes a quote" do
+      result = find_messages(~S|def a, do: [message: "must be \"x\""]|)
+
+      assert [%{msgid: ~S|must be "x"|}] = result.messages
+    end
+
+    test "unescapes a newline and a unicode escape" do
+      result = find_messages(~S|def a, do: [message: "one\ntwo \u00e9"]|)
+
+      assert [%{msgid: "one\ntwo é"}] = result.messages
+    end
+
+    test "keeps a heredoc message as the runtime string" do
+      result =
+        find_messages(~S'''
+        defmodule Sample do
+          def a do
+            [message: """
+            first line
+            second "line"
+            """]
+          end
+        end
+        ''')
+
+      assert [%{msgid: "first line\nsecond \"line\"\n"}] = result.messages
+    end
+  end
+
   describe "merging repeated messages" do
     test "collapses the same msgid into one entry with every reference" do
       result =
