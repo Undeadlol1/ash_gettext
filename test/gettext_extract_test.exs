@@ -124,6 +124,41 @@ defmodule AshGettext.GettextExtractTest do
   end
   """
 
+  @annotated """
+  defmodule ExtractFixture.Annotated.Parcel do
+    use Ash.Resource,
+      domain: ExtractFixture.Annotated,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [AshGettext.Resource]
+
+    def note, do: "written twice"
+
+    actions do
+      create :create do
+        validate(present(:weight), message: "written twice")
+      end
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:weight, :integer, public?: true)
+    end
+  end
+
+  defmodule ExtractFixture.Annotated do
+    use Ash.Domain, extensions: [AshGettext.Domain], validate_config_inclusion?: false
+
+    gettext do
+      backend(ExtractFixture.Gettext)
+      locale_resolver(AshGettextFixture.ActorLanguage)
+    end
+
+    resources do
+      resource(ExtractFixture.Annotated.Parcel)
+    end
+  end
+  """
+
   setup_all do
     dir = Path.join(["tmp", inspect(__MODULE__)])
     File.rm_rf!(dir)
@@ -132,30 +167,54 @@ defmodule AshGettext.GettextExtractTest do
     File.write!(source, String.replace(@app, "PRIV", Path.join(dir, "priv")))
     untranslated = Path.join(dir, "untranslated.ex")
     File.write!(untranslated, @untranslated)
+    annotated = Path.join(dir, "annotated.ex")
+    File.write!(annotated, @annotated)
 
     Gettext.Extractor.enable()
+    debug_info? = Code.get_compiler_option(:debug_info)
 
     warnings =
       try do
         capture_io(:stderr, fn ->
+          Code.put_compiler_option(:debug_info, false)
           Code.compile_file(source)
           Code.compile_file(untranslated)
+          Code.put_compiler_option(:debug_info, true)
+          Code.compile_file(annotated)
         end)
       after
+        Code.put_compiler_option(:debug_info, debug_info?)
         Gettext.Extractor.disable()
       end
 
     pots = Gettext.Extractor.pot_files(:ash_gettext, [])
-    %{pots: pots, warnings: warnings, source: source}
+
+    %{
+      pots: pots,
+      warnings: warnings,
+      source: Path.relative_to_cwd(source),
+      annotated: Path.relative_to_cwd(annotated)
+    }
   end
 
-  defp msgids(pots, text_domain) do
+  defp messages(pots, text_domain) do
     {_path, {_, contents}} =
       Enum.find(pots, fn {path, _} -> Path.basename(path) == "#{text_domain}.pot" end)
 
     {:ok, po} = contents |> IO.iodata_to_binary() |> Expo.PO.parse_string()
-    Enum.map(po.messages, &IO.iodata_to_binary(&1.msgid))
+    po.messages
   end
+
+  defp references(pots, msgid) do
+    message = Enum.find(messages(pots, "ash"), &(IO.iodata_to_binary(&1.msgid) == msgid))
+    List.flatten(message.references)
+  end
+
+  defp line_of(source \\ @app, snippet),
+    do: Enum.find_index(String.split(source, "\n"), &(&1 =~ snippet)) + 1
+
+  defp msgids(pots, text_domain),
+    do: Enum.map(messages(pots, text_domain), &IO.iodata_to_binary(&1.msgid))
 
   test "an enum's labels and descriptions", %{pots: pots} do
     ids = msgids(pots, "ash")
@@ -200,6 +259,43 @@ defmodule AshGettext.GettextExtractTest do
 
     refute all =~ "nobody translates this"
     refute all =~ "Untranslated weight"
+  end
+
+  describe "where each text is referenced" do
+    test "a message in the resource's DSL, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "pick a status") == [
+               {source, line_of(~s|message: "pick a status"|)}
+             ]
+    end
+
+    test "a policy's message, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "this shop is closed") == [
+               {source, line_of(~s|error_message("this shop is closed")|)}
+             ]
+    end
+
+    test "an attribute label, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "Weight") == [{source, line_of(~s|label(:weight, "Weight")|)}]
+    end
+
+    test "a message in a validation module, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "must weigh at least 30 kg") == [
+               {source, line_of(~s|message: "must weigh at least 30 kg"|)}
+             ]
+    end
+
+    test "a DSL message at the line its compile recorded", %{pots: pots, annotated: annotated} do
+      assert references(pots, "written twice") == [
+               {annotated, line_of(@annotated, ~s|message: "written twice"|)}
+             ]
+    end
+
+    test "a sentence Ash writes itself, at the domain", %{pots: pots, source: source} do
+      assert {source, line_of("defmodule ExtractFixture.Shop do")} in references(
+               pots,
+               "must be present"
+             )
+    end
   end
 
   test "an interpolated message is a warning that names its line", %{

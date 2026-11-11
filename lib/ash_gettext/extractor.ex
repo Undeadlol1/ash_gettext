@@ -19,31 +19,41 @@ defmodule AshGettext.Extractor do
   @type message :: %{msgid: String.t(), references: [reference_entry()]}
   @type interpolated :: %{path: String.t(), line: pos_integer()}
   @type find_result :: %{messages: [message()], interpolated: [interpolated()]}
+  @type located :: %{msgid: String.t(), path: String.t(), line: non_neg_integer()}
 
   @doc """
   Marks each text for `mix gettext.extract`, as if `env`'s module had called
   `Gettext.Macros.dgettext_noop_with_backend(backend, text_domain, text)`.
-  Does nothing unless Gettext is extracting.
+  A text given as a `t:located/0` is referenced at its own path and line,
+  a plain string at `env`. Does nothing unless Gettext is extracting.
   """
-  @spec mark(Macro.Env.t(), module(), String.t(), [String.t()]) :: :ok
+  @spec mark(Macro.Env.t(), module(), String.t(), [String.t() | located()]) :: :ok
   def mark(env, backend, text_domain, texts) do
     if Gettext.Extractor.extracting?() do
-      calls =
-        for text <- Enum.uniq(texts) do
-          quote do
-            Gettext.Macros.dgettext_noop_with_backend(
-              unquote(backend),
-              unquote(text_domain),
-              unquote(text)
-            )
+      texts
+      |> Enum.map(&located(&1, env))
+      |> Enum.uniq()
+      |> Enum.group_by(& &1.path)
+      |> Enum.each(fn {path, entries} ->
+        calls =
+          for %{msgid: msgid, line: line} <- entries do
+            {{:., [line: line], [Gettext.Macros, :dgettext_noop_with_backend]}, [line: line],
+             [backend, text_domain, msgid]}
           end
-        end
 
-      Code.eval_quoted({:__block__, [], [quote(do: require(Gettext.Macros)) | calls]}, [], env)
+        Code.eval_quoted(
+          {:__block__, [], [quote(do: require(Gettext.Macros)) | calls]},
+          [],
+          %{env | file: path}
+        )
+      end)
     end
 
     :ok
   end
+
+  defp located(text, env) when is_binary(text), do: %{msgid: text, path: env.file, line: env.line}
+  defp located(entry, _env), do: entry
 
   @doc """
   The texts a resource shows: its written attribute labels and, with
@@ -51,15 +61,23 @@ defmodule AshGettext.Extractor do
   validation, change, preparation, generic-action run, manual-action and calculation modules it uses.
   """
   @spec resource_texts(module(), boolean()) :: [String.t()]
-  def resource_texts(resource, messages?) do
-    labels = for {_attribute, text} <- AshGettext.Info.attribute_labels(resource), do: text
+  def resource_texts(resource, messages?),
+    do: resource |> resource_messages(messages?) |> Enum.map(& &1.msgid)
 
-    if messages? do
-      {messages, modules} = walk(dsl_entities(resource), {[], []})
-      labels ++ messages ++ Enum.flat_map(Enum.uniq(modules), &module_messages/1)
-    else
-      labels
-    end
+  @doc """
+  `resource_texts/2`, each text with the file and line it is written at.
+  """
+  @spec resource_messages(module(), boolean()) :: [located()]
+  def resource_messages(resource, messages?) do
+    labels =
+      for label <- Spark.Dsl.Extension.get_entities(resource, [:gettext]),
+          do: {label.text, entity_location(label, :text, nil)}
+
+    {messages, modules} =
+      if messages?, do: walk(dsl_entities(resource), nil, {[], []}), else: {[], []}
+
+    place(labels ++ messages, resource) ++
+      Enum.flat_map(Enum.uniq(modules), &module_messages/1)
   end
 
   defp dsl_entities(resource) do
@@ -70,20 +88,92 @@ defmodule AshGettext.Extractor do
 
   # Any `message` (a policy's is `error_message`) holding a string, and any `{module, opts}` implementing a
   # validation, change, preparation, run, manual action or calculation, wherever the DSL nests it.
-  defp walk({key, text}, {messages, modules})
+  defp walk({key, text}, at, {messages, modules})
        when key in [:message, :error_message] and is_binary(text),
-       do: {[text | messages], modules}
+       do: {[{text, at} | messages], modules}
 
-  defp walk({key, {module, opts}}, {messages, modules})
+  defp walk({key, {module, opts}}, at, {messages, modules})
        when key in [:validation, :change, :preparation, :run, :manual, :calculation] and
               is_atom(module),
-       do: walk(opts, {messages, [module | modules]})
+       do: walk(opts, at, {messages, [module | modules]})
 
-  defp walk(%_{} = struct, acc), do: walk(Map.from_struct(struct), acc)
-  defp walk(map, acc) when is_map(map), do: walk(Map.to_list(map), acc)
-  defp walk(list, acc) when is_list(list), do: Enum.reduce(list, acc, &walk/2)
-  defp walk(tuple, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), acc)
-  defp walk(_other, acc), do: acc
+  defp walk(%_{__spark_metadata__: _} = entity, at, acc) do
+    entity
+    |> Map.from_struct()
+    |> Enum.reduce(acc, fn {key, _value} = field, acc ->
+      walk(field, entity_location(entity, key, at), acc)
+    end)
+  end
+
+  defp walk(%_{} = struct, at, acc), do: walk(Map.from_struct(struct), at, acc)
+  defp walk(map, at, acc) when is_map(map), do: walk(Map.to_list(map), at, acc)
+  defp walk(list, at, acc) when is_list(list), do: Enum.reduce(list, acc, &walk(&1, at, &2))
+  defp walk(tuple, at, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), at, acc)
+  defp walk(_other, _at, acc), do: acc
+
+  defp entity_location(entity, key, outer) do
+    anno_location(Spark.Dsl.Entity.property_anno(entity, key)) ||
+      anno_location(Spark.Dsl.Entity.anno(entity)) || outer
+  end
+
+  defp anno_location(nil), do: nil
+
+  defp anno_location(anno) do
+    case :erl_anno.file(anno) do
+      :undefined -> nil
+      file -> {List.to_string(file), :erl_anno.line(anno)}
+    end
+  end
+
+  # Spark records no annotation when `debug_info` is off, nor on an entity a
+  # transformer built: the text is then looked up in the resource's own source.
+  defp place(found, resource) do
+    path = List.to_string(resource.module_info(:compile)[:source])
+
+    ast =
+      with {:ok, contents} <- File.read(path),
+           {:ok, ast} <- parse(contents),
+           do: ast,
+           else: (_unreadable -> nil)
+
+    Enum.map(found, fn
+      {text, {file, line}} ->
+        %{msgid: text, path: file, line: line}
+
+      {text, nil} ->
+        line = literal_line(ast, text) || defmodule_line(ast, resource) || 1
+        %{msgid: text, path: path, line: line}
+    end)
+  end
+
+  defp literal_line(ast, text) do
+    find_line(ast, fn
+      {:__block__, meta, [^text]} -> meta[:line]
+      _other -> nil
+    end)
+  end
+
+  defp defmodule_line(ast, resource) do
+    find_line(ast, fn
+      {:defmodule, meta, [{:__aliases__, _, parts} | _]} ->
+        if Module.concat(parts) == resource, do: meta[:line]
+
+      _other ->
+        nil
+    end)
+  end
+
+  defp find_line(nil, _line_of), do: nil
+
+  defp find_line(ast, line_of) do
+    {_ast, line} =
+      Macro.prewalk(ast, nil, fn
+        node, nil -> {node, line_of.(node)}
+        node, line -> {node, line}
+      end)
+
+    line
+  end
 
   # Anything but third-party deps, so sibling umbrella and path-dep apps count.
   defp module_messages(module) do
@@ -94,10 +184,16 @@ defmodule AshGettext.Extractor do
          {:ok, contents} <- File.read(path) do
       result = find_messages([{path, contents}])
       Enum.each(result.interpolated, &warn_interpolated/1)
-      Enum.map(result.messages, & &1.msgid)
+      located(result)
     else
       _not_the_apps -> []
     end
+  end
+
+  defp located(%{messages: messages}) do
+    for %{msgid: msgid, references: references} <- messages,
+        %{path: path, line: line} <- references,
+        do: %{msgid: msgid, path: path, line: line}
   end
 
   defp app_source?(path),

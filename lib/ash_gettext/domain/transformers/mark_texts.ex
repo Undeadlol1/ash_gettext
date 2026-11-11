@@ -37,7 +37,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
       for %{resource: resource} <- Transformer.get_entities(dsl_state, [:resources]),
           Code.ensure_compiled(resource) == {:module, resource},
           AshGettext.Resource in Spark.extensions(resource),
-          text <- AshGettext.Extractor.resource_texts(resource, errors?),
+          text <- AshGettext.Extractor.resource_messages(resource, errors?),
           do: text
 
     texts =
@@ -53,7 +53,7 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
           __ENV__,
           unquote(backend),
           unquote(text_domain),
-          unquote(texts)
+          unquote(Macro.escape(texts))
         )
       end
     )

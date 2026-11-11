@@ -36,6 +36,11 @@ text domain that is `priv/gettext/ash.pot`.
 - The sentences for errors that carry no text, and the ones AshJsonApi and
   AshGraphql write, such as "could not be found".
 
+Each entry's `#:` line points at the file and line where the text is written:
+the resource for a label or a DSL `message`, the validation or change module
+for a message written there. Ash's own sentences are written in none of your
+files, so they point at the domain that switches them on.
+
 Resources count when they use `AshGettext.Resource` and their domain has a
 `gettext` block. A domain without one adds nothing. With
 `translate_errors? false`, only the labels are added.

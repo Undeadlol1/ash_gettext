@@ -43,6 +43,18 @@ destroy and generic action to `AshGettext.ErrorTranslation.ErrorHandler.translat
 Nothing else about the resource changes. No attribute, action or policy is
 rewritten.
 
+## When `mix gettext.extract` compiles the app
+
+`mix gettext.extract` records each Gettext macro call it compiles, with the
+call's file and line. AshGettext's texts are plain strings, so
+`AshGettext.Domain.Transformers.MarkTexts` makes those calls for them while
+the domain compiles, and only then (`AshGettext.Extractor`). Each call is
+made at the text's own place: a DSL entity's Spark annotation, else the line
+the literal sits on in the resource's source (Spark records no annotation
+when `debug_info` is off), else the resource's `defmodule`. A message in a
+validation or change module is found by reading that module's source, with
+its line. Ash's own sentences are made at the domain.
+
 ## When an error is raised
 
 Ash calls the handler once for each error an action collects. The handler does
