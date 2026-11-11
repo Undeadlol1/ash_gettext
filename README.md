@@ -42,7 +42,7 @@ Add it to your deps:
 ```elixir
 def deps do
   [
-    {:ash_gettext, "~> 0.2"}
+    {:ash_gettext, "~> 0.3"}
   ]
 end
 ```
