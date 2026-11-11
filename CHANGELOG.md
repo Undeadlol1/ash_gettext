@@ -1,48 +1,47 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-11
 
-### Changes
+### Breaking
 
-- GraphQL replies are translated. A domain with a `gettext` block that also
-  uses `AshGraphql.Domain` gets `AshGettext.Graphql` as its `error_handler`,
-  with nothing to set up. It translates `message` and `short_message`,
-  including the text AshGraphql writes itself, in the actor's language (the
-  actor is in the handler's context, so no plug is needed). `code`, `fields`
-  and `path` are kept. An `error_handler` you wrote still runs, first.
-- JSON:API replies are translated. A domain with a `gettext` block that also
-  uses `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`,
-  with nothing to set up. It translates the `detail` of every error in a
-  reply, including the text AshJsonApi writes itself ("is required", record
-  not found) and errors from reads. `code`, `title`, `meta` and the source
-  pointer are kept. Text with no catalog entry goes out unchanged. An
-  `error_handler` you wrote still runs, first.
-- Errors from generic actions (`action :name, :type`) are translated in the
-  error, like create, update and destroy errors. Ash gives them an
-  `error_handler` since 3.30.
+- Ash's own errors stay Ash's own structs. `AshGettext.AshMessages.Translated`
+  is gone. If you matched on it, match on the Ash struct again
+  (`%Ash.Error.Changes.InvalidAttribute{}`, `%Ash.Error.Forbidden.Policy{}`).
+  The translated sentence is in the struct's own text field (`message`, or
+  `custom_message` for a policy), so AshPhoenix forms show it.
+
+### Added
+
+- JSON:API replies are translated, with nothing to set up. A domain with a
+  `gettext` block that also uses `AshJsonApi.Domain` gets `AshGettext.JsonApi`
+  as its `error_handler`. It translates the `detail` of every error, including
+  the text AshJsonApi writes itself ("is required", record not found) and
+  errors from reads, in the language the domain's `locale_resolver` gives for
+  the request's actor. `code`, `title`, `meta` and the source pointer are kept.
+- GraphQL replies are translated, with nothing to set up. A domain that also
+  uses `AshGraphql.Domain` gets `AshGettext.Graphql`. It translates `message`
+  and `short_message` in the actor's language; `code`, `fields` and `path`
+  are kept.
+- One transformer, `AshGettext.Domain.Transformers.TranslateReplies`, installs
+  both. A text with no catalog entry goes out unchanged, and an
+  `error_handler` you wrote still runs first.
 - `AshGettext.TransportText.translate/3` holds the rules for translating a
-  text a transport wrote itself. They belong to no transport;
-  `AshGettext.JsonApi` is a thin adapter over them, and another transport
-  needs one call.
-- A new guide, "Why some errors are hard to translate", says which errors
-  are translated where, and why.
-- `AshGettext.Plug` sets Gettext's language to the actor's for one request,
-  using the domain's `locale_resolver`, and puts it back when the reply is
-  sent.
-- `mix gettext.extract` adds the sentences AshJsonApi writes ("is required",
-  "could not be found" and others listed in `AshGettext.AshMessages`).
+  text a transport wrote itself. Another transport needs one call.
+- `mix gettext.extract` also adds every sentence Ash ships in its own
+  template (57 today) and "has already been taken". New sentences in a later
+  Ash release arrive on the next extract. It also adds the sentences
+  AshJsonApi and AshGraphql write ("is required", "could not be found").
+- A new guide, "Why some errors are hard to translate", says which errors are
+  translated where, why, and the known limits.
 
-### Fixes
+### Changed
 
-- Ash's own errors stay Ash's own structs. A value that does not cast and a
-  failed policy get the translated sentence in their own text field
-  (`message`, or `custom_message` for a policy) instead of being swapped for
-  `AshGettext.AshMessages.Translated`, which is gone. Code that matches on
-  `%Ash.Error.Changes.InvalidAttribute{}` or `%Ash.Error.Forbidden.Policy{}`
-  keeps working, and AshPhoenix forms show the sentence again.
-- `Ash.Error.Changes.Required` stays Ash's own struct. It has no text field,
-  so the translated sentence is carried in `vars[:translation]`, next to the
-  app's own values. Every transport passes `vars` on (JSON:API as `meta`).
+- Errors from generic actions (`action :name, :type`) are translated, like
+  create, update and destroy errors. The minimum Ash is `~> 3.32`.
+- `Ash.Error.Changes.Required` carries its sentence in `vars[:translation]`,
+  next to the app's own values. AshPhoenix passes `vars` on, so a form can
+  show it. JSON:API and GraphQL always use the reader's language, not that
+  sentence.
 
 ## 0.1.0 — 2026-11-11
 

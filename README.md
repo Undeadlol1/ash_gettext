@@ -267,8 +267,8 @@ The metadata has `backend`, `text_domain`, `msgid` and `locale`.
 
 - **Read errors are not translated in the error itself.** Ash gives read
   actions no error handler; every other action has one. Over
-  JSON:API the reply is translated for every action, into Gettext's
-  current language (`AshGettext.Plug` sets it from the actor); see [Translating errors](documentation/topics/translating-errors.md).
+  JSON:API and GraphQL the reply is translated for every action, into the
+  actor's language; see [Translating errors](documentation/topics/translating-errors.md).
 - **Text passed to `AshGettext.translate/5` is not extracted.** `mix gettext.extract`
   does not see it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute

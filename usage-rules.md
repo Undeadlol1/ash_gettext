@@ -164,13 +164,11 @@ defaults; add options only when a requirement demands them.
   through untouched.
 - AshJsonApi writes some error text itself ("is required", record not found),
   and read errors skip the action error handler. A domain with a `gettext` block and
-  `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`
-  automatically; do not add it by hand. For any other transport that writes
+  `AshJsonApi.Domain` or `AshGraphql.Domain` gets `AshGettext.JsonApi` or
+  `AshGettext.Graphql` as its `error_handler` automatically; do not add it by hand. For any other transport that writes
   its own error text, call `AshGettext.TransportText.translate/3` on that
-  text; do not copy the lookup rules. The reply is translated into
-  Gettext's current language: if the app does not already set it per
-  request, add `plug AshGettext.Plug, domain: MyApp.Shop` after the plug
-  that sets the actor. Only `detail` changes; `code` and `meta` are kept. An
+  text; do not copy the lookup rules. The reply is translated into the
+  actor's language with nothing to set up. JSON:API changes only `detail`, GraphQL only `message` and `short_message`; `code` and `meta` are kept. An
   `error_handler` the app wrote still runs, first.
 
 ## Coded errors

@@ -33,9 +33,10 @@ text domain that is `priv/gettext/ash.pot`.
 - Every literal `message:` in the validation, change and preparation modules
   a resource uses. Their source files are read.
 - Every sentence Ash writes itself: "must be present", "length must be less
-  than or equal to %{max}" and the rest. They are read from the template Ash
-  ships, so a new Ash release that adds a sentence adds it to your template
-  the next time you extract.
+  than or equal to %{max}" and the rest (57 today), plus "has already been
+  taken". They are read from the template Ash ships (`priv/gettext/ash.pot`
+  in the ash package), so a new Ash release that adds a sentence adds it to
+  your template the next time you extract.
 - The sentences for errors that carry no text, and the ones AshJsonApi and
   AshGraphql write (`AshGettext.AshMessages`), such as "could not be found".
 

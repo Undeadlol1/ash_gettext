@@ -13,12 +13,12 @@ AshGraphql, an AshPhoenix form.
 | Where the text comes from | Example | Translated | Whose language |
 |---|---|---|---|
 | The error has a text field | "must weigh at least 30 kg", "is invalid" | In the error, for every transport | The actor's |
-| The error has no text field | Ash's own "is required" | Carried in `vars[:translation]`, for every transport | The actor's |
-| The transport writes it | AshJsonApi's "is required" from its body check, "No note record found with ..." | In the reply, per transport | The request's |
-| A read action fails | a filter or argument error on a read | In the reply, per transport | The request's |
+| The error has no text field | Ash's own "is required" | Carried in `vars[:translation]`, for Phoenix forms and any transport that passes `vars` on | The actor's |
+| The transport writes it | AshJsonApi's "is required" from its body check, "No note record found with ..." | In the reply, per transport | The request's actor's |
+| A read action fails | a filter or argument error on a read | In the reply, per transport | The request's actor's |
 
-The first two rows need nothing from you. The last two need the request to
-carry a language; see [the request's language](#the-request-s-language).
+None of these need setup from you; see
+[the request's language](#the-request-s-language).
 
 ## Kind 1: the error has a text field
 
@@ -80,10 +80,10 @@ hd(error.errors)
 
 Values your app put in `vars` stay. Every transport passes `vars` on:
 AshJsonApi as `meta`, AshGraphql as `vars`, AshPhoenix as the third element
-of the form error. So the sentence reaches the reader's side on any
-transport, in the actor's language, with no code per transport. The
-transport's own main text ("is required") is still English unless an
-adapter replaces it; `AshGettext.JsonApi` does, using this sentence.
+of the form error. AshPhoenix writes "is required" itself and passes the
+vars, so a Phoenix form can show this sentence. JSON:API and GraphQL write
+their own "is required" and look it up in your catalog in the reader's
+language (kind 3); they do not read `vars[:translation]`.
 
 ## Kind 3: the transport writes the text
 
@@ -105,29 +105,17 @@ handler of kind 1.
 Such text can only be translated after the transport wrote it. The rules for
 that are in `AshGettext.TransportText` and know nothing about any transport:
 
-1. If the error carries a translation (kind 2), use it.
-2. Look the text up as a msgid.
-3. Look up the written sentence for the error's code (for baked-in values).
-4. Otherwise leave the text exactly as it was.
+1. Look the text up as a msgid, in the reader's language.
+2. Look up the written sentence for the error's code (for baked-in values).
+3. Otherwise leave the text exactly as it was.
 
-### How it is switched on for JSON:API
+### How it is switched on
 
 You write nothing. A domain with a `gettext` block that also uses
-`AshJsonApi.Domain` gets an `error_handler` in its `json_api` section. This
-transformer sets it when your domain compiles:
-
-```elixir
-# lib/ash_gettext/domain/transformers/translate_json_api_replies.ex
-def transform(dsl_state) do
-  if translates_json_api?(dsl_state) do
-    {:ok, Transformer.set_option(dsl_state, [:json_api], :error_handler, handler(dsl_state))}
-  else
-    {:ok, dsl_state}
-  end
-end
-```
-
-It is the same as writing this yourself:
+`AshJsonApi.Domain` or `AshGraphql.Domain` gets an `error_handler` in its
+`json_api` or `graphql` section. One transformer,
+`AshGettext.Domain.Transformers.TranslateReplies`, sets both when your
+domain compiles. For JSON:API it is the same as writing this yourself:
 
 ```elixir
 json_api do
@@ -155,27 +143,31 @@ Only `detail` changes. An `error_handler` you already had runs first, and
 what it returns is then translated. `translate_errors? false` leaves the
 domain as it was.
 
+### GraphQL
+
+`AshGettext.Graphql` does the same for GraphQL. It translates `message` and
+`short_message`, and keeps `code`, `fields` and `path`. AshGraphql hands the
+handler the actor directly, so the domain's `locale_resolver` picks the
+language.
+
 ### The request's language
 
 AshJsonApi calls an error handler with the domain and the resource. It does
-not say who the actor is. So text of kind 3 is translated into Gettext's
-current language for the request.
+not say who the actor is. So the library notes the actor itself: when a
+request enters your router, `AshGettext.JsonApi` reads the actor
+(`Ash.PlugHelpers.get_actor/1`) from the event `Plug.Router` sends, and the
+domain's `locale_resolver` picks that actor's language. There is nothing to
+add to your app. With no actor, Gettext's current language is used.
 
-If your app already calls `Gettext.put_locale/2` for each request, that is
-enough. If not, add one line after the plug that sets the actor:
+### Phoenix forms
 
-```elixir
-plug :set_actor
-plug AshGettext.Plug, domain: MyApp.Shop
-```
-
-Without it, text of kind 3 goes out as AshJsonApi wrote it. Kinds 1 and 2
-do not need it: they are translated where the actor is known.
+AshPhoenix forms read the error's own text field, so kind 1 is translated
+there. For "is required" the form shows the sentence from `vars[:translation]`
+(kind 2).
 
 ### Another transport
 
-Only AshJsonApi has an adapter. For any other transport, call the same rules
-from its error hook:
+For any other transport, call the same rules from its error hook:
 
 ```elixir
 AshGettext.TransportText.translate(error.message, domain,
@@ -185,7 +177,7 @@ AshGettext.TransportText.translate(error.message, domain,
 )
 ```
 
-A transport that tells its hook who the actor is needs no plug.
+A transport that tells its hook who the actor is needs nothing more.
 
 ## When Ash adds an error
 
@@ -195,6 +187,24 @@ A transport that tells its hook who the actor is needs no plug.
 - **In this library, a test fails.** It reads AshJsonApi's source and fails
   when an update adds a fixed sentence that is not listed for translators.
   It runs in the library's own checks, never in yours.
+- **New Ash sentences arrive on the next extract.** `mix gettext.extract`
+  reads the template Ash ships, so a sentence added in a later Ash release
+  lands in yours the next time you run it.
+
+## Known limits
+
+- A policy's custom message is shown by a direct Ash call. JSON:API and
+  GraphQL write their own "forbidden" text, so the reader gets the general
+  "You are not allowed to do this" sentence there. Phoenix forms show no
+  error for a policy failure: AshPhoenix drops it.
+- `validate match(...)` with no `message:` makes a text with the pattern in
+  it ("must match ~r/.../"). That cannot be a msgid. Write your own
+  `message:`.
+- GraphQL checks the document against the schema before Ash runs. Those
+  Absinthe errors are not translated. JSON:API's unknown-error reply
+  ("Something went wrong. Error id: ...") is not translated either.
+- An error type the library has never seen passes through unchanged, on
+  every transport.
 
 ## What would remove the hard part
 
@@ -202,5 +212,5 @@ Two changes outside this library:
 
 - Ash's errors carry their own text (a `message` on `Required` and the
   like) and the transports read it. Then kind 2 becomes kind 1.
-- AshJsonApi passes the actor to its `error_handler`. Then kind 3 needs no
-  plug.
+- AshJsonApi passes the actor to its `error_handler`. Then the library
+  would not need to note the actor itself.

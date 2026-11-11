@@ -133,7 +133,7 @@ and carries the sentence in its `vars`, next to any values of yours:
 %Ash.Error.Changes.Required{field: :delivery_date, vars: [translation: "обязательное поле"]}
 ```
 
-Every transport passes `vars` on (JSON:API as `meta`). See
+AshPhoenix passes `vars` on, so a Phoenix form can show it. See
 [Why some errors are hard to translate](why-some-errors-are-hard.md).
 
 `mix gettext.extract` adds these sentences to the template. A
@@ -151,18 +151,10 @@ error handler at all. So the reply is translated in one more place.
 There is nothing to add to the domain. One with a `gettext` block that also
 uses `AshJsonApi.Domain` gets `AshGettext.JsonApi` as its `error_handler`.
 
-The reply is written in Gettext's current language. AshJsonApi does not tell
-an error handler who the actor is, so the request has to carry the language.
-If your app already calls `Gettext.put_locale/2` for each request, you are
-done. If not, add this after the plug that sets the actor:
-
-```elixir
-plug :set_actor
-plug AshGettext.Plug, domain: MyApp.Shop
-```
-
-The plug asks your `locale_resolver` with the actor, sets Gettext's language
-for the request, and puts the old one back when the reply is sent.
+The reply is written in the actor's language. AshJsonApi does not tell an
+error handler who the actor is, so the library notes it when the request
+enters your router, and your `locale_resolver` picks the language. There is
+nothing to add. With no actor, Gettext's current language is used.
 
 Only `detail` changes. `code`, `title`, `meta`, the source pointer and the
 status stay as they were. The `detail` is looked up as a msgid. If your
@@ -181,9 +173,16 @@ A domain with a `gettext` block that also uses `AshGraphql.Domain` gets
 `AshGettext.Graphql` as its `error_handler`, with nothing to add. It translates
 `message` and `short_message` of every error in the reply. Unlike JSON:API,
 AshGraphql hands the handler the request's context, so the actor is known and
-the domain's `locale_resolver` picks the language: no plug is needed. A handler
+the domain's `locale_resolver` picks the language. A handler
 you wrote still runs first. Errors Absinthe raises before Ash runs ("Argument
 ... has invalid value") are not Ash's and are not translated.
+
+### Phoenix forms
+
+An AshPhoenix form reads the error's own text field, so the translated
+`message` shows with nothing to set up. For "is required" AshPhoenix writes
+the text itself and passes `vars`, which hold the translated sentence under
+`:translation`. A failed policy shows no error in a form: AshPhoenix drops it.
 
 ### Another transport
 

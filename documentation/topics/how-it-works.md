@@ -72,8 +72,9 @@ error. That text can only be translated once the transport has written it.
 
 The rules for it are in `AshGettext.TransportText`, and they know nothing
 about any transport: look the text up, then the written sentence for the
-error's code, else leave it alone. `AshGettext.JsonApi` is a thin adapter
-over it, installed for you. Another transport needs one call to
+error's code, else leave it alone. `AshGettext.JsonApi` and
+`AshGettext.Graphql` are thin adapters over it, installed for you by
+`AshGettext.Domain.Transformers.TranslateReplies`. Another transport needs one call to
 `AshGettext.TransportText.translate/3` from its own error hook.
 
 ## Why transport does not matter
@@ -111,6 +112,8 @@ catalogs, so it cannot disagree with the files on disk.
 | `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in the action's language. |
 | `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
 | `AshGettext.Info` | Reads the `gettext` block. `language/2` asks the resolver, then normalizes. |
+| `AshGettext.JsonApi`, `AshGettext.Graphql` | Translate the text AshJsonApi and AshGraphql write into a reply. |
+| `AshGettext.Domain.Transformers.TranslateReplies` | Installs those two as the domain's `error_handler`. |
 | `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |
 | `AshGettext.Enum` | `use` it instead of `Ash.Type.Enum` to translate `label/1` and `description/1`. |
 | `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
@@ -125,7 +128,7 @@ arguments, so you can call it yourself.
   are extracted.
 - **Read errors are not translated in the error.** Ash has no
   `error_handler` for reads. A transport that writes the text can still
-  translate it; `AshGettext.JsonApi` does.
+  translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do.
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`
