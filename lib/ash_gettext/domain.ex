@@ -84,13 +84,13 @@ defmodule AshGettext.Domain do
         doc: "Whether resources in this domain translate their action errors."
       ],
       extract_messages_from: [
-        type: {:list, :string},
+        type: {:list, {:custom, __MODULE__, :validate_folder, []}},
         default: ["lib"],
         doc: """
         The folders, relative to the project root, whose `.ex` files
         `mix gettext.extract` reads for every literal `message:`, so a message
         written in a plain module reaches the template too. `[]` turns the
-        scan off.
+        scan off. Each must be relative, without `..`, and not `"."`.
         """
       ],
       require_resource_extension?: [
@@ -112,4 +112,16 @@ defmodule AshGettext.Domain do
       AshGettext.Domain.Transformers.MarkTexts,
       AshGettext.Domain.Transformers.TranslateReplies
     ]
+
+  @doc false
+  def validate_folder(folder) when is_binary(folder) do
+    if Path.type(folder) == :relative and folder != "." and ".." not in Path.split(folder),
+      do: {:ok, folder},
+      else:
+        {:error,
+         "#{inspect(folder)} must be a folder relative to the project root, " <>
+           ~s|without ".." and not "."|}
+  end
+
+  def validate_folder(folder), do: {:error, "#{inspect(folder)} must be a string"}
 end
