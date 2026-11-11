@@ -1,15 +1,18 @@
 name: Release
 
-# Publishes to hex.pm on a version tag (v1.2.3) or by hand from the Actions tab.
+# Publishes to hex.pm when a push to main carries a version (in mix.exs) that
+# hex.pm doesn't have yet, then tags that commit v<version>.
 # No secret needed: hex.pm trusts this workflow via workload identity (OIDC).
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    # Only a mix.exs change can bump the version, so skip every other push.
+    paths: [mix.exs]
   workflow_dispatch:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -17,29 +20,48 @@ jobs:
     environment: release
     steps:
       - uses: actions/checkout@v4
+
+      - name: Is this version new?
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^  @version "\(.*\)"$/\1/p' mix.exs)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://hex.pm/api/packages/ash_gettext/releases/$VERSION")
+          if [ "$STATUS" = "404" ]; then
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          elif [ "$STATUS" = "200" ]; then
+            echo "$VERSION is already on hex.pm, nothing to publish."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "hex.pm answered $STATUS, can't tell. Stopping to be safe."
+            exit 1
+          fi
+
       - uses: erlef/setup-beam@v1
+        if: steps.version.outputs.new == 'true'
         with:
           version-file: .tool-versions
           version-type: strict
-      - name: Exchange the OIDC token and publish
-        env:
-          HEX_API_URL: https://hex.pm/api
+
+      # main isn't protected, so run the same checks as CI before publishing.
+      - name: Run CI checks
+        if: steps.version.outputs.new == 'true'
         run: |
-          set -euo pipefail
-
-          AUDIENCE=$(curl -fsS "$HEX_API_URL/oidc/audience" | jq -r .audience)
-          OIDC_TOKEN=$(curl -fsS \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}" \
-            | jq -r .value)
-
-          RESPONSE=$(curl -fsS -X POST "$HEX_API_URL/oauth/token" \
-            -H "content-type: application/x-www-form-urlencoded" \
-            --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
-            --data-urlencode "assertion=$OIDC_TOKEN" \
-            --data-urlencode "scope=package:hexpm/ash_gettext")
-
-          ACCESS_TOKEN=$(printf '%s' "$RESPONSE" | jq -r .access_token)
-
           mix deps.get
-          HEX_API_KEY="Bearer $ACCESS_TOKEN" mix hex.publish --yes
+          mix format --check-formatted
+          mix compile --warnings-as-errors
+          mix test --warnings-as-errors
+          mix docs --warnings-as-errors
+
+      # Mix trades GitHub's id-token for a hex.pm key by itself.
+      - name: Publish
+        if: steps.version.outputs.new == 'true'
+        run: mix hex.publish --yes
+
+      # The docs' "view source" links point at this tag.
+      - name: Tag the release
+        if: steps.version.outputs.new == 'true'
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
