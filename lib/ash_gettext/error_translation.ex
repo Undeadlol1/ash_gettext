@@ -11,9 +11,9 @@ defmodule AshGettext.ErrorTranslation do
   does not is left exactly as it was, so adopting this can only ever add
   translations, never mangle an existing message.
 
-  Ash's own errors with no message (a missing required value, a failed policy)
-  get the written sentence from `AshGettext.AshMessages`, translated, and come
-  back as an `AshGettext.AshMessages.Translated` that keeps the original.
+  Ash's own errors with no message (a value that does not cast, a failed
+  policy) get the written sentence from `AshGettext.AshMessages`, translated,
+  in their own text field. Every error keeps its struct.
 
   Pure by construction: backend, text domain and locale are all arguments, so a
   test is one assertion over one struct — no action run, no database, no actor.
@@ -81,22 +81,23 @@ defmodule AshGettext.ErrorTranslation do
         error
 
       msgid ->
-        AshGettext.AshMessages.Translated.exception(
-          original: error,
-          field: Map.get(error, :field),
-          path: error.path,
-          class: error.class,
-          message:
-            AshGettext.translate(
-              Keyword.fetch!(opts, :backend),
-              Keyword.fetch!(opts, :text_domain),
-              msgid,
-              bindings(error),
-              Keyword.fetch!(opts, :locale)
-            )
-        )
+        sentence =
+          AshGettext.translate(
+            Keyword.fetch!(opts, :backend),
+            Keyword.fetch!(opts, :text_domain),
+            msgid,
+            bindings(error),
+            Keyword.fetch!(opts, :locale)
+          )
+
+        put_sentence(error, sentence)
     end
   end
+
+  defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence),
+    do: %{error | custom_message: sentence}
+
+  defp put_sentence(error, sentence), do: %{error | message: sentence}
 
   # Splode collects interpolation values in `vars`; they are the bindings a
   # catalog entry like "must be at least %{min} kg" needs.

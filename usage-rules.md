@@ -134,12 +134,13 @@ defaults; add options only when a requirement demands them.
   values and failed policies all arrive at the same handler, so every
   transport (JSON:API, GraphQL) sees the translated text. A stale record
   error comes from the data layer after the handler and is not translated.
-- Ash's own errors with no message (`Ash.Error.Changes.Required`,
-  `InvalidAttribute`, `InvalidArgument`, `Ash.Error.Forbidden.Policy`) get a
-  written sentence from `AshGettext.AshMessages`, such as "is required". They
-  come back as `AshGettext.AshMessages.Translated`: `message` is the
-  translated sentence, `original` is Ash's error, `field` and `class` are
-  kept. Match on `field` or `original`, not on the Ash struct.
+- Ash's own errors with no message (`InvalidAttribute`, `InvalidArgument`,
+  `Ash.Error.Forbidden.Policy`) get a written sentence from
+  `AshGettext.AshMessages`, such as "is invalid", in their own text field
+  (`message`; `custom_message` for a policy). They stay Ash's own structs, so
+  match on them as usual.
+- `Ash.Error.Changes.Required` has no text field and is left untouched; it is
+  not translated.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.

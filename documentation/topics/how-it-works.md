@@ -58,10 +58,10 @@ three things:
 If the catalog has an entry, the error comes back with the translated message.
 If it has none, the error comes back unchanged.
 
-An Ash error with no message, such as a missing required value, takes its
-sentence from `AshGettext.AshMessages` instead. It comes back as an
-`AshGettext.AshMessages.Translated` that holds the translated sentence and
-keeps the original error.
+An Ash error with no message, such as a value that does not cast, takes its
+sentence from `AshGettext.AshMessages` instead, written into its own text
+field. Every error keeps its struct; `Ash.Error.Changes.Required`, which has
+no text field, is left as it is.
 
 ## Why transport does not matter
 

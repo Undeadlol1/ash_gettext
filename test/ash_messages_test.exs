@@ -21,26 +21,9 @@ defmodule AshGettext.AshMessagesTest do
       %{error: error_for(Ash.create(Delivery, %{}, actor: @russian), :delivery_date)}
     end
 
-    test "reads as the Russian sentence", %{error: error} do
-      assert error.message == "обязательное поле"
-    end
-
-    test "prints as the Russian sentence, with no code name", %{error: error} do
-      assert Exception.message(error) =~ ~r/обязательное поле\z/
-      refute Exception.message(error) =~ "delivery_date"
-    end
-
-    test "keeps Ash's field, class and the original error", %{error: error} do
-      assert error.field == :delivery_date
-      assert error.class == :invalid
-      assert %Ash.Error.Changes.Required{field: :delivery_date} = error.original
-    end
-
-    test "renders the Russian sentence as the JSON:API detail", %{error: error} do
-      [rendered] = AshJsonApi.Error.to_json_api_errors(nil, Delivery, error, :create)
-
-      assert %AshJsonApi.Error{code: "required", detail: "обязательное поле", status_code: 400} =
-               rendered
+    test "stays Ash's own Required error, untouched", %{error: error} do
+      assert %Ash.Error.Changes.Required{field: :delivery_date} = error
+      assert Exception.message(error) =~ "attribute delivery_date is required"
     end
   end
 
@@ -52,14 +35,19 @@ defmodule AshGettext.AshMessagesTest do
       %{error: error_for(result, :count)}
     end
 
-    test "reads as the Russian sentence", %{error: error} do
-      assert error.message == "неверное значение"
+    test "stays Ash's own InvalidAttribute, its message the Russian sentence", %{error: error} do
+      assert %Ash.Error.Changes.InvalidAttribute{field: :count, message: "неверное значение"} =
+               error
     end
 
     test "renders the Russian sentence as the JSON:API detail", %{error: error} do
       [rendered] = AshJsonApi.Error.to_json_api_errors(nil, Delivery, error, :create)
 
       assert rendered.detail == "неверное значение"
+    end
+
+    test "shows the Russian sentence as the Phoenix form error", %{error: error} do
+      assert {:count, "неверное значение", _vars} = AshPhoenix.FormData.Error.to_form_error(error)
     end
   end
 
@@ -76,25 +64,39 @@ defmodule AshGettext.AshMessagesTest do
     test "are written sentences, each listed once" do
       msgids = AshGettext.AshMessages.msgids()
 
-      assert "is required" in msgids
+      assert "is invalid" in msgids
       assert msgids == Enum.uniq(msgids)
     end
 
-    test "a failed policy reads as the Russian sentence and stays forbidden" do
+    test "an invalid argument stays Ash's own error, its message the Russian sentence" do
+      error = Ash.Error.Changes.InvalidArgument.exception(field: :count)
+
+      assert %Ash.Error.Changes.InvalidArgument{field: :count, message: "неверное значение"} =
+               translate(error)
+    end
+
+    test "a failed policy stays Ash's own Policy error and prints the Russian sentence" do
       translated = translate(Ash.Error.Forbidden.Policy.exception([]))
 
-      assert %{message: "Вам нельзя это делать", class: :forbidden} = translated
-      assert %Ash.Error.Forbidden{} = Ash.Error.to_error_class(translated)
+      assert %Ash.Error.Forbidden.Policy{custom_message: "Вам нельзя это делать"} = translated
+      assert Exception.message(translated) == "Вам нельзя это делать"
     end
 
     test "a policy's own message is its msgid" do
       error = Ash.Error.Forbidden.Policy.exception(custom_message: "order_already_placed")
 
-      assert translate(error).message == "Этот заказ уже размещён"
+      assert %Ash.Error.Forbidden.Policy{custom_message: "Этот заказ уже размещён"} =
+               translate(error)
     end
 
     test "an error Ash gives no listed sentence passes through untouched" do
       error = Ash.Error.Changes.StaleRecord.exception(resource: Delivery)
+
+      assert translate(error) == error
+    end
+
+    test "a required error passes through untouched" do
+      error = Ash.Error.Changes.Required.exception(field: :delivery_date, type: :attribute)
 
       assert translate(error) == error
     end

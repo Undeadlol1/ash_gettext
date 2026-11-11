@@ -189,16 +189,17 @@ attribute the resource does not have fails the build.
 
 ### Errors
 
-Ash's own errors come back in the user's language. Leave out a required
-value and the user reads a sentence, not a field name:
+Ash's own errors come back in the user's language, and stay Ash's own
+structs. Send a value that does not cast and the user reads a sentence, not
+a field name:
 
 ```elixir
-{:error, error} = Ash.create(MyApp.Order, %{}, actor: user)
-hd(error.errors).message
-#=> "обязательное поле"   (Ash says "attribute delivery_date is required")
+{:error, error} = Ash.create(MyApp.Order, %{count: "abc"}, actor: user)
+hd(error.errors)
+#=> %Ash.Error.Changes.InvalidAttribute{field: :count, message: "неверное значение"}
 ```
 
-The English sentence is "is required". `mix gettext.extract` adds it and
+The English sentence is "is invalid". `mix gettext.extract` adds it and
 the other sentences for Ash's errors to your template.
 
 Your own messages work the same way. Write them in your own language:
