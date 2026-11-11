@@ -108,6 +108,7 @@ defaults; add options only when a requirement demands them.
   The domain block alone changes no behavior.
 - Options on the `gettext` block: `backend` (required module);
   `default_locale` (default `"en"`); `text_domain` (default `"ash"`);
+  `builtin_text_domain` (default `"ash_builtin"`);
   `locale_resolver` (required module);
   `translate_errors?` (default `true`); `require_resource_extension?`
   (default `false`).
@@ -135,8 +136,10 @@ defaults; add options only when a requirement demands them.
   `Ash.read_one` and code interfaces, `Ash.count` and other aggregates. Call
   `AshGettext.ErrorTranslation.translate/2` on those errors.
 - `text_domain` defaults to `"ash"`, so catalogs live at
-  `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
-  attribute labels share it.
+  `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Your errors, enum labels and
+  attribute labels share it. The sentences Ash and AshGettext ship live in
+  `ash_builtin.po` (`builtin_text_domain`); an error text is looked up in
+  `text_domain` first, then there.
 - Run Gettext's own `mix gettext.extract --merge`. AshGettext makes every
   enum label, attribute label, literal `message` (in resources and in the
   validation, change and preparation modules they use) and Ash's error

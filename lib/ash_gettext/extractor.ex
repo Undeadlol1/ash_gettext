@@ -17,6 +17,8 @@ defmodule AshGettext.Extractor do
   logs and other texts that are not Ash errors.
   """
 
+  alias AshGettext.AshMessages
+
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
   @type message :: %{msgid: String.t(), references: [reference_entry()]}
   @type interpolated :: %{path: String.t(), line: pos_integer()}
@@ -89,20 +91,40 @@ defmodule AshGettext.Extractor do
   """
   @spec app_messages(module(), String.t()) ::
           {:new | :seen, %{paths: MapSet.t(String.t()), messages: [located()]}}
-  def app_messages(backend, text_domain) do
-    key = {__MODULE__, :app_messages, backend, text_domain}
+  def app_messages(backend, text_domain),
+    do: remembered({__MODULE__, :app_messages, backend, text_domain}, &scan_app/0)
 
-    # ponytail: remembered for the VM's life, which is one `mix gettext.extract`
-    # run; a second run in the same VM would need the key cleared.
+  @doc """
+  The sentences Ash and AshGettext ship, each referenced once at
+  `AshGettext.AshMessages`'s own source. Only the first call per backend and
+  text domain returns them; every later one returns `[]`.
+  """
+  @spec builtin_messages(module(), String.t()) :: [located()]
+  def builtin_messages(backend, text_domain) do
+    case remembered({__MODULE__, :builtin_messages, backend, text_domain}, fn -> :marked end) do
+      {:new, :marked} ->
+        {path, line} = AshMessages.source()
+
+        for msgid <- Enum.uniq(AshMessages.msgids() ++ AshMessages.ash_sentences()),
+            do: %{msgid: msgid, path: path, line: line}
+
+      {:seen, :marked} ->
+        []
+    end
+  end
+
+  # ponytail: remembered for the VM's life, which is one `mix gettext.extract`
+  # run; a second run in the same VM would need the key cleared.
+  defp remembered(key, compute) do
     :global.trans({key, self()}, fn ->
       case :persistent_term.get(key, nil) do
         nil ->
-          scan = scan_app()
-          :persistent_term.put(key, scan)
-          {:new, scan}
+          value = compute.()
+          :persistent_term.put(key, value)
+          {:new, value}
 
-        scan ->
-          {:seen, scan}
+        value ->
+          {:seen, value}
       end
     end)
   end

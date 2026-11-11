@@ -1,0 +1,47 @@
+## Built-in Ash sentences for the AshGettext library's own suite.
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "is required"
+msgstr "обязательное поле"
+
+msgid "is invalid"
+msgstr "неверное значение"
+
+msgid "You are not allowed to do this"
+msgstr "Вам нельзя это делать"
+
+msgid "could not be found"
+msgstr "не найдено"
+
+msgid "must be present"
+msgstr "должно быть заполнено"
+
+msgid "must be greater than %{greater_than}"
+msgstr "должно быть больше %{greater_than}"
+
+msgid "must match the pattern %{regex}"
+msgstr "должно соответствовать шаблону %{regex}"
+
+msgid "length must be less than or equal to %{max}"
+msgstr "длина должна быть не больше %{max}"
+
+msgid "must be greater than or equal to %{min}"
+msgstr "должно быть не меньше %{min}"
+
+msgid "has already been taken"
+msgstr "уже занято"
+
+msgid "must equal %{value}"
+msgstr "должно быть равно %{value}"
+
+msgid "must match %{match}"
+msgstr "должно соответствовать %{match}"
+
+msgid "Something went wrong. Error id: %{id}"
+msgstr "Что-то пошло не так. Номер ошибки: %{id}"
+
+msgid "must be less than %{less_than}"
+msgstr "должно быть меньше %{less_than}"

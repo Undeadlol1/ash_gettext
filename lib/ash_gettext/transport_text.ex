@@ -70,7 +70,7 @@ defmodule AshGettext.TransportText do
   defp translation(msgid, settings, bindings, locale) do
     case AshGettext.translate_error_text(
            settings.backend,
-           settings.text_domain,
+           [settings.text_domain, settings.builtin_text_domain],
            msgid,
            bindings,
            locale

@@ -53,7 +53,14 @@ made at the text's own place: a DSL entity's Spark annotation, else the line
 the literal sits on in the resource's source (Spark records no annotation
 when `debug_info` is off), else the resource's `defmodule`. A message in a
 validation or change module is found by reading that module's source, with
-its line. Ash's own sentences are made at the domain.
+its line. The app's texts go to `text_domain`.
+
+Ash's own sentences and the ones in `AshGettext.AshMessages` go to
+`builtin_text_domain` (`"ash_builtin"`), marked once per backend and builtin
+domain per run (`AshGettext.Extractor.builtin_messages/2`, kept in
+`:persistent_term` like the app scan). Each is made at one fixed place,
+`AshGettext.AshMessages.source/0`, so the `.pot` does not depend on which
+domain compiled first and two runs give the same file.
 
 With `extract_app_messages?` (the default), the first domain per backend and
 text domain also reads every `.ex` file under the project's `elixirc_paths`
@@ -82,10 +89,15 @@ three things:
    error added inside the commit is collected on the changeset from before the
    commit, which never saw the kept answer, so that path asks twice.
 3. It looks the error's `message` up in the backend, under the domain's
-   `text_domain`, with the error's `vars` as values.
+   `text_domain`, then under `builtin_text_domain`, with the error's `vars`
+   as values.
 
-If the catalog has an entry, the error comes back with the translated message.
-If it has none, the error comes back unchanged.
+If either catalog has an entry, the error comes back with the translated
+message, the app's catalog winning. If neither has, the message stays in
+English with its `vars` filled in. Missing-translation telemetry fires once,
+naming `text_domain`, for a sentence from `AshGettext.AshMessages`.
+`AshGettext.translate_or_missing/5` and `translate_plural_or_missing/7` look
+in the one domain they are given; only the error lookup tries two.
 
 An Ash error with no message, such as a value that does not cast, takes its
 sentence from `AshGettext.AshMessages` instead, written into its own text

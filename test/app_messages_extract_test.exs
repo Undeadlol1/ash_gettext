@@ -79,6 +79,12 @@ defmodule AshGettext.AppMessagesExtractTest do
 
     assert "Quiet weight" in quiet
     refute "Not enough coins" in quiet
+    refute Enum.any?(pots, fn {path, _} -> path =~ "scanned_fixture/quiet/ash_builtin.pot" end)
+  end
+
+  test "built-in sentences go to the built-in catalog only", %{pots: pots} do
+    assert "must be present" in msgids(pots, "scanned_fixture/shared/ash_builtin.pot")
+    refute "must be present" in msgids(pots, "scanned_fixture/shared/ash.pot")
   end
 
   test "a domain with the scan off keeps only its resources' texts", %{pots: pots} do

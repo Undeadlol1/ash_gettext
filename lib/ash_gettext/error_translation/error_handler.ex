@@ -41,6 +41,7 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
           ErrorTranslation.translate(error,
             backend: settings.backend,
             text_domain: settings.text_domain,
+            builtin_text_domain: settings.builtin_text_domain,
             locale: locale
           )
 

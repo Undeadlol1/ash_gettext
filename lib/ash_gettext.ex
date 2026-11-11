@@ -24,10 +24,11 @@ defmodule AshGettext do
       assert {:ok, _} = AshGettext.translate_or_missing(MyApp.Gettext, "default", "Order shipped", [], "ru")
 
   The detection is gettext's own signal: a lookup that misses returns the msgid
-  unchanged. In the source locale `translate_or_missing/5` always reports
-  `:ok`. In a translated locale, an *identity* translation (a catalog mapping a
-  msgid to itself) is indistinguishable from a miss and is reported as
-  `:missing`. Use `translate/5` when you only want the string.
+  unchanged, with its bindings filled in. In the source locale
+  `translate_or_missing/5` always reports `:ok`. In a translated locale, an
+  *identity* translation (a catalog mapping a msgid to itself) is
+  indistinguishable from a miss and is reported as `:missing`. Use
+  `translate/5` when you only want the string.
 
   To translate Ash's error messages as well, see `AshGettext.Domain`.
   """
@@ -57,10 +58,21 @@ defmodule AshGettext do
   def translate_or_missing(backend, text_domain, msgid, bindings, locale) do
     msgid = to_msgid(msgid)
 
+    bindings = to_bindings(bindings)
+
     Gettext.with_locale(backend, locale, fn ->
+      missed =
+        backend.handle_missing_translation(
+          Gettext.get_locale(backend),
+          text_domain,
+          nil,
+          msgid,
+          Map.new(bindings)
+        )
+
       :dgettext
-      |> lookup_in_backend([backend, text_domain, msgid, to_bindings(bindings)])
-      |> mark_covered_or_missing(backend, locale, [msgid])
+      |> lookup_in_backend([backend, text_domain, msgid, bindings])
+      |> mark_covered_or_missing(missed, backend, locale)
     end)
   end
 
@@ -69,9 +81,29 @@ defmodule AshGettext do
   # ("must match ~r/a/" with `match: ~r/a/`). Putting `%{match}` back gives
   # the msgid.
   # ponytail: plain text replace; it only counts when the result is in the catalog.
-  @spec translate_error_text(backend(), text_domain(), String.t(), bindings(), locale()) ::
+  # Each text domain is tried in turn; when all miss, the first miss is returned.
+  @spec translate_error_text(backend(), [text_domain()], String.t(), bindings(), locale()) ::
           {:ok, String.t()} | {:missing, String.t()}
-  def translate_error_text(backend, text_domain, text, bindings, locale) do
+  def translate_error_text(backend, text_domains, text, bindings, locale) do
+    Enum.reduce_while(text_domains, nil, fn text_domain, first_miss ->
+      case translate_error_text_in(backend, text_domain, text, bindings, locale) do
+        {:ok, _translated} = found -> {:halt, found}
+        missing -> {:cont, first_miss || missing}
+      end
+    end)
+  end
+
+  @doc false
+  @spec translate_error_sentence(backend(), [text_domain()], String.t(), bindings(), locale()) ::
+          String.t()
+  def translate_error_sentence(backend, [text_domain | _] = text_domains, msgid, bindings, locale) do
+    backend
+    |> translate_error_text(text_domains, msgid, bindings, locale)
+    |> report_missing(backend, text_domain, msgid, locale)
+    |> text_of()
+  end
+
+  defp translate_error_text_in(backend, text_domain, text, bindings, locale) do
     with {:missing, _untranslated} <-
            translate_or_missing(backend, text_domain, text, bindings, locale),
          {msgid, written} when msgid != text <- with_names_for_values(text, bindings) do
@@ -141,9 +173,20 @@ defmodule AshGettext do
     bindings = bindings |> to_bindings() |> Keyword.put_new(:count, count)
 
     Gettext.with_locale(backend, locale, fn ->
+      missed =
+        backend.handle_missing_plural_translation(
+          Gettext.get_locale(backend),
+          text_domain,
+          nil,
+          msgid,
+          msgid_plural,
+          count,
+          Map.new(bindings)
+        )
+
       :dngettext
       |> lookup_in_backend([backend, text_domain, msgid, msgid_plural, count, bindings])
-      |> mark_covered_or_missing(backend, locale, [msgid, msgid_plural])
+      |> mark_covered_or_missing(missed, backend, locale)
     end)
   end
 
@@ -217,8 +260,9 @@ defmodule AshGettext do
   defp text_of({:ok, translated}), do: translated
   defp text_of({:missing, fallback}), do: fallback
 
-  defp mark_covered_or_missing(translated, backend, locale, msgids) do
-    if translated in msgids and not source_locale?(backend, locale),
+  # A miss is the text the backend answers with when it has no entry.
+  defp mark_covered_or_missing(translated, missed, backend, locale) do
+    if translated == elem(missed, 1) and not source_locale?(backend, locale),
       do: {:missing, translated},
       else: {:ok, translated}
   end

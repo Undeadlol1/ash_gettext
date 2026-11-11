@@ -92,4 +92,67 @@ defmodule AshGettext.ErrorTranslationTest do
       assert in_russian(error).message == "nothing like 7 is listed"
     end
   end
+
+  describe "the app's catalog and the built-in one" do
+    setup do
+      id = {__MODULE__, make_ref()}
+      test_pid = self()
+
+      :telemetry.attach(
+        id,
+        [:ash_gettext, :translation, :missing],
+        fn _event, _measurements, metadata, _ ->
+          if self() == test_pid, do: send(test_pid, {:missing, metadata})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+    end
+
+    test "a sentence Ash ships is read from the built-in catalog" do
+      error = InvalidAttribute.exception(field: :code, message: "must be present")
+
+      assert ErrorTranslation.translate(error, @opts).message == "должно быть заполнено"
+    end
+
+    test "a sentence for an error with no message is read from the built-in catalog" do
+      error = Ash.Error.Query.NotFound.exception(resource: AshGettextFixture.Parcel)
+
+      assert ErrorTranslation.translate(error, @opts).vars[:translation] == "не найдено"
+    end
+
+    test "an app's own text is read from the app's catalog" do
+      assert ErrorTranslation.translate(weight_error(), @opts).message ==
+               "Вес должен быть не менее 30 кг"
+    end
+
+    test "the app's catalog wins when both have the text" do
+      error =
+        InvalidAttribute.exception(
+          field: :size,
+          message: "must be less than %{less_than}",
+          vars: [less_than: 5]
+        )
+
+      assert ErrorTranslation.translate(error, @opts).message == "должно быть строго меньше 5"
+    end
+
+    test "a sentence neither catalog has stays English and is reported once" do
+      error = Ash.Error.Query.NotFound.exception(resource: AshGettextFixture.Parcel)
+      opts = Keyword.merge(@opts, text_domain: "absent", builtin_text_domain: "also_absent")
+
+      assert ErrorTranslation.translate(error, opts).vars[:translation] == "could not be found"
+      assert_received {:missing, %{text_domain: "absent", msgid: "could not be found"}}
+      refute_received {:missing, _metadata}
+    end
+
+    test "a sentence found in the built-in catalog is not reported missing" do
+      error = Ash.Error.Query.NotFound.exception(resource: AshGettextFixture.Parcel)
+
+      ErrorTranslation.translate(error, @opts)
+
+      refute_received {:missing, _metadata}
+    end
+  end
 end

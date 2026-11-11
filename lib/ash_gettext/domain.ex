@@ -58,7 +58,16 @@ defmodule AshGettext.Domain do
         type: :string,
         default: "ash",
         doc:
-          "The gettext text domain for everything Ash-derived: errors, enum labels, attribute names."
+          "The gettext text domain for the app's own texts: its error messages, enum labels, attribute names."
+      ],
+      builtin_text_domain: [
+        type: :string,
+        default: "ash_builtin",
+        doc: """
+        The gettext text domain for the sentences Ash and AshGettext ship
+        ("must be present", "could not be found" and the rest). An error text is
+        looked up in `text_domain` first, then here.
+        """
       ],
       locale_resolver: [
         type: {:behaviour, AshGettext.Locale.Resolver},

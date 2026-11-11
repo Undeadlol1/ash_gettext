@@ -205,8 +205,8 @@ defmodule AshGettext.GettextExtractTest do
     po.messages
   end
 
-  defp references(pots, msgid) do
-    message = Enum.find(messages(pots, "ash"), &(IO.iodata_to_binary(&1.msgid) == msgid))
+  defp references(pots, text_domain \\ "ash", msgid) do
+    message = Enum.find(messages(pots, text_domain), &(IO.iodata_to_binary(&1.msgid) == msgid))
     List.flatten(message.references)
   end
 
@@ -239,18 +239,34 @@ defmodule AshGettext.GettextExtractTest do
     assert "must weigh at least 30 kg" in msgids(pots, "ash")
   end
 
-  test "the sentences for Ash's own errors", %{pots: pots} do
-    ids = msgids(pots, "ash")
+  test "the sentences for Ash's own errors, in the built-in catalog", %{pots: pots} do
+    ids = msgids(pots, "ash_builtin")
     for msgid <- AshGettext.AshMessages.msgids(), do: assert(msgid in ids)
   end
 
-  test "every sentence Ash ships in its own template", %{pots: pots} do
-    ids = msgids(pots, "ash")
+  test "every sentence Ash ships in its own template, in the built-in catalog", %{pots: pots} do
+    ids = msgids(pots, "ash_builtin")
     shipped = AshGettext.AshMessages.ash_sentences()
 
     assert "must be present" in shipped
     assert "length must be less than or equal to %{max}" in shipped
     assert shipped -- ids == []
+  end
+
+  test "no built-in sentence in the app's catalog", %{pots: pots} do
+    ids = msgids(pots, "ash")
+
+    refute "must be present" in ids
+    refute "could not be found" in ids
+    refute "You are not allowed to do this" in ids
+  end
+
+  test "no app text in the built-in catalog", %{pots: pots} do
+    builtin_ids = msgids(pots, "ash_builtin")
+
+    refute "pick a status" in builtin_ids
+    refute "Weight" in builtin_ids
+    refute "must weigh at least 30 kg" in builtin_ids
   end
 
   test "nothing from a domain without a gettext block", %{pots: pots} do
@@ -290,11 +306,12 @@ defmodule AshGettext.GettextExtractTest do
              ]
     end
 
-    test "a sentence Ash writes itself, at the domain", %{pots: pots, source: source} do
-      assert {source, line_of("defmodule ExtractFixture.Shop do")} in references(
-               pots,
-               "must be present"
-             )
+    test "a sentence Ash writes itself, once, at the library's list of them", %{pots: pots} do
+      {path, line} = AshGettext.AshMessages.source()
+
+      assert references(pots, "ash_builtin", "must be present") == [
+               {Path.relative_to_cwd(path), line}
+             ]
     end
   end
 

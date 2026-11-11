@@ -221,9 +221,10 @@ mix gettext.extract --merge              # Gettext's own command
 mix gettext.extract --check-up-to-date   # in CI: fails when a template is stale
 ```
 
-AshGettext makes your enum labels, attribute labels, messages and Ash's error
-sentences visible to it, so they land in `ash.pot`. Translators fill in
-`ash.po` per language.
+AshGettext makes your enum labels, attribute labels and messages visible to
+it, so they land in `ash.pot`. The sentences Ash and AshGettext ship go to
+their own `ash_builtin.pot`. Translators fill in `ash.po` and
+`ash_builtin.po` per language.
 
 ### Catch missing translations
 

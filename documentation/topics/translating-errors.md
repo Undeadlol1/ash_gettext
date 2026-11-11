@@ -69,6 +69,20 @@ end
 
 Messages are now looked up in `priv/gettext/<locale>/LC_MESSAGES/shipping.po`.
 
+The sentences Ash and AshGettext ship ("must be present", "could not be
+found" and the rest) live in a catalog of their own, `builtin_text_domain`,
+which defaults to `"ash_builtin"`. An error text is looked up in
+`text_domain` first, then in `ash_builtin.po`, so your own translation of a
+built-in sentence wins. Only when both miss is the missing-translation event
+sent (once, naming `text_domain`) and the English text kept.
+
+```elixir
+gettext do
+  backend(MyApp.Gettext)
+  builtin_text_domain("ash_sentences")
+end
+```
+
 ## Roll out one domain at a time
 
 `translate_errors? false` leaves a domain's messages exactly as written.

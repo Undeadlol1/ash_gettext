@@ -22,6 +22,10 @@ Each text goes to the backend and `text_domain` of its domain's `gettext`
 block (an enum uses its own `backend:` and `text_domain:`). With the default
 text domain that is `priv/gettext/ash.pot`.
 
+The sentences Ash and AshGettext ship go to `builtin_text_domain` instead,
+`priv/gettext/ash_builtin.pot` by default, once per backend. A text your app
+writes itself that equals a built-in sentence is in both.
+
 ## What it finds
 
 - Every `label` and `description` you wrote on an `AshGettext.Enum` value.
@@ -39,11 +43,23 @@ text domain that is `priv/gettext/ash.pot`.
 Each entry's `#:` line points at the file and line where the text is written:
 the resource for a label or a DSL `message`, the validation or change module
 for a message written there. Ash's own sentences are written in none of your
-files, so they point at the domain that switches them on.
+files, so each points once at the list in AshGettext's own source
+(`deps/ash_gettext/lib/ash_gettext/ash_messages.ex`).
 
 Resources count when they use `AshGettext.Resource` and their domain has a
 `gettext` block. A domain without one adds nothing. With
-`translate_errors? false`, only the labels are added.
+`translate_errors? false`, only the labels are added, and no built-in
+sentences.
+
+## Upgrading from a version without `ash_builtin`
+
+Built-in sentences used to sit in your `text_domain` catalog (`ash.po`).
+After upgrading, run `mix gettext.extract --merge`: it creates
+`ash_builtin.pot` and an empty `ash_builtin.po` per language, and marks the
+built-in entries in `ash.po` obsolete (`#~`) because `ash.pot` no longer
+lists them. Move each translated one into `ash_builtin.po`, then delete the
+obsolete lines. A translation left in `ash.po` still works while it is
+there: `text_domain` is looked up first.
 
 ## Fail CI when a template is stale
 
