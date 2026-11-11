@@ -200,6 +200,7 @@ defmodule AshGettextFixture.GraphSchema do
   use AshGraphql,
     domains: [
       AshGettextFixture.Graph,
+      AshGettextFixture.Rules,
       AshGettextFixture.OwnGraph,
       AshGettextFixture.StockGraph
     ]

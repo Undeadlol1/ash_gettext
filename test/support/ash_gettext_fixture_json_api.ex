@@ -190,6 +190,7 @@ defmodule AshGettextFixture.ApiRouter do
   use AshJsonApi.Router,
     domains: [
       AshGettextFixture.Api,
+      AshGettextFixture.Rules,
       AshGettextFixture.OwnHandlerApi,
       AshGettextFixture.StockApi
     ]
