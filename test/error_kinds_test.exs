@@ -66,6 +66,22 @@ defmodule AshGettext.ErrorKindsTest do
     {"a rule with a code of its own", %{weight: 5}, @weight_sentence}
   ]
 
+  defp watch_missing_translations(_context) do
+    id = {__MODULE__, make_ref()}
+    test_pid = self()
+
+    :telemetry.attach(
+      id,
+      [:ash_gettext, :translation, :missing],
+      fn _event, _measurements, metadata, _ ->
+        if self() == test_pid, do: send(test_pid, {:missing, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+  end
+
   defp unique_code, do: "code-#{System.unique_integer([:positive])}"
 
   defp valid(attrs),
@@ -591,26 +607,29 @@ defmodule AshGettext.ErrorKindsTest do
   end
 
   describe "a policy message that was translated already" do
-    setup do
-      id = {__MODULE__, make_ref()}
-      test_pid = self()
-
-      :telemetry.attach(
-        id,
-        [:ash_gettext, :translation, :missing],
-        fn _event, _measurements, metadata, _ ->
-          if self() == test_pid, do: send(test_pid, {:missing, metadata})
-        end,
-        nil
-      )
-
-      on_exit(fn -> :telemetry.detach(id) end)
-    end
+    setup :watch_missing_translations
 
     test "fires no missing-translation event and stays in the reader's language" do
       result = Ash.create(Locker, %{}, action: :open_sealed, actor: @russian)
 
       assert class_text(result) =~ text(@sealed_sentence, :ru)
+      refute_received {:missing, _metadata}
+    end
+  end
+
+  describe "a process language with a region" do
+    setup do
+      before = Gettext.get_locale(AshGettextFixture.Gettext)
+      Gettext.put_locale(AshGettextFixture.Gettext, "ru_RU")
+      on_exit(fn -> Gettext.put_locale(AshGettextFixture.Gettext, before) end)
+    end
+
+    setup :watch_missing_translations
+
+    test "is fitted to the catalogs when no actor language is known" do
+      result = Ash.create(AshGettextFixture.Flaky.Shelf, %{label: "top", weight: 5})
+
+      assert class_text(result) =~ text(@weight_sentence, :ru)
       refute_received {:missing, _metadata}
     end
   end

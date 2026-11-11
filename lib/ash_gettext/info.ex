@@ -92,6 +92,22 @@ defmodule AshGettext.Info do
     end
   end
 
+  defp process_locale(domain, backend) do
+    current = Gettext.get_locale(backend)
+
+    case locale_settings(domain) do
+      {:ok, settings} ->
+        AshGettext.Locale.Normalizer.normalize(
+          current,
+          settings.supported_locales,
+          settings.default_locale
+        )
+
+      :error ->
+        current
+    end
+  end
+
   defp resolve(resolver, actor) do
     resolver.resolve(actor)
   rescue
@@ -113,7 +129,7 @@ defmodule AshGettext.Info do
   def locale(domain, actor, backend) do
     case language(domain, actor) do
       {_backend, locale} -> locale
-      nil -> Gettext.get_locale(backend)
+      nil -> process_locale(domain, backend)
     end
   end
 
