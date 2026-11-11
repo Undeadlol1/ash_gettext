@@ -43,6 +43,38 @@ destroy and generic action to `AshGettext.ErrorTranslation.ErrorHandler.translat
 Nothing else about the resource changes. No attribute, action or policy is
 rewritten.
 
+## When `mix gettext.extract` compiles the app
+
+`mix gettext.extract` records each Gettext macro call it compiles, with the
+call's file and line. AshGettext's texts are plain strings, so
+`AshGettext.Domain.Transformers.MarkTexts` makes those calls for them while
+the domain compiles, and only then (`AshGettext.Extractor`). Each call is
+made at the text's own place: a DSL entity's Spark annotation, else the line
+the literal sits on in the resource's source (Spark records no annotation
+when `debug_info` is off), else the resource's `defmodule`. A message in a
+validation or change module is found by reading that module's source, with
+its line. The app's texts go to `text_domain`.
+
+Ash's own sentences and the ones in `AshGettext.AshMessages` go to
+`builtin_text_domain` (`"ash_builtin"`), marked once per backend and builtin
+domain per run (`AshGettext.Extractor.builtin_messages/2`, kept in
+`:persistent_term` like the app scan). Each is made at one fixed place,
+`AshGettext.AshMessages.source/0`, so the `.pot` does not depend on which
+domain compiled first and two runs give the same file.
+Gettext 1.0's `--merge` deletes entries a template no longer lists
+(`deps/gettext/lib/mix/tasks/gettext.merge.ex:304`), so an app upgrading from
+a version without `ash_builtin` copies each `ash.po` to `ash_builtin.po`
+before its first extract.
+
+With `extract_messages_from` (default `["lib"]`, `[]` is off), the first domain
+per backend, text domain and folder list also reads every `.ex` file under those folders
+for literal `message:` strings (`AshGettext.Extractor.app_messages/2`). The
+result is kept in `:persistent_term` for the rest of the run, under a
+`:global` lock, so domains compiled in parallel read the files once. The
+entry remembers the compiler run that made it, so the next run reads again. A text
+the scan already found at the same file is not marked again from the
+resource walk, and a module in a scanned file is not read twice.
+
 ## When an error is raised
 
 Ash calls the handler once for each error an action collects. The handler does
@@ -62,10 +94,27 @@ three things:
    error added inside the commit is collected on the changeset from before the
    commit, which never saw the kept answer, so that path asks twice.
 3. It looks the error's `message` up in the backend, under the domain's
-   `text_domain`, with the error's `vars` as values.
+   `text_domain`, then under `builtin_text_domain`, with the error's `vars`
+   as values.
 
-If the catalog has an entry, the error comes back with the translated message.
-If it has none, the error comes back unchanged.
+If either catalog has an entry, the error comes back with the translated
+message, the app's catalog winning. If neither has, the message stays in
+English with its `vars` filled in. Missing-translation telemetry fires once,
+naming `text_domain`, for a sentence from `AshGettext.AshMessages`.
+`AshGettext.translate_or_missing/5` and `translate_plural_or_missing/7` look
+in the one domain they are given; only the error lookup tries two.
+
+A lookup asks the backend's `lgettext`/`lngettext` once. A hit answers
+`{:ok, text}` and never calls the backend's `handle_missing_translation` or
+`handle_missing_plural_translation`; a miss answers through that callback, so
+an app that overrides it sees one call per miss, as with a plain Gettext
+lookup. Gettext has no way to look in a catalog without that callback firing
+on a miss (`deps/gettext/lib/gettext/compiler.ex:537` and `:547`, the
+fallback clause compiled into each catalog). So a sentence found only in
+`builtin_text_domain` fires the callback once, for `text_domain`; the app's
+catalog is still asked first so its translations win. An error text with a
+value written into it ("must match ~r/a/") is asked a second time under its
+msgid, which can fire it once more.
 
 An Ash error with no message, such as a value that does not cast, takes its
 sentence from `AshGettext.AshMessages` instead, written into its own text
@@ -149,10 +198,12 @@ arguments, so you can call it yourself.
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`
-  has no stable msgid. `mix gettext.extract` warns about these.
-- **An entry that equals its msgid counts as missing.** In a non-source
-  locale, a translation that is identical to the msgid cannot be told apart
-  from a miss.
+  has no stable msgid. `mix gettext.extract` warns about these when a
+  resource or a module it names holds one; the app-wide scan skips them
+  silently, since most are logs and other text that is not an Ash error.
+- **With a binding left out, an entry that equals its msgid counts as
+  missing.** Gettext answers a hit and a miss the same way when a binding is
+  missing, so the text is compared with the untranslated msgid.
 - **A resource needs the extension.** The domain block alone translates
   nothing. Set `require_resource_extension?` to find the resources that
   forgot.

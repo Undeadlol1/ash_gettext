@@ -12,38 +12,52 @@ defmodule AshGettext.Extractor do
   A validation or change module a resource uses is read from its source file:
   every `message:` whose value is a plain string is found there. An
   interpolated message (`message: "too heavy: \#{weight}"`) cannot be a msgid,
-  so it is reported as a compile warning instead.
+  so it is reported as a compile warning instead. The scan of the app's whole
+  source (`app_messages/2`) skips interpolated messages silently: most are
+  logs and other texts that are not Ash errors.
   """
+
+  alias AshGettext.AshMessages
 
   @type reference_entry :: %{path: String.t(), line: pos_integer()}
   @type message :: %{msgid: String.t(), references: [reference_entry()]}
   @type interpolated :: %{path: String.t(), line: pos_integer()}
   @type find_result :: %{messages: [message()], interpolated: [interpolated()]}
+  @type located :: %{msgid: String.t(), path: String.t(), line: non_neg_integer()}
 
   @doc """
   Marks each text for `mix gettext.extract`, as if `env`'s module had called
   `Gettext.Macros.dgettext_noop_with_backend(backend, text_domain, text)`.
-  Does nothing unless Gettext is extracting.
+  A text given as a `t:located/0` is referenced at its own path and line,
+  a plain string at `env`. Does nothing unless Gettext is extracting.
   """
-  @spec mark(Macro.Env.t(), module(), String.t(), [String.t()]) :: :ok
+  @spec mark(Macro.Env.t(), module(), String.t(), [String.t() | located()]) :: :ok
   def mark(env, backend, text_domain, texts) do
     if Gettext.Extractor.extracting?() do
-      calls =
-        for text <- Enum.uniq(texts) do
-          quote do
-            Gettext.Macros.dgettext_noop_with_backend(
-              unquote(backend),
-              unquote(text_domain),
-              unquote(text)
-            )
+      texts
+      |> Enum.map(&located(&1, env))
+      |> Enum.uniq()
+      |> Enum.group_by(& &1.path)
+      |> Enum.each(fn {path, entries} ->
+        calls =
+          for %{msgid: msgid, line: line} <- entries do
+            {{:., [line: line], [Gettext.Macros, :dgettext_noop_with_backend]}, [line: line],
+             [backend, text_domain, msgid]}
           end
-        end
 
-      Code.eval_quoted({:__block__, [], [quote(do: require(Gettext.Macros)) | calls]}, [], env)
+        Code.eval_quoted(
+          {:__block__, [], [quote(do: require(Gettext.Macros)) | calls]},
+          [],
+          %{env | file: Path.relative_to_cwd(path, force: true)}
+        )
+      end)
     end
 
     :ok
   end
+
+  defp located(text, env) when is_binary(text), do: %{msgid: text, path: env.file, line: env.line}
+  defp located(entry, _env), do: entry
 
   @doc """
   The texts a resource shows: its written attribute labels and, with
@@ -51,15 +65,98 @@ defmodule AshGettext.Extractor do
   validation, change, preparation, generic-action run, manual-action and calculation modules it uses.
   """
   @spec resource_texts(module(), boolean()) :: [String.t()]
-  def resource_texts(resource, messages?) do
-    labels = for {_attribute, text} <- AshGettext.Info.attribute_labels(resource), do: text
+  def resource_texts(resource, messages?),
+    do: resource |> resource_messages(messages?) |> Enum.map(& &1.msgid)
 
-    if messages? do
-      {messages, modules} = walk(dsl_entities(resource), {[], []})
-      labels ++ messages ++ Enum.flat_map(Enum.uniq(modules), &module_messages/1)
-    else
-      labels
+  @doc """
+  `resource_texts/2`, each text with the file and line it is written at.
+  """
+  @spec resource_messages(module(), boolean(), MapSet.t(String.t())) :: [located()]
+  def resource_messages(resource, messages?, scanned_paths \\ MapSet.new()) do
+    labels =
+      for label <- Spark.Dsl.Extension.get_entities(resource, [:gettext]),
+          do: {label.text, entity_location(label, :text, nil)}
+
+    {messages, modules} =
+      if messages?, do: walk(dsl_entities(resource), nil, {[], []}), else: {[], []}
+
+    place(labels ++ messages, resource) ++
+      Enum.flat_map(Enum.uniq(modules), &module_messages(&1, scanned_paths))
+  end
+
+  @doc """
+  Every literal `message` in the app's own source: the `.ex` files under the
+  given folders, relative to the project root. Read once per backend, text
+  domain and folder list in a run: the first call returns `{:new, scan}`,
+  every later one `{:seen, scan}`.
+  """
+  @spec app_messages(module(), String.t(), [String.t()]) ::
+          {:new | :seen, %{paths: MapSet.t(String.t()), messages: [located()]}}
+  def app_messages(backend, text_domain, folders),
+    do:
+      remembered(
+        {__MODULE__, :app_messages, backend, text_domain, Enum.sort(Enum.uniq(folders))},
+        fn -> scan_app(folders) end
+      )
+
+  @doc """
+  The sentences Ash and AshGettext ship, each referenced once at
+  `AshGettext.AshMessages`'s own source. Only the first call per backend and
+  text domain returns them; every later one returns `[]`.
+  """
+  @spec builtin_messages(module(), String.t()) :: [located()]
+  def builtin_messages(backend, text_domain) do
+    case remembered({__MODULE__, :builtin_messages, backend, text_domain}, fn -> :marked end) do
+      {:new, :marked} ->
+        {path, line} = AshMessages.source()
+
+        for msgid <- Enum.uniq(AshMessages.msgids() ++ AshMessages.ash_sentences()),
+            do: %{msgid: msgid, path: path, line: line}
+
+      {:seen, :marked} ->
+        []
     end
+  end
+
+  # One slot per key, holding the compiler run that filled it: a later run in
+  # the same VM scans again and replaces it.
+  defp remembered(key, compute) do
+    run = compiler_run()
+
+    :global.trans({key, self()}, fn ->
+      case :persistent_term.get(key, nil) do
+        {^run, value} ->
+          {:seen, value}
+
+        _other_run_or_none ->
+          value = compute.()
+          :persistent_term.put(key, {run, value})
+          {:new, value}
+      end
+    end)
+  end
+
+  # Elixir's parallel compiler (what `mix compile` runs) gives every file of
+  # one run the same checker process. `Code.compile_file/1` is not that
+  # compiler, so its caller is the run, and several files it compiles share one.
+  defp compiler_run do
+    case {Process.get(:elixir_compiler_info), Process.get(:elixir_checker_info)} do
+      {{_parent, _file}, {_caller, {checker, _ref}}} -> checker
+      {_not_parallel, {caller, _checker}} -> caller
+      _not_compiling -> self()
+    end
+  end
+
+  defp scan_app(folders) do
+    paths =
+      for dir <- folders,
+          path <- Path.wildcard(Path.join(dir, "**/*.ex")),
+          do: Path.expand(path)
+
+    result =
+      find_messages(for path <- paths, {:ok, contents} <- [File.read(path)], do: {path, contents})
+
+    %{paths: MapSet.new(paths), messages: located(result)}
   end
 
   defp dsl_entities(resource) do
@@ -70,23 +167,96 @@ defmodule AshGettext.Extractor do
 
   # Any `message` (a policy's is `error_message`) holding a string, and any `{module, opts}` implementing a
   # validation, change, preparation, run, manual action or calculation, wherever the DSL nests it.
-  defp walk({key, text}, {messages, modules})
+  defp walk({key, text}, at, {messages, modules})
        when key in [:message, :error_message] and is_binary(text),
-       do: {[text | messages], modules}
+       do: {[{text, at} | messages], modules}
 
-  defp walk({key, {module, opts}}, {messages, modules})
+  defp walk({key, {module, opts}}, at, {messages, modules})
        when key in [:validation, :change, :preparation, :run, :manual, :calculation] and
               is_atom(module),
-       do: walk(opts, {messages, [module | modules]})
+       do: walk(opts, at, {messages, [module | modules]})
 
-  defp walk(%_{} = struct, acc), do: walk(Map.from_struct(struct), acc)
-  defp walk(map, acc) when is_map(map), do: walk(Map.to_list(map), acc)
-  defp walk(list, acc) when is_list(list), do: Enum.reduce(list, acc, &walk/2)
-  defp walk(tuple, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), acc)
-  defp walk(_other, acc), do: acc
+  defp walk(%_{__spark_metadata__: _} = entity, at, acc) do
+    entity
+    |> Map.from_struct()
+    |> Enum.reduce(acc, fn {key, _value} = field, acc ->
+      walk(field, entity_location(entity, key, at), acc)
+    end)
+  end
+
+  defp walk(%_{} = struct, at, acc), do: walk(Map.from_struct(struct), at, acc)
+  defp walk(map, at, acc) when is_map(map), do: walk(Map.to_list(map), at, acc)
+  defp walk(list, at, acc) when is_list(list), do: Enum.reduce(list, acc, &walk(&1, at, &2))
+  defp walk(tuple, at, acc) when is_tuple(tuple), do: walk(Tuple.to_list(tuple), at, acc)
+  defp walk(_other, _at, acc), do: acc
+
+  defp entity_location(entity, key, outer) do
+    anno_location(Spark.Dsl.Entity.property_anno(entity, key)) ||
+      anno_location(Spark.Dsl.Entity.anno(entity)) || outer
+  end
+
+  @doc false
+  def anno_location(nil), do: nil
+
+  def anno_location(anno) do
+    case :erl_anno.file(anno) do
+      :undefined -> nil
+      file -> {to_string(file), :erl_anno.line(anno)}
+    end
+  end
+
+  # Spark records no annotation when `debug_info` is off, nor on an entity a
+  # transformer built: the text is then looked up in the resource's own source.
+  defp place(found, resource) do
+    path = List.to_string(resource.module_info(:compile)[:source])
+
+    ast =
+      with {:ok, contents} <- File.read(path),
+           {:ok, ast} <- parse(contents),
+           do: ast,
+           else: (_unreadable -> nil)
+
+    Enum.map(found, fn
+      {text, {file, line}} ->
+        %{msgid: text, path: file, line: line}
+
+      {text, nil} ->
+        line = literal_line(ast, text) || defmodule_line(ast, resource) || 1
+        %{msgid: text, path: path, line: line}
+    end)
+  end
+
+  defp literal_line(ast, text) do
+    find_line(ast, fn
+      {:__block__, meta, [^text]} -> meta[:line]
+      _other -> nil
+    end)
+  end
+
+  defp defmodule_line(ast, resource) do
+    find_line(ast, fn
+      {:defmodule, meta, [{:__aliases__, _, parts} | _]} ->
+        if Module.concat(parts) == resource, do: meta[:line]
+
+      _other ->
+        nil
+    end)
+  end
+
+  defp find_line(nil, _line_of), do: nil
+
+  defp find_line(ast, line_of) do
+    {_ast, line} =
+      Macro.prewalk(ast, nil, fn
+        node, nil -> {node, line_of.(node)}
+        node, line -> {node, line}
+      end)
+
+    line
+  end
 
   # Anything but third-party deps, so sibling umbrella and path-dep apps count.
-  defp module_messages(module) do
+  defp module_messages(module, scanned_paths) do
     with {:module, ^module} <- Code.ensure_compiled(module),
          source when is_list(source) <- module.module_info(:compile)[:source],
          path = List.to_string(source),
@@ -94,10 +264,16 @@ defmodule AshGettext.Extractor do
          {:ok, contents} <- File.read(path) do
       result = find_messages([{path, contents}])
       Enum.each(result.interpolated, &warn_interpolated/1)
-      Enum.map(result.messages, & &1.msgid)
+      if MapSet.member?(scanned_paths, path), do: [], else: located(result)
     else
       _not_the_apps -> []
     end
+  end
+
+  defp located(%{messages: messages}) do
+    for %{msgid: msgid, references: references} <- messages,
+        %{path: path, line: line} <- references,
+        do: %{msgid: msgid, path: path, line: line}
   end
 
   defp app_source?(path),
@@ -143,15 +319,16 @@ defmodule AshGettext.Extractor do
   # Without it a string in a keyword list is a bare binary with nowhere to hang a
   # source reference, and a `.pot` entry without a reference is much harder to act on.
   defp parse(contents) do
-    contents
-    |> Code.string_to_quoted(
-      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
-      token_metadata: true,
-      emit_warnings: false
-    )
-    |> case do
-      {:ok, ast} -> {:ok, ast}
-      {:error, _reason} -> :error
+    with true <- String.valid?(contents),
+         {:ok, ast} <-
+           Code.string_to_quoted(contents,
+             literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+             token_metadata: true,
+             emit_warnings: false
+           ) do
+      {:ok, ast}
+    else
+      _not_elixir -> :error
     end
   end
 

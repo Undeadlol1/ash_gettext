@@ -88,6 +88,17 @@ defmodule AshGettextTest do
                )
     end
 
+    test "reports an uncovered msgid with its bindings filled in as :missing" do
+      assert {:missing, "Hello, Ann"} =
+               AshGettext.translate_or_missing(
+                 Backend,
+                 @text_domain,
+                 "Hello, %{name}",
+                 [name: "Ann"],
+                 "ru"
+               )
+    end
+
     test "still reports a msgid with no entry as :missing in a translated locale" do
       assert {:missing, "That exact msgid"} =
                AshGettext.translate_or_missing(
@@ -144,6 +155,19 @@ defmodule AshGettextTest do
                  "album",
                  "albums",
                  5,
+                 [],
+                 "ru"
+               )
+    end
+
+    test "reports an uncovered plural with its count filled in as :missing" do
+      assert {:missing, "2 files"} =
+               AshGettext.translate_plural_or_missing(
+                 Backend,
+                 @text_domain,
+                 "%{count} file",
+                 "%{count} files",
+                 2,
                  [],
                  "ru"
                )

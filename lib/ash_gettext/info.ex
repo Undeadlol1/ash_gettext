@@ -20,6 +20,7 @@ defmodule AshGettext.Info do
           backend: module(),
           default_locale: String.t(),
           text_domain: String.t(),
+          builtin_text_domain: String.t(),
           locale_resolver: module() | nil,
           supported_locales: [String.t()]
         }
@@ -55,6 +56,7 @@ defmodule AshGettext.Info do
            backend: backend,
            default_locale: gettext_default_locale!(domain),
            text_domain: gettext_text_domain!(domain),
+           builtin_text_domain: gettext_builtin_text_domain!(domain),
            locale_resolver: Spark.Dsl.Extension.get_opt(domain, [:gettext], :locale_resolver),
            supported_locales: AshGettext.known_locales(backend)
          }}

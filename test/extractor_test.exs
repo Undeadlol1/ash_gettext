@@ -5,6 +5,24 @@ defmodule AshGettext.ExtractorTest do
 
   defp find_messages(source), do: Extractor.find_messages([{"lib/sample.ex", source}])
 
+  describe "the place a Spark annotation names" do
+    test "a file Spark recorded as a binary" do
+      anno = :erl_anno.set_file("lib/parcel.ex", :erl_anno.new(7))
+
+      assert Extractor.anno_location(anno) == {"lib/parcel.ex", 7}
+    end
+
+    test "a file Spark recorded as a charlist" do
+      anno = :erl_anno.set_file(~c"lib/parcel.ex", :erl_anno.new(7))
+
+      assert Extractor.anno_location(anno) == {"lib/parcel.ex", 7}
+    end
+
+    test "an annotation without a file" do
+      assert Extractor.anno_location(:erl_anno.new(7)) == nil
+    end
+  end
+
   describe "finding messages written as keyword options" do
     test "finds a message given as a keyword option" do
       result =
@@ -132,6 +150,36 @@ defmodule AshGettext.ExtractorTest do
       result = Extractor.find_messages([{"lib/broken.ex", "defmodule Broken do def ("}])
 
       assert result.messages == []
+    end
+
+    test "the app scan skips a file that is not UTF-8 or does not parse" do
+      dir = Path.join(["tmp", inspect(__MODULE__), "unreadable_sources"])
+      File.rm_rf!(dir)
+      File.mkdir_p!(dir)
+      File.write!(Path.join(dir, "latin1.ex"), <<"defmodule L do\n  @x \"", 255, "\"\nend\n">>)
+      File.write!(Path.join(dir, "broken.ex"), ~s|defmodule B do\n  [message: "is broken"\n|)
+      File.write!(Path.join(dir, "fine.ex"), ~s|defmodule F do\n  @x [message: "found"]\nend\n|)
+
+      assert {_new_or_seen, %{messages: messages}} =
+               Extractor.app_messages(__MODULE__.UnreadableSources, "ash", [dir])
+
+      assert Enum.map(messages, & &1.msgid) == ["found"]
+    end
+
+    test "the app scan reads each folder list a domain names, for the same backend" do
+      root = Path.join(["tmp", inspect(__MODULE__), "folder_sets"])
+      File.rm_rf!(root)
+      File.mkdir_p!(Path.join(root, "first"))
+      File.mkdir_p!(Path.join(root, "second"))
+      File.write!(Path.join([root, "first", "a.ex"]), ~s|@x [message: "in first"]\n|)
+      File.write!(Path.join([root, "second", "b.ex"]), ~s|@x [message: "in second"]\n|)
+      backend = __MODULE__.FolderSets
+
+      assert {:new, first} = Extractor.app_messages(backend, "ash", [Path.join(root, "first")])
+      assert {:new, second} = Extractor.app_messages(backend, "ash", [Path.join(root, "second")])
+
+      assert Enum.map(first.messages, & &1.msgid) == ["in first"]
+      assert Enum.map(second.messages, & &1.msgid) == ["in second"]
     end
 
     test "returns nothing for a file with no messages" do

@@ -1,4 +1,5 @@
 defmodule AshGettext.AshMessages do
+  @source {"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", __ENV__.line + 1}
   @messages [
     {Ash.Error.Changes.Required, "is required"},
     {Ash.Error.Changes.InvalidAttribute, "is invalid"},
@@ -65,6 +66,10 @@ defmodule AshGettext.AshMessages do
 
   #{for msgid <- @sentences, into: "", do: "- #{msgid}\n"}
   """
+
+  @doc false
+  @spec source() :: {String.t(), pos_integer()}
+  def source, do: @source
 
   @doc "Every `{error_module, msgid}` pair."
   @spec messages() :: [{module(), String.t()}]

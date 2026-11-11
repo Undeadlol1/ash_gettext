@@ -124,6 +124,41 @@ defmodule AshGettext.GettextExtractTest do
   end
   """
 
+  @annotated """
+  defmodule ExtractFixture.Annotated.Parcel do
+    use Ash.Resource,
+      domain: ExtractFixture.Annotated,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [AshGettext.Resource]
+
+    def note, do: "written twice"
+
+    actions do
+      create :create do
+        validate(present(:weight), message: "written twice")
+      end
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:weight, :integer, public?: true)
+    end
+  end
+
+  defmodule ExtractFixture.Annotated do
+    use Ash.Domain, extensions: [AshGettext.Domain], validate_config_inclusion?: false
+
+    gettext do
+      backend(ExtractFixture.Gettext)
+      locale_resolver(AshGettextFixture.ActorLanguage)
+    end
+
+    resources do
+      resource(ExtractFixture.Annotated.Parcel)
+    end
+  end
+  """
+
   setup_all do
     dir = Path.join(["tmp", inspect(__MODULE__)])
     File.rm_rf!(dir)
@@ -132,30 +167,58 @@ defmodule AshGettext.GettextExtractTest do
     File.write!(source, String.replace(@app, "PRIV", Path.join(dir, "priv")))
     untranslated = Path.join(dir, "untranslated.ex")
     File.write!(untranslated, @untranslated)
+    annotated = Path.join(dir, "annotated.ex")
+    File.write!(annotated, @annotated)
 
     Gettext.Extractor.enable()
+    debug_info? = Code.get_compiler_option(:debug_info)
 
     warnings =
       try do
         capture_io(:stderr, fn ->
+          Code.put_compiler_option(:debug_info, false)
           Code.compile_file(source)
           Code.compile_file(untranslated)
+          Code.put_compiler_option(:debug_info, true)
+          Code.compile_file(annotated)
+
+          AshGettext.Extractor.mark(__ENV__, ExtractFixture.Gettext, "ash", [
+            %{msgid: "from a sibling app", path: Path.expand("../sibling_app/lib/s.ex"), line: 3}
+          ])
         end)
       after
+        Code.put_compiler_option(:debug_info, debug_info?)
         Gettext.Extractor.disable()
       end
 
     pots = Gettext.Extractor.pot_files(:ash_gettext, [])
-    %{pots: pots, warnings: warnings, source: source}
+
+    %{
+      pots: pots,
+      warnings: warnings,
+      source: Path.relative_to_cwd(source),
+      annotated: Path.relative_to_cwd(annotated)
+    }
   end
 
-  defp msgids(pots, text_domain) do
+  defp messages(pots, text_domain) do
     {_path, {_, contents}} =
       Enum.find(pots, fn {path, _} -> Path.basename(path) == "#{text_domain}.pot" end)
 
     {:ok, po} = contents |> IO.iodata_to_binary() |> Expo.PO.parse_string()
-    Enum.map(po.messages, &IO.iodata_to_binary(&1.msgid))
+    po.messages
   end
+
+  defp references(pots, text_domain \\ "ash", msgid) do
+    message = Enum.find(messages(pots, text_domain), &(IO.iodata_to_binary(&1.msgid) == msgid))
+    List.flatten(message.references)
+  end
+
+  defp line_of(source \\ @app, snippet),
+    do: Enum.find_index(String.split(source, "\n"), &(&1 =~ snippet)) + 1
+
+  defp msgids(pots, text_domain),
+    do: Enum.map(messages(pots, text_domain), &IO.iodata_to_binary(&1.msgid))
 
   test "an enum's labels and descriptions", %{pots: pots} do
     ids = msgids(pots, "ash")
@@ -180,18 +243,34 @@ defmodule AshGettext.GettextExtractTest do
     assert "must weigh at least 30 kg" in msgids(pots, "ash")
   end
 
-  test "the sentences for Ash's own errors", %{pots: pots} do
-    ids = msgids(pots, "ash")
+  test "the sentences for Ash's own errors, in the built-in catalog", %{pots: pots} do
+    ids = msgids(pots, "ash_builtin")
     for msgid <- AshGettext.AshMessages.msgids(), do: assert(msgid in ids)
   end
 
-  test "every sentence Ash ships in its own template", %{pots: pots} do
-    ids = msgids(pots, "ash")
+  test "every sentence Ash ships in its own template, in the built-in catalog", %{pots: pots} do
+    ids = msgids(pots, "ash_builtin")
     shipped = AshGettext.AshMessages.ash_sentences()
 
     assert "must be present" in shipped
     assert "length must be less than or equal to %{max}" in shipped
     assert shipped -- ids == []
+  end
+
+  test "no built-in sentence in the app's catalog", %{pots: pots} do
+    ids = msgids(pots, "ash")
+
+    refute "must be present" in ids
+    refute "could not be found" in ids
+    refute "You are not allowed to do this" in ids
+  end
+
+  test "no app text in the built-in catalog", %{pots: pots} do
+    builtin_ids = msgids(pots, "ash_builtin")
+
+    refute "pick a status" in builtin_ids
+    refute "Weight" in builtin_ids
+    refute "must weigh at least 30 kg" in builtin_ids
   end
 
   test "nothing from a domain without a gettext block", %{pots: pots} do
@@ -200,6 +279,55 @@ defmodule AshGettext.GettextExtractTest do
 
     refute all =~ "nobody translates this"
     refute all =~ "Untranslated weight"
+  end
+
+  describe "where each text is referenced" do
+    test "a message in the resource's DSL, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "pick a status") == [
+               {source, line_of(~s|message: "pick a status"|)}
+             ]
+    end
+
+    test "a policy's message, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "this shop is closed") == [
+               {source, line_of(~s|error_message("this shop is closed")|)}
+             ]
+    end
+
+    test "an attribute label, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "Weight") == [{source, line_of(~s|label(:weight, "Weight")|)}]
+    end
+
+    test "a message in a validation module, at its own line", %{pots: pots, source: source} do
+      assert references(pots, "must weigh at least 30 kg") == [
+               {source, line_of(~s|message: "must weigh at least 30 kg"|)}
+             ]
+    end
+
+    test "a DSL message at the line its compile recorded", %{pots: pots, annotated: annotated} do
+      assert references(pots, "written twice") == [
+               {annotated, line_of(@annotated, ~s|message: "written twice"|)}
+             ]
+    end
+
+    test "a sentence Ash writes itself, once, at the library's list of them", %{pots: pots} do
+      {path, line} = AshGettext.AshMessages.source()
+
+      assert references(pots, "ash_builtin", "must be present") == [
+               {Path.relative_to_cwd(path), line}
+             ]
+    end
+
+    test "a sentence Ash writes itself, at the same relative path on every machine", %{
+      pots: pots
+    } do
+      assert [{"deps/ash_gettext/lib/ash_gettext/ash_messages.ex", _line}] =
+               references(pots, "ash_builtin", "must be present")
+    end
+
+    test "a text from a file outside the project, relative to it", %{pots: pots} do
+      assert references(pots, "from a sibling app") == [{"../sibling_app/lib/s.ex", 3}]
+    end
   end
 
   test "an interpolated message is a warning that names its line", %{

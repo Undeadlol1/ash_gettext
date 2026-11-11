@@ -59,8 +59,10 @@ end
 | [`backend`](#gettext-backend){: #gettext-backend .spark-required} | `atom` |  | The Gettext backend whose catalogs this domain translates against. |
 | [`locale_resolver`](#gettext-locale_resolver){: #gettext-locale_resolver .spark-required} | `module` |  | Required. A module implementing `AshGettext.Locale.Resolver`. It reads the language from the action's actor. With no actor, Gettext's current process language is used. |
 | [`default_locale`](#gettext-default_locale){: #gettext-default_locale } | `String.t` | `"en"` | The locale used when the resolver names a language the catalogs do not have. |
-| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for everything Ash-derived: errors, enum labels, attribute names. |
+| [`text_domain`](#gettext-text_domain){: #gettext-text_domain } | `String.t` | `"ash"` | The gettext text domain for the app's own texts: its error messages, enum labels, attribute names. |
+| [`builtin_text_domain`](#gettext-builtin_text_domain){: #gettext-builtin_text_domain } | `String.t` | `"ash_builtin"` | The gettext text domain for the sentences Ash and AshGettext ship ("must be present", "could not be found" and the rest). An error text is looked up in `text_domain` first, then here. |
 | [`translate_errors?`](#gettext-translate_errors?){: #gettext-translate_errors? } | `boolean` | `true` | Whether resources in this domain translate their action errors. |
+| [`extract_messages_from`](#gettext-extract_messages_from){: #gettext-extract_messages_from } | `list(any)` | `["lib"]` | The folders, relative to the project root, whose `.ex` files `mix gettext.extract` reads for every literal `message:`, so a message written in a plain module reaches the template too. `[]` turns the scan off. Each must be relative, without `..`, and not `"."`. |
 | [`require_resource_extension?`](#gettext-require_resource_extension?){: #gettext-require_resource_extension? } | `boolean` | `false` | When true, compiling the domain reports every resource in its `resources` block that lacks the `AshGettext.Resource` extension (a compiler warning, an error under `--warnings-as-errors`). Off by default on purpose: Ash extensions are opted into, never imposed. |
 
 

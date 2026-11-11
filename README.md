@@ -42,7 +42,7 @@ Add it to your deps:
 ```elixir
 def deps do
   [
-    {:ash_gettext, "~> 0.2"}
+    {:ash_gettext, "~> 0.3"}
   ]
 end
 ```
@@ -221,9 +221,13 @@ mix gettext.extract --merge              # Gettext's own command
 mix gettext.extract --check-up-to-date   # in CI: fails when a template is stale
 ```
 
-AshGettext makes your enum labels, attribute labels, messages and Ash's error
-sentences visible to it, so they land in `ash.pot`. Translators fill in
-`ash.po` per language.
+AshGettext makes your enum labels, attribute labels and messages visible to
+it, so they land in `ash.pot`. The sentences Ash and AshGettext ship go to
+their own `ash_builtin.pot`. Translators fill in `ash.po` and
+`ash_builtin.po` per language. Upgrading from a version without
+`ash_builtin`? Before the first extract, copy each language's `ash.po` to
+`ash_builtin.po` in the same folder, or `--merge` deletes the built-in
+translations (see [Extracting messages](documentation/topics/extracting-messages.md)).
 
 ### Catch missing translations
 

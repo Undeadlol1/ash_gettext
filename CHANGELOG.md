@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 — 2026-11-11
+
+### Upgrading
+
+Ash's built-in sentences ("is required", "must be present"…) now live in their own catalog, `ash_builtin`, apart from your app's texts. **Before** the first extract on this version, copy each language's catalog so the translations you already have move with them:
+
+```bash
+cp priv/gettext/<locale>/LC_MESSAGES/<text_domain>.po priv/gettext/<locale>/LC_MESSAGES/ash_builtin.po
+mix gettext.extract --merge
+```
+
+The merge keeps the built-in entries in `ash_builtin.po` and your own texts in your `text_domain` file. Without the copy, the built-in translations are deleted. Until you re-extract, nothing changes at runtime.
+
+### Added
+
+- `builtin_text_domain` (default `"ash_builtin"`): the catalog for the sentences Ash and AshGettext ship. An error text is looked up in `text_domain` first, then there.
+- `mix gettext.extract` again finds every literal `message:` in your app's own source, also in plain modules no resource names. `extract_messages_from` lists the folders read (default `["lib"]`; `[]` turns it off).
+
+### Fixed
+
+- Each catalog entry points at the file and line its text is written at, not at the domain's first line. A built-in sentence has one fixed reference instead of one per domain.
+- References are relative paths on every machine, also for texts from sibling umbrella apps.
+
 ## 0.2.1 — 2026-11-11
 
 ### Fixed

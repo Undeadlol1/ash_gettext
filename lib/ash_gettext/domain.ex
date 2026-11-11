@@ -58,7 +58,16 @@ defmodule AshGettext.Domain do
         type: :string,
         default: "ash",
         doc:
-          "The gettext text domain for everything Ash-derived: errors, enum labels, attribute names."
+          "The gettext text domain for the app's own texts: its error messages, enum labels, attribute names."
+      ],
+      builtin_text_domain: [
+        type: :string,
+        default: "ash_builtin",
+        doc: """
+        The gettext text domain for the sentences Ash and AshGettext ship
+        ("must be present", "could not be found" and the rest). An error text is
+        looked up in `text_domain` first, then here.
+        """
       ],
       locale_resolver: [
         type: {:behaviour, AshGettext.Locale.Resolver},
@@ -73,6 +82,16 @@ defmodule AshGettext.Domain do
         type: :boolean,
         default: true,
         doc: "Whether resources in this domain translate their action errors."
+      ],
+      extract_messages_from: [
+        type: {:list, {:custom, __MODULE__, :validate_folder, []}},
+        default: ["lib"],
+        doc: """
+        The folders, relative to the project root, whose `.ex` files
+        `mix gettext.extract` reads for every literal `message:`, so a message
+        written in a plain module reaches the template too. `[]` turns the
+        scan off. Each must be relative, without `..`, and not `"."`.
+        """
       ],
       require_resource_extension?: [
         type: :boolean,
@@ -93,4 +112,16 @@ defmodule AshGettext.Domain do
       AshGettext.Domain.Transformers.MarkTexts,
       AshGettext.Domain.Transformers.TranslateReplies
     ]
+
+  @doc false
+  def validate_folder(folder) when is_binary(folder) do
+    if Path.type(folder) == :relative and folder != "." and ".." not in Path.split(folder),
+      do: {:ok, folder},
+      else:
+        {:error,
+         "#{inspect(folder)} must be a folder relative to the project root, " <>
+           ~s|without ".." and not "."|}
+  end
+
+  def validate_folder(folder), do: {:error, "#{inspect(folder)} must be a string"}
 end
