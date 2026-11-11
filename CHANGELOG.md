@@ -15,8 +15,10 @@
 - Errors are now translated in JSON:API and GraphQL replies, in the actor's
   language, including the text those libraries write themselves ("is
   required", record not found).
-- Errors from generic actions are translated, like create, update and
-  destroy errors.
+- Errors from generic actions and read actions are translated, like create,
+  update and destroy errors.
+- A policy's own `error_message` is shown, translated, in JSON:API and
+  GraphQL replies. Those libraries alone reply "forbidden".
 - `mix gettext.extract` now also adds the sentences Ash and the JSON:API and
   GraphQL replies use ("must be present", "is required", "could not be found"
   and about 60 more), and every policy's `error_message`. Run it and

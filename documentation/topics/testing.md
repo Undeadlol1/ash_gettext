@@ -44,8 +44,6 @@ test "creating a light parcel fails in Russian" do
 end
 ```
 
-Read actions are not translated in a direct call.
-
 ## Fail a test on a missing translation
 
 Every plain lookup that misses sends `[:ash_gettext, :translation, :missing]`.

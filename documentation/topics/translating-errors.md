@@ -110,16 +110,20 @@ action but a read. Over JSON:API it renders as:
 
 ## What is not translated
 
-- A policy's custom message. A direct Ash call shows it. Over JSON:API and
-  GraphQL the reader gets the general "You are not allowed to do this"
-  sentence, and a Phoenix form shows no error for a policy failure.
 - GraphQL's own query checks, and GraphQL's "something went wrong" reply
   for an error type it does not know, stay in English.
-- Errors from a direct `Ash.bulk_destroy` call stay in the source language.
-  Over JSON:API and GraphQL they are translated.
 - An action with its own `error_handler` is not translated.
-- A read action's error is not translated when you call it directly. Use
-  `AshGettext.ErrorTranslation.translate/2` where you render it.
+- A Phoenix form shows no error for a policy failure.
+
+Ash gives a library no place to step in for these calls from your own code.
+Use `AshGettext.ErrorTranslation.translate/2` where you render their errors:
+
+- `Ash.bulk_update` and `Ash.bulk_destroy` when they run as one statement.
+  With `strategy: :stream` the errors are translated.
+- "Not found" from `Ash.get`, `Ash.read_one` and a code interface.
+- `Ash.count` and the other aggregates.
+- A read whose actor is passed only to `Ash.read`. Pass `actor:` to
+  `Ash.Query.for_read` and its errors are translated.
 
 An `error_handler` you wrote on a JSON:API or GraphQL domain keeps running.
 

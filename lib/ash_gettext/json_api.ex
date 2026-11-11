@@ -7,7 +7,7 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
     Notes for maintainers: maintainers/why-some-errors-are-hard.md in the repository.
     """
 
-    @actor {__MODULE__, :request_actor}
+    @serving {__MODULE__, :request}
     @request [:plug, :router_dispatch]
 
     @doc false
@@ -22,14 +22,34 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
 
     @doc false
     def handle_request([:plug, :router_dispatch, :start], _measurements, %{conn: conn}, _config),
-      do: Process.put(@actor, Ash.PlugHelpers.get_actor(conn))
+      do: Process.put(@serving, %{actor: Ash.PlugHelpers.get_actor(conn)})
 
     def handle_request(_request_ended, _measurements, _metadata, _config),
-      do: Process.delete(@actor)
+      do: Process.delete(@serving)
 
     @doc "The actor of the request this process is serving, or `nil`."
     @spec request_actor() :: term()
-    def request_actor, do: Process.get(@actor)
+    def request_actor, do: Process.get(@serving)[:actor]
+
+    @doc false
+    def remember_refusal(%Ash.Error.Forbidden.Policy{} = policy) do
+      with %{} = request <- Process.get(@serving) do
+        own = Keyword.get(List.wrap(policy.vars), :policy_message, policy.custom_message)
+
+        Process.put(@serving, Map.put(request, :policy_message, own))
+      end
+    end
+
+    def remember_refusal(%{errors: errors}) when is_list(errors),
+      do: Enum.each(errors, &remember_refusal/1)
+
+    def remember_refusal(_error), do: :ok
+
+    defp carried(%{code: "forbidden"}),
+      do: %{policy_message: Process.get(@serving)[:policy_message]}
+
+    defp carried(%{meta: meta}) when is_map(meta), do: meta
+    defp carried(_error), do: %{}
 
     @doc """
     Translate `error`'s `detail` into the language of the request's actor.
@@ -45,7 +65,7 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
         | detail:
             AshGettext.TransportText.translate(error.detail, domain,
               code: error.code,
-              bindings: Map.put(if(is_map(error.meta), do: error.meta, else: %{}), :id, error.id),
+              bindings: Map.put(carried(error), :id, error.id),
               actor: request_actor()
             )
       }

@@ -1,6 +1,7 @@
 defmodule AshGettext.ErrorTranslation.ErrorHandler do
   @moduledoc """
-  The `error_handler` that `AshGettext.Resource` installs on every action but reads.
+  The `error_handler` that `AshGettext.Resource` installs on every action.
+  Reads have no `error_handler`; a preparation calls this for them.
 
   Ash calls this with the changeset (the action input, for a generic action)
   and each error it collects, and takes the
@@ -25,11 +26,19 @@ defmodule AshGettext.ErrorTranslation.ErrorHandler do
   def translate_error(changeset, error) do
     case Info.settings(changeset.domain) do
       {:ok, settings} ->
+        remember_refusal(error)
         ErrorTranslation.translate(error, translation_options(changeset, settings))
 
       :error ->
         error
     end
+  end
+
+  @json_api AshGettext.JsonApi
+
+  # AshJsonApi passes nothing of a failed policy on, so its reply step is told here.
+  defp remember_refusal(error) do
+    if Code.ensure_loaded?(@json_api), do: @json_api.remember_refusal(error)
   end
 
   defp translation_options(changeset, settings) do

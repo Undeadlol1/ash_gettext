@@ -95,8 +95,13 @@ defmodule AshGettext.ErrorTranslation do
     end
   end
 
-  defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence),
-    do: %{error | custom_message: sentence}
+  # AshGraphql drops a policy's own message but passes `vars` on. The message is
+  # kept once: Ash hands the same error to its handler more than once.
+  defp put_sentence(%Ash.Error.Forbidden.Policy{} = error, sentence) do
+    vars = Keyword.put_new(List.wrap(error.vars), :policy_message, error.custom_message)
+
+    %{error | custom_message: sentence, vars: vars}
+  end
 
   defp put_sentence(%{message: _a_text_field} = error, sentence),
     do: %{error | message: sentence}

@@ -102,6 +102,7 @@ defmodule AshGettext.MixProject do
           AshGettext.Extractor,
           AshGettext.Installer,
           AshGettext.Resource.Transformers.AttachErrorHandler,
+          AshGettext.Resource.Preparations.TranslateErrors,
           AshGettext.Domain.Transformers.MarkTexts,
           AshGettext.Domain.Transformers.TranslateReplies,
           AshGettext.Domain.Verifiers.ValidateResourceExtensions

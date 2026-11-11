@@ -17,6 +17,7 @@ defmodule AshGettext.ErrorKindsTest do
   alias AshGettextFixture.ApiRouter
   alias AshGettextFixture.GraphSchema
   alias AshGettextFixture.Rules.Entry
+  alias AshGettextFixture.Rules.Locker
   alias AshGettextFixture.UnknownError
 
   @russian %{language: "ru"}
@@ -45,6 +46,7 @@ defmodule AshGettext.ErrorKindsTest do
     ru: ~r/^Что-то пошло не так\. Номер ошибки: [0-9a-f-]+$/,
     en: ~r/^Something went wrong\. Error id: [0-9a-f-]+$/
   }
+  @required_sentence %{ru: "обязательное поле", en: "is required"}
   @not_found_sentence %{ru: "не найдено", en: "could not be found"}
   @not_found_json %{ru: "не найдено", en: "No entry record found with"}
   @forbidden_on_the_wire %{ru: "Вам нельзя это делать", en: "forbidden"}
@@ -79,6 +81,13 @@ defmodule AshGettext.ErrorKindsTest do
 
   defp leaf_messages({:error, error}) do
     error |> Ash.Error.to_error_class() |> Map.fetch!(:errors) |> Enum.map(& &1.message)
+  end
+
+  defp carried_sentences({:error, error}) do
+    error
+    |> Ash.Error.to_error_class()
+    |> Map.fetch!(:errors)
+    |> Enum.map(& &1.vars[:translation])
   end
 
   defp class_text({:error, error}), do: Exception.message(Ash.Error.to_error_class(error))
@@ -462,21 +471,101 @@ defmodule AshGettext.ErrorKindsTest do
     end
   end
 
-  describe "known gaps" do
-    for {reader_name, actor, _reader} <- @readers do
-      test "a policy's own message gives a #{reader_name} reader the generic sentence through json_api" do
-        reply = json_reply(:post, "/lockers/sealed", locker_body(), unquote(Macro.escape(actor)))
+  describe "a read called from code" do
+    for {reader_name, actor, reader} <- @readers do
+      test "shows a #{reader_name} reader an argument below its minimum" do
+        result =
+          Entry
+          |> Ash.Query.for_read(:heavier, %{than: 0}, actor: unquote(Macro.escape(actor)))
+          |> Ash.read()
 
-        assert [expected_generic(unquote(Macro.escape(actor)))] == json_details(reply)
+        assert [text(@minimum_sentence, unquote(reader))] == leaf_messages(result)
       end
 
-      test "a policy's own message gives a #{reader_name} reader the generic sentence through graphql" do
+      test "shows a #{reader_name} reader an argument below its minimum when Ash prepares the query" do
+        result =
+          Entry
+          |> Ash.Query.set_argument(:than, 0)
+          |> Ash.read(action: :heavier, actor: unquote(Macro.escape(actor)))
+
+        assert [text(@minimum_sentence, unquote(reader))] == leaf_messages(result)
+      end
+
+      test "shows a #{reader_name} reader a missing argument" do
+        result =
+          Entry
+          |> Ash.Query.for_read(:heavier, %{}, actor: unquote(Macro.escape(actor)))
+          |> Ash.read()
+
+        assert [text(@required_sentence, unquote(reader))] == carried_sentences(result)
+      end
+
+      test "shows a #{reader_name} reader a policy without a message" do
+        result = Ash.read(Locker, action: :peek_plain, actor: unquote(Macro.escape(actor)))
+
+        assert class_text(result) =~ text(@forbidden_sentence, unquote(reader))
+      end
+
+      test "shows a #{reader_name} reader a policy's own message" do
+        result = Ash.read(Locker, action: :peek_sealed, actor: unquote(Macro.escape(actor)))
+
+        assert class_text(result) =~ text(@sealed_sentence, unquote(reader))
+      end
+
+      test "shows a #{reader_name} reader a policy's own message when the query came prepared" do
+        result =
+          Locker
+          |> Ash.Query.for_read(:peek_sealed, %{}, actor: unquote(Macro.escape(actor)))
+          |> Ash.read()
+
+        assert class_text(result) =~ text(@sealed_sentence, unquote(reader))
+      end
+
+      test "shows a #{reader_name} reader the rule a record broke when many are deleted one by one" do
+        entry = locked_entry()
+
+        result =
+          Entry
+          |> Ash.Query.filter(id == ^entry.id)
+          |> Ash.bulk_destroy(:destroy, %{},
+            actor: unquote(Macro.escape(actor)),
+            return_errors?: true,
+            strategy: [:stream],
+            allow_stream_with: :full_read
+          )
+
+        assert [text(@locked_sentence, unquote(reader))] ==
+                 result.errors |> Enum.flat_map(& &1.errors) |> Enum.map(& &1.message)
+      end
+    end
+  end
+
+  describe "a policy with a message of its own" do
+    for {reader_name, actor, reader} <- @readers do
+      test "shows a #{reader_name} reader that message through json_api" do
+        reply = json_reply(:post, "/lockers/sealed", locker_body(), unquote(Macro.escape(actor)))
+
+        assert [text(@sealed_sentence, unquote(reader))] == json_details(reply)
+      end
+
+      test "shows a #{reader_name} reader that message through graphql" do
         errors =
           graphql_locker("openSealedLocker", "openSealedLocker", unquote(Macro.escape(actor)))
 
-        assert [expected_generic(unquote(Macro.escape(actor)))] == graphql_messages(errors)
+        assert [text(@sealed_sentence, unquote(reader))] == graphql_messages(errors)
       end
 
+      test "a #{reader_name} reader refused without a message is not shown the last reader's" do
+        json_reply(:post, "/lockers/sealed", locker_body(), unquote(Macro.escape(actor)))
+        reply = json_reply(:post, "/lockers/plain", locker_body(), unquote(Macro.escape(actor)))
+
+        assert [text(@forbidden_on_the_wire, unquote(reader))] == json_details(reply)
+      end
+    end
+  end
+
+  describe "known gaps" do
+    for {reader_name, actor, _reader} <- @readers do
       test "a policy failure shows a #{reader_name} reader no field error on a phoenix_form and logs a warning" do
         {sentences, log} =
           with_log(fn ->
@@ -490,7 +579,7 @@ defmodule AshGettext.ErrorKindsTest do
         assert log =~ "does not implement the `AshPhoenix.FormData.Error` protocol"
       end
 
-      test "bulk_destroy leaves a #{reader_name} reader the sentence untranslated in plain Ash" do
+      test "many records deleted in one statement leave a #{reader_name} reader the sentence untranslated" do
         entry = locked_entry()
 
         result =
@@ -499,15 +588,45 @@ defmodule AshGettext.ErrorKindsTest do
           |> Ash.bulk_destroy(:destroy, %{},
             actor: unquote(Macro.escape(actor)),
             return_errors?: true,
-            strategy: [:atomic, :stream, :atomic_batches],
+            strategy: [:atomic],
             allow_stream_with: :full_read
           )
 
         assert [%{message: "must equal %{value}"}] = Enum.flat_map(result.errors, & &1.errors)
       end
+
+      test "Ash.get leaves a #{reader_name} reader a missing record without a sentence" do
+        result = Ash.get(Entry, missing_id(), actor: unquote(Macro.escape(actor)))
+
+        assert [nil] == carried_sentences(result)
+      end
+
+      test "Ash.read_one leaves a #{reader_name} reader a missing record without a sentence" do
+        result =
+          Entry
+          |> Ash.Query.for_read(:by_code, %{code: "nobody"}, actor: unquote(Macro.escape(actor)))
+          |> Ash.read_one(not_found_error?: true)
+
+        assert [nil] == carried_sentences(result)
+      end
+
+      test "a count leaves a #{reader_name} reader the policy's message as it was written" do
+        result =
+          Locker
+          |> Ash.Query.for_read(:peek_sealed, %{}, actor: unquote(Macro.escape(actor)))
+          |> Ash.count()
+
+        assert class_text(result) =~ "order_already_placed"
+      end
+
+      test "an argument error stays as written for a #{reader_name} reader named only when the read runs" do
+        result =
+          Entry
+          |> Ash.Query.for_read(:heavier, %{than: 0})
+          |> Ash.read(actor: unquote(Macro.escape(actor)))
+
+        assert [text(@minimum_sentence, :en)] == leaf_messages(result)
+      end
     end
   end
-
-  defp expected_generic(%{language: "ru"}), do: text(@forbidden_on_the_wire, :ru)
-  defp expected_generic(%{language: "en"}), do: text(@forbidden_on_the_wire, :en)
 end

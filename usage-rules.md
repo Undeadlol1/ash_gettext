@@ -122,17 +122,18 @@ defaults; add options only when a requirement demands them.
   catalog.
 - A message no catalog covers is left unchanged. Adopting AshGettext never
   rewrites an existing message into something worse.
-- Errors are translated for `create`, `update`, `destroy` and generic
-  (`action`) actions. A direct call to a read action is not translated;
-  over JSON:API and GraphQL it is. A stale record error is not translated.
+- Errors are translated for every action type. For a read called from
+  code, pass `actor:` to `Ash.Query.for_read`. A stale record error is not
+  translated.
 - An action that declares its own `error_handler` is not translated.
 - Ash's errors stay Ash's own structs; match on them as usual.
   `Ash.Error.Changes.Required` has no `message`: its translated sentence is
   in `vars[:translation]`.
-- Not translated: GraphQL's own query checks and its "something went wrong" reply;
-  errors from a direct `Ash.bulk_destroy` call. Over JSON:API and GraphQL a
-  policy's custom message becomes the general "You are not allowed to do
-  this" sentence.
+- Not translated: GraphQL's own query checks and its "something went wrong"
+  reply. From code: `Ash.bulk_update`/`Ash.bulk_destroy` run as one statement
+  (`strategy: :stream` is translated), "not found" from `Ash.get`,
+  `Ash.read_one` and code interfaces, `Ash.count` and other aggregates. Call
+  `AshGettext.ErrorTranslation.translate/2` on those errors.
 - `text_domain` defaults to `"ash"`, so catalogs live at
   `priv/gettext/<locale>/LC_MESSAGES/ash.po`. Errors, enum labels and
   attribute labels share it.

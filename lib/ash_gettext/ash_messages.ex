@@ -3,6 +3,9 @@ defmodule AshGettext.AshMessages do
     {Ash.Error.Changes.Required, "is required"},
     {Ash.Error.Changes.InvalidAttribute, "is invalid"},
     {Ash.Error.Changes.InvalidArgument, "is invalid"},
+    {Ash.Error.Query.Required, "is required"},
+    {Ash.Error.Query.InvalidArgument, "is invalid"},
+    {Ash.Error.Query.NotFound, "could not be found"},
     {Ash.Error.Forbidden.Policy, "You are not allowed to do this"}
   ]
 
@@ -44,7 +47,8 @@ defmodule AshGettext.AshMessages do
   #{for {module, msgid} <- @messages, into: "", do: "| `#{inspect(module)}` | #{msgid} |\n"}
 
   An error that already has a message keeps it; that message is its msgid.
-  A policy with its own message keeps that message too.
+  A policy with its own message keeps that message too. Its msgid is kept in
+  `vars[:policy_message]`, so a JSON:API or GraphQL reply can show it.
 
   ## Sentences a transport writes
 

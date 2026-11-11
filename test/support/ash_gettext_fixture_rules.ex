@@ -70,6 +70,17 @@ defmodule AshGettextFixture.Rules.Entry do
   actions do
     defaults([:read])
 
+    read :heavier do
+      argument(:than, :integer, allow_nil?: false, constraints: [min: 1])
+      filter(expr(weight > ^arg(:than)))
+    end
+
+    read :by_code do
+      get?(true)
+      argument(:code, :string, allow_nil?: false)
+      filter(expr(code == ^arg(:code)))
+    end
+
     create :create do
       primary?(true)
       accept([:code, :quantity, :slug, :handle, :nickname, :stock, :weight, :note, :locked])
@@ -145,6 +156,8 @@ defmodule AshGettextFixture.Rules.Locker do
 
   actions do
     defaults([:read])
+    read(:peek_plain)
+    read(:peek_sealed)
     create(:open_plain, accept: [])
     create(:open_sealed, accept: [])
   end
@@ -157,6 +170,21 @@ defmodule AshGettextFixture.Rules.Locker do
     policy action(:open_sealed) do
       error_message("order_already_placed")
       forbid_if(always())
+    end
+
+    policy action(:peek_plain) do
+      access_type(:strict)
+      forbid_if(always())
+    end
+
+    policy action(:peek_sealed) do
+      access_type(:strict)
+      error_message("order_already_placed")
+      forbid_if(always())
+    end
+
+    policy action(:read) do
+      authorize_if(always())
     end
   end
 

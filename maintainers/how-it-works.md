@@ -34,8 +34,11 @@ resource's actions and sets the `error_handler` of each create, update,
 destroy and generic action to `AshGettext.ErrorTranslation.ErrorHandler.translate_error/2`.
 
 - An action that already has an `error_handler` is left alone.
-- Read actions are skipped, because Ash has no `error_handler` option for
-  them.
+- Read actions have no `error_handler` in Ash. The transformer adds one
+  preparation to the resource instead,
+  `AshGettext.Resource.Preparations.TranslateErrors`. It translates the
+  errors the query already has, and adds an `after_transaction` hook that
+  translates the errors of the read itself (a failed policy).
 
 Nothing else about the resource changes. No attribute, action or policy is
 rewritten.

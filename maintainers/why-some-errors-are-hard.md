@@ -15,7 +15,7 @@ AshGraphql, an AshPhoenix form.
 | The error has a text field | "must weigh at least 30 kg", "is invalid" | In the error, for every transport | The actor's |
 | The error has no text field | Ash's own "is required" | Carried in `vars[:translation]`, for Phoenix forms and any transport that passes `vars` on | The actor's |
 | The transport writes it | AshJsonApi's "is required" from its body check, "No note record found with ..." | In the reply, per transport | The request's actor's |
-| A read action fails | a filter or argument error on a read | In the reply, per transport | The request's actor's |
+| A read action fails | an argument error or a failed policy on a read | In the error, by a preparation and its `after_transaction` hook | The actor's |
 
 None of these need setup from you; see
 [the request's language](#the-request-s-language).
@@ -98,9 +98,6 @@ meets "is required" over JSON:API.
 **AshJsonApi bakes values into some sentences.** A record that is not there
 reads "No note record found with `id: 37edd50d-...`". The id changes every
 time, so the sentence can never be looked up in a catalog.
-
-**Read actions have no `error_handler` in Ash.** Their errors skip the
-handler of kind 1.
 
 Such text can only be translated after the transport wrote it. The rules for
 that are in `AshGettext.TransportText` and know nothing about any transport:
@@ -193,10 +190,29 @@ A transport that tells its hook who the actor is needs nothing more.
 
 ## Known limits
 
-- A policy's custom message is shown by a direct Ash call. JSON:API and
-  GraphQL write their own "forbidden" text, so the reader gets the general
-  "You are not allowed to do this" sentence there. Phoenix forms show no
-  error for a policy failure: AshPhoenix drops it.
+- JSON:API and GraphQL write "forbidden" for a failed policy and drop its
+  own message. The message is still shown: the error keeps its msgid in
+  `vars[:policy_message]`, which AshGraphql passes on. AshJsonApi passes
+  nothing on (`ash_json_api/lib/ash_json_api/error/error.ex`, the
+  `Ash.Error.Forbidden.Policy` implementation sets `meta: %{}`), so the
+  handler tells `AshGettext.JsonApi` the msgid, kept with the request's actor.
+  Phoenix forms show no error for a policy failure: AshPhoenix drops it.
+- Calls from code that Ash gives no hook for. Each was tried:
+  - Bulk actions run as one statement. `Ash.Changeset.fully_atomic_changeset`
+    never sets `action.error_handler`, and a change cannot set it in time:
+    the input is cast first. An `after_transaction` hook does see these
+    errors, but its mere presence makes every bulk action return all its
+    records (`ash/lib/ash/actions/update/bulk.ex`, `return_records?`), so it
+    is not installed.
+  - "Not found" is built after the read returned, in `Ash.get`,
+    `Ash.read_one` and the code interface (`ash/lib/ash.ex`, `do_get`).
+  - Aggregates (`ash/lib/ash/actions/aggregate.ex`) run no query hooks.
+  - A query that is already invalid returns before any hook
+    (`ash/lib/ash/actions/read/read.ex`, first `run/3` clause). Its errors
+    were translated when it was prepared, for the actor known then.
+- GraphQL's "something went wrong" reply for an error type it does not know
+  calls no `error_handler` (`ash_graphql/lib/graphql/errors.ex`, the `else`
+  branch of `to_errors/6`), and `AshGraphql.Error` has no fallback.
 - `validate match(...)` with no `message:` makes a text with the pattern in
   it ("must match ~r/.../"). The pattern is still in `vars`, so
   `AshGettext.ErrorTranslation` puts `%{match}` back and looks up

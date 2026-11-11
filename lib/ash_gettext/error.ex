@@ -28,9 +28,8 @@ defmodule AshGettext.Error do
 
   `AshGettext.ErrorTranslation.translate/2` translates any struct with a binary
   `:message`, so this one needs nothing extra. The translation hook is the
-  `error_handler` that `AshGettext.Resource` installs, so it runs for errors
-  raised from create, update, destroy and generic actions; read actions
-  return the msgid untranslated.
+  `error_handler` that `AshGettext.Resource` installs, and a preparation for
+  read actions.
 
   ## Extraction
 

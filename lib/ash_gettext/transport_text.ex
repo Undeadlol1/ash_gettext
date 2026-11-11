@@ -32,9 +32,11 @@ defmodule AshGettext.TransportText do
   defp looked_up(text, domain, settings, bindings, opts) do
     locale = Info.locale(domain, Keyword.get(opts, :actor), settings.backend)
 
-    [text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
+    policy_message = bindings[:policy_message]
+
+    [policy_message, text, AshMessages.reply_msgid(Keyword.get(opts, :code))]
     |> Enum.reject(&is_nil/1)
-    |> Enum.find_value(text, &translation(&1, settings, bindings, locale))
+    |> Enum.find_value(policy_message || text, &translation(&1, settings, bindings, locale))
   end
 
   defp translation(msgid, settings, bindings, locale) do
