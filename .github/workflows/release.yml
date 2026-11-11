@@ -51,28 +51,10 @@ jobs:
           mix deps.get
           mix test --warnings-as-errors
 
-      - name: Exchange the OIDC token and publish
+      # Mix trades GitHub's id-token for a hex.pm key by itself.
+      - name: Publish
         if: steps.version.outputs.new == 'true'
-        env:
-          HEX_API_URL: https://hex.pm/api
-        run: |
-          set -euo pipefail
-
-          AUDIENCE=$(curl -fsS "$HEX_API_URL/oidc/audience" | jq -r .audience)
-          OIDC_TOKEN=$(curl -fsS \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}" \
-            | jq -r .value)
-
-          RESPONSE=$(curl -fsS -X POST "$HEX_API_URL/oauth/token" \
-            -H "content-type: application/x-www-form-urlencoded" \
-            --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
-            --data-urlencode "assertion=$OIDC_TOKEN" \
-            --data-urlencode "scope=package:hexpm/ash_gettext")
-
-          ACCESS_TOKEN=$(printf '%s' "$RESPONSE" | jq -r .access_token)
-
-          HEX_API_KEY="Bearer $ACCESS_TOKEN" mix hex.publish --yes
+        run: mix hex.publish --yes
 
       # The docs' "view source" links point at this tag.
       - name: Tag the release
