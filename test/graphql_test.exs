@@ -81,6 +81,30 @@ defmodule AshGettext.GraphqlTest do
     end
   end
 
+  describe "an AshGettext.Error" do
+    test "reaches a Russian reader with its translated message, code, fields and vars" do
+      {:ok, %{data: data}} =
+        run(
+          ~s|mutation { createNote(input: {title: "heavy"}) { errors { message code fields vars } } }|,
+          @russian
+        )
+
+      assert [
+               %{
+                 "message" => "Вес должен быть не менее 30 кг",
+                 "code" => "weight_too_low",
+                 "fields" => ["weight"],
+                 "vars" => %{min: 30}
+               }
+             ] = data["createNote"]["errors"]
+    end
+
+    test "reaches an English reader in English" do
+      assert %{"message" => "Weight must be at least 30 kg", "code" => "weight_too_low"} =
+               create_note(~s|title: "heavy"|, @english)
+    end
+  end
+
   describe "a reader in the source language" do
     test "gets the same reply as a domain with translation switched off" do
       assert create_note(~s|weight: 40|, @english) ==

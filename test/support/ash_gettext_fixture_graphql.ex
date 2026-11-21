@@ -12,6 +12,29 @@ defmodule AshGettextFixture.BadTitle do
   end
 end
 
+defmodule AshGettextFixture.HeavyTitle do
+  @moduledoc "A validation that rejects a title with an `AshGettext.Error`."
+
+  use Ash.Resource.Validation
+
+  @impl true
+  def validate(changeset, _opts, _context) do
+    case Ash.Changeset.get_attribute(changeset, :title) do
+      "heavy" ->
+        {:error,
+         AshGettext.Error.exception(
+           code: :weight_too_low,
+           field: :weight,
+           message: "weight_too_low",
+           vars: [min: 30]
+         )}
+
+      _acceptable ->
+        :ok
+    end
+  end
+end
+
 defmodule AshGettextFixture.GraphqlNote do
   @moduledoc "A note served over GraphQL; the domain it belongs to is passed in."
 
@@ -42,6 +65,7 @@ defmodule AshGettextFixture.GraphqlNote do
           allow_nil_input([:title])
           validate({AshGettextFixture.MinimumWeight, []})
           validate({AshGettextFixture.BadTitle, []})
+          validate({AshGettextFixture.HeavyTitle, []})
         end
       end
 
