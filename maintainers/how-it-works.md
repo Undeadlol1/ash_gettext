@@ -192,9 +192,12 @@ arguments, so you can call it yourself.
 - **Text passed to `translate/5` is not extracted.** `mix gettext.extract`
   does not see it. Add it to the template by hand. Enum labels and attribute labels
   are extracted.
-- **Read errors are not translated in the error.** Ash has no
-  `error_handler` for reads. A transport that writes the text can still
-  translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do.
+- **Some calls from your own code are not translated**, such as "not found"
+  from `Ash.get` and a read whose actor is passed only to `Ash.read`. Ash
+  gives a library no place to step in. A transport that writes the text can
+  still translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do. The
+  full list is in "What is not translated" in
+  [Translating errors](../documentation/topics/translating-errors.md).
 - **A handler you wrote is kept.** If an action declares its own
   `error_handler`, AshGettext does not replace it.
 - **The message must be a constant string.** A message built with `#{...}`

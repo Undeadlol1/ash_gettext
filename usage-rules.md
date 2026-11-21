@@ -11,8 +11,8 @@ defaults; add options only when a requirement demands them.
 
 - Add `{:ash_gettext, "~> 0.3"}` to deps. It needs `:ash`,
   `:spark` and `:gettext` (a Gettext backend, `use Gettext.Backend`, must
-  already exist in the app). `{:ash_json_api, "~> 1.4"}` is optional: add it
-  only if the app serves JSON:API.
+  already exist in the app). `{:ash_json_api, "~> 1.6"}` and `{:ash_graphql, "~> 1.0"}` are
+  optional: add one only if the app serves JSON:API or GraphQL.
 - Translating text needs no domain block or resource extension. Those are
   for translating errors.
 - No application config is required. Do not add `config :ash_gettext`. All
@@ -208,5 +208,7 @@ defaults; add options only when a requirement demands them.
 - Assert the text through the real action:
   `Gettext.with_locale(MyApp.Gettext, "ru", fn -> Ash.create(changeset) end)`,
   then check the error's message.
-- Do not change the process language in a test. It leaks between tests and
-  breaks `async: true`. Use `Gettext.with_locale(backend, "ru", fn -> ... end)`.
+- Set the language with `Gettext.put_locale/2` at the top of the test, or wrap
+  the call in `Gettext.with_locale(backend, "ru", fn -> ... end)`. Each test
+  runs in its own process, so the language leaks nowhere and `async: true` stays
+  safe. A `Task` the test starts does not inherit it.

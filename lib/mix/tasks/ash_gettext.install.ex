@@ -9,7 +9,8 @@ defmodule Mix.Tasks.AshGettext.Install do
       mix ash_gettext.install --backend MyApp.Gettext --resolver MyApp.LocaleResolver
 
   For each Ash domain it adds the `AshGettext.Domain` extension and a
-  `gettext do` block naming this app's Gettext backend. A domain that already
+  `gettext do` block naming this app's Gettext backend. For each resource it
+  adds the `AshGettext.Resource` extension. A domain or resource that already
   has the extension is skipped, so re-running is safe.
 
   ## Options

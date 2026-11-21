@@ -22,7 +22,7 @@ end
 
 ```elixir
 test "the loaded label follows the actor's language" do
-  user = %{locale: "ru"}
+  user = %{language: "ru"}
   order = Ash.load!(order, [:status_label], actor: user)
 
   assert order.status_label == "Ожидает выдачи"

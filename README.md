@@ -265,8 +265,10 @@ The metadata has `backend`, `text_domain`, `msgid` and `locale`.
 
 ## Limits
 
-- **Read errors are not translated in a direct call.** Over JSON:API and
-  GraphQL they are. See [Translating errors](documentation/topics/translating-errors.md).
+- **Some calls from your own code are not translated**, such as "not found"
+  from `Ash.get` and a read whose actor is passed only to `Ash.read`. Over
+  JSON:API and GraphQL they are. See "What is not translated" in
+  [Translating errors](documentation/topics/translating-errors.md).
 - **Text passed to `AshGettext.translate/5` is not extracted.** `mix gettext.extract`
   does not see it. Add it to the
   template by hand, or write it with a Gettext macro. Enum labels, attribute
