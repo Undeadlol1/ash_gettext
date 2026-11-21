@@ -72,9 +72,3 @@ defmodule MyApp.Billing do
   end
 end
 ```
-
-## For an existing app
-
-`mix ash_gettext.install` adds the extensions and the `gettext` block to
-every domain and resource you already have. Use it when you would rather not
-switch them to base modules.
