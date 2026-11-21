@@ -68,6 +68,14 @@ defmodule AshGettextTest do
                  locale
                ) =~
                  "{1, 2}, 3"
+
+        assert AshGettext.translate(
+                 Backend,
+                 @text_domain,
+                 "weight_too_low",
+                 [min: ~c"abc"],
+                 locale
+               ) =~ "abc"
       end
     end
 

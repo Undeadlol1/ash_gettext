@@ -320,7 +320,12 @@ defmodule AshGettext do
     bindings |> to_bindings() |> Map.new(fn {name, value} -> {name, to_text(value)} end)
   end
 
-  defp to_text(value) when is_list(value), do: Enum.map_join(value, ", ", &to_text/1)
+  defp to_text(value) when is_list(value) do
+    if List.ascii_printable?(value),
+      do: to_string(value),
+      else: Enum.map_join(value, ", ", &to_text/1)
+  end
+
   defp to_text(value) when is_binary(value), do: value
   defp to_text(value), do: if(String.Chars.impl_for(value), do: value, else: inspect(value))
 
