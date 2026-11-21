@@ -57,7 +57,7 @@ defmodule AshGettext do
           {:ok, String.t()} | {:missing, String.t()}
   def translate_or_missing(backend, text_domain, msgid, bindings, locale) do
     msgid = to_msgid(msgid)
-    bindings = bindings |> to_bindings() |> Map.new()
+    bindings = to_binding_map(bindings)
 
     locale
     |> backend.lgettext(text_domain, nil, msgid, bindings)
@@ -166,7 +166,7 @@ defmodule AshGettext do
       ) do
     msgid = to_msgid(msgid)
     msgid_plural = to_msgid(msgid_plural)
-    bindings = bindings |> to_bindings() |> Map.new() |> Map.put_new(:count, count)
+    bindings = bindings |> to_binding_map() |> Map.put_new(:count, count)
     form = if count == 1, do: msgid, else: msgid_plural
 
     locale
@@ -313,6 +313,16 @@ defmodule AshGettext do
 
   defp to_msgid(msgid) when is_atom(msgid), do: Atom.to_string(msgid)
   defp to_msgid(msgid) when is_binary(msgid), do: msgid
+
+  # Gettext writes a value with `to_string/1`, which crashes for a map, a tuple
+  # or a list of atoms. A list is joined, anything else without text is inspected.
+  defp to_binding_map(bindings) do
+    bindings |> to_bindings() |> Map.new(fn {name, value} -> {name, to_text(value)} end)
+  end
+
+  defp to_text(value) when is_list(value), do: Enum.map_join(value, ", ", &to_text/1)
+  defp to_text(value) when is_binary(value), do: value
+  defp to_text(value), do: if(String.Chars.impl_for(value), do: value, else: inspect(value))
 
   defp to_bindings(bindings) when is_list(bindings), do: bindings
   defp to_bindings(bindings) when is_map(bindings), do: Enum.to_list(bindings)

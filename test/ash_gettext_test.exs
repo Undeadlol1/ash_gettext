@@ -31,6 +31,46 @@ defmodule AshGettextTest do
              ) == "Added 30g protein, 200 calories"
     end
 
+    test "writes a value that is no text with inspect, and a list element by element" do
+      for locale <- ["en", "ru"] do
+        assert AshGettext.translate(
+                 Backend,
+                 @text_domain,
+                 "weight_too_low",
+                 [min: [:a, :b]],
+                 locale
+               ) =~
+                 "a, b"
+
+        assert AshGettext.translate(
+                 Backend,
+                 @text_domain,
+                 "weight_too_low",
+                 [min: %{a: 1}],
+                 locale
+               ) =~
+                 "%{a: 1}"
+
+        assert AshGettext.translate(
+                 Backend,
+                 @text_domain,
+                 "weight_too_low",
+                 [min: {1, :b}],
+                 locale
+               ) =~
+                 "{1, :b}"
+
+        assert AshGettext.translate(
+                 Backend,
+                 @text_domain,
+                 "weight_too_low",
+                 [min: [{1, 2}, 3]],
+                 locale
+               ) =~
+                 "{1, 2}, 3"
+      end
+    end
+
     test "accepts an atom msgid" do
       assert AshGettext.translate(Backend, @text_domain, :greeting, [], "ru") == "Привет"
     end
