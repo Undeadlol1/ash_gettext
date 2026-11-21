@@ -155,6 +155,30 @@ defmodule AshGettext.InstallerTest do
     end
   end
 
+  describe "an extensions list with a bracket inside it" do
+    @nested "extensions: [Foo, {Bar, [opt: 1]}]"
+
+    test "leaves a resource alone instead of writing the extension into the option" do
+      source = "defmodule A do\n  use Ash.Resource, #{@nested}\nend\n"
+
+      assert %{status: :unrecognised, changed?: false, content: ^source} =
+               Installer.install_resource(source)
+    end
+
+    test "leaves a domain alone instead of writing the extension into the option" do
+      source = "defmodule A do\n  use Ash.Domain, #{@nested}\nend\n"
+
+      assert %{status: :unrecognised, changed?: false, content: ^source} =
+               Installer.install_domain(source, @opts)
+    end
+
+    test "never writes source that does not parse" do
+      source = "defmodule A do\n  use Ash.Resource, extensions: [Foo, {Bar, [opt: 1}]\nend\n"
+
+      assert %{changed?: false, content: ^source} = Installer.install_resource(source)
+    end
+  end
+
   describe "adding the extension to a domain with none" do
     test "gives it an extensions list" do
       source = """

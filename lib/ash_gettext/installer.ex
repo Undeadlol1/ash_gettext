@@ -51,9 +51,10 @@ defmodule AshGettext.Installer do
     if already_installed?(content) do
       %{content: content, changed?: false, status: :already_installed}
     else
-      rewritten = content |> add_extension() |> insert_gettext_block(opts)
+      extended = add_extension(content)
+      rewritten = insert_gettext_block(extended, opts)
 
-      if String.contains?(rewritten, "gettext do") do
+      if extended != content and String.contains?(rewritten, "gettext do") and parses?(rewritten) do
         %{content: rewritten, changed?: true, status: :installed}
       else
         %{content: content, changed?: false, status: :unrecognised}
@@ -84,7 +85,7 @@ defmodule AshGettext.Installer do
       Regex.match?(@resource_declaration, content) ->
         rewritten = add_resource_extension(content)
 
-        if rewritten == content do
+        if rewritten == content or not parses?(rewritten) do
           %{content: content, changed?: false, status: :unrecognised}
         else
           %{content: rewritten, changed?: true, status: :installed}
@@ -178,9 +179,13 @@ defmodule AshGettext.Installer do
   #
   # and appending before the bracket yields a line starting with a comma, which
   # is a syntax error rather than a formatting nit.
+  #
+  # A list with a bracket inside it (`{Bar, [opt: 1]}`) is left alone: the
+  # pattern would close it at the inner bracket and write the extension into
+  # the option. The caller reports the file as unrecognised.
   defp add_to_extensions(content, extension \\ "AshGettext.Domain") do
     Regex.replace(
-      ~r/(extensions:\s*\[)([^\]]*?)(\s*)\]/,
+      ~r/(extensions:\s*\[)([^\[\]]*?)(\s*)\]/,
       content,
       fn _match, opening, existing, trailing ->
         separator = if String.trim(existing) == "", do: "", else: ", "
@@ -189,6 +194,8 @@ defmodule AshGettext.Installer do
       global: false
     )
   end
+
+  defp parses?(content), do: match?({:ok, _ast}, Code.string_to_quoted(content))
 
   # Placed straight after the `use Ash.Domain` call, which is where a reader
   # looks for how a domain is configured.
