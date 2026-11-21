@@ -55,11 +55,25 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
 
     attributes = Ash.Resource.Info.attributes(resource)
 
-    for %{type: type} <- attributes ++ arguments, do: unarray(type)
+    for %{type: type, constraints: constraints} <- attributes ++ arguments,
+        found <- types_in(type, constraints),
+        do: found
   end
 
-  defp unarray({:array, type}), do: unarray(type)
-  defp unarray(type), do: type
+  # The type itself, and every type its constraints name: an array's items, the
+  # `fields` of a map, keyword or struct, the `types` of a union.
+  defp types_in({:array, type}, constraints), do: types_in(type, constraints[:items] || [])
+
+  defp types_in(type, constraints) do
+    named = List.wrap(constraints[:fields]) ++ List.wrap(constraints[:types])
+
+    [
+      type
+      | Enum.flat_map(named, fn {_name, config} ->
+          types_in(config[:type], config[:constraints] || [])
+        end)
+    ]
+  end
 
   defp mark(dsl_state, backend) do
     text_domain = Transformer.get_option(dsl_state, [:gettext], :text_domain, "ash")

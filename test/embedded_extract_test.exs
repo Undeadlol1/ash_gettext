@@ -61,6 +61,54 @@ defmodule AshGettext.EmbeddedExtractTest do
     end
   end
 
+  defmodule EmbeddedFixture.Note do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults([:read])
+
+      create :create do
+        validate(present(:name), message: "note needs a name")
+      end
+    end
+
+    attributes do
+      attribute(:name, :string, public?: true)
+    end
+  end
+
+  defmodule EmbeddedFixture.Tag do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults([:read])
+
+      create :create do
+        validate(present(:name), message: "tag needs a name")
+      end
+    end
+
+    attributes do
+      attribute(:name, :string, public?: true)
+    end
+  end
+
+  defmodule EmbeddedFixture.Pin do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults([:read])
+
+      create :create do
+        validate(present(:name), message: "pin needs a name")
+      end
+    end
+
+    attributes do
+      attribute(:name, :string, public?: true)
+    end
+  end
+
   defmodule EmbeddedFixture.Parcel do
     use Ash.Resource,
       domain: EmbeddedFixture.Shop,
@@ -78,6 +126,21 @@ defmodule AshGettext.EmbeddedExtractTest do
     attributes do
       uuid_primary_key(:id)
       attribute(:to, EmbeddedFixture.Parent, public?: true)
+
+      attribute(:meta, :map,
+        public?: true,
+        constraints: [fields: [note: [type: EmbeddedFixture.Note]]]
+      )
+
+      attribute(:options, :keyword,
+        public?: true,
+        constraints: [fields: [tag: [type: EmbeddedFixture.Tag]]]
+      )
+
+      attribute(:either, :union,
+        public?: true,
+        constraints: [types: [pin: [type: EmbeddedFixture.Pin]]]
+      )
     end
   end
 
@@ -145,5 +208,17 @@ defmodule AshGettext.EmbeddedExtractTest do
     msgids: msgids
   } do
     assert "parent needs an address" in msgids
+  end
+
+  test "a message in an embedded resource inside a map's fields", %{msgids: msgids} do
+    assert "note needs a name" in msgids
+  end
+
+  test "a message in an embedded resource inside a keyword's fields", %{msgids: msgids} do
+    assert "tag needs a name" in msgids
+  end
+
+  test "a message in an embedded resource inside a union's types", %{msgids: msgids} do
+    assert "pin needs a name" in msgids
   end
 end
