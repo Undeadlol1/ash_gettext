@@ -37,11 +37,12 @@ if Code.ensure_loaded?(AshGraphql.Error) do
 
     The rules are `AshGettext.TransportText`'s: the text is looked up as a
     msgid, with `vars` as its values, then the written sentence for the
-    error's `code`. With neither, the error comes back unchanged.
+    error's `code`, except for an `AshGettext.Error`, which keeps its own message.
+    With neither, the error comes back unchanged.
     """
     @spec translate_error(term(), map()) :: term()
     def translate_error(%{message: message, short_message: short_message} = error, context) do
-      code = if message == short_message, do: error[:code]
+      code = if message == short_message and !error[:ash_gettext_error], do: error[:code]
 
       translated = fn text ->
         AshGettext.TransportText.translate(text, context[:domain],

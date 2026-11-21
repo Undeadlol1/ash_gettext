@@ -57,21 +57,6 @@ With no translation, you get the label as written. A value without a
 description still returns `nil`, and so does an empty value (`nil`). `details/1` is Ash's own and is not
 translated.
 
-## Show an enum on a record
-
-Every attribute whose type uses `AshGettext.Enum` gets a field named
-`<attribute>_label`. Load it to get the translated label on the record:
-
-```elixir
-order = Ash.get!(MyApp.Order, id, load: [:status_label], actor: user)
-
-order.status        #=> :awaiting_pickup
-order.status_label  #=> "Ожидает выдачи"
-```
-
-An empty value gives `nil`, a list attribute gives a list of labels, and a
-field you already named `status_label` is left alone.
-
 ## The text is the key
 
 Write the text in your app's own language. Gettext looks it up as written:
@@ -203,13 +188,6 @@ The twins are `translate_or_missing/5`, `translate_plural_or_missing/7`
 and `attribute_label_or_missing/2`. They send no
 event. In your own language nothing is missing. To test, see
 [How to test with AshGettext](testing.md).
-
-## Get the language from the user
-
-Run an action with `actor:` and loaded `_label` fields and errors come out
-in the actor's language. No action changes the process language. With no
-actor, and in code outside an action, use `Gettext.with_locale/3`. See
-[Locales](locales.md).
 
 ## Add the text to the template
 

@@ -122,6 +122,9 @@ field. Every error keeps its struct; `Ash.Error.Changes.Required`, which has
 no text field, carries the sentence in `vars[:translation]`. See
 [Why some errors are hard to translate](why-some-errors-are-hard.md).
 
+`AshGettext.ErrorTranslation.translate/2` takes everything it needs as
+arguments, so you can call it yourself.
+
 ## Text a transport writes itself
 
 Some text never exists in the error. AshJsonApi and AshGraphql each write
@@ -169,34 +172,17 @@ every time, so they are the same in every process and every test can be
 The list of supported locales is not a setting. It is read from the backend's
 catalogs, so it cannot disagree with the files on disk.
 
-## Where the code is
-
-| Module | Job |
-|---|---|
-| `AshGettext.Domain` | The `gettext` block and its verifier. |
-| `AshGettext.Resource` | The extension that attaches the handler. |
-| `AshGettext.ErrorTranslation.ErrorHandler` | The `error_handler`. Translates in the action's language. |
-| `AshGettext.ErrorTranslation` | Translates an error struct. Pure: no action, no database. |
-| `AshGettext.Info` | Reads the `gettext` block. `language/2` asks the resolver, then normalizes. |
-| `AshGettext.JsonApi`, `AshGettext.Graphql` | Translate the text AshJsonApi and AshGraphql write into a reply. |
-| `AshGettext.Domain.Transformers.TranslateReplies` | Installs those two as the domain's `error_handler`. |
-| `AshGettext.AshMessages` | The written sentences for Ash's own errors that have no message. |
-| `AshGettext.Enum` | `use` it instead of `Ash.Type.Enum` to translate `label/1` and `description/1`. |
-| `AshGettext` | Looks text up in the backend: strings, plurals, attribute labels. |
-
-`AshGettext.ErrorTranslation.translate/2` takes everything it needs as
-arguments, so you can call it yourself.
-
 ## Limits
 
-- **Text passed to `translate/5` is not extracted.** `mix gettext.extract`
-  does not see it. Add it to the template by hand. Enum labels and attribute labels
-  are extracted.
-- **Read errors are not translated in the error.** Ash has no
-  `error_handler` for reads. A transport that writes the text can still
-  translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do.
-- **A handler you wrote is kept.** If an action declares its own
-  `error_handler`, AshGettext does not replace it.
+The limits a user meets are in the
+[README](../README.md#limits). These are the ones for maintainers.
+
+- **Some calls from your own code are not translated**, such as "not found"
+  from `Ash.get` and a read whose actor is passed only to `Ash.read`. Ash
+  gives a library no place to step in. A transport that writes the text can
+  still translate it; `AshGettext.JsonApi` and `AshGettext.Graphql` do. The
+  full list is in "What is not translated" in
+  [Translating errors](../documentation/topics/translating-errors.md).
 - **The message must be a constant string.** A message built with `#{...}`
   has no stable msgid. `mix gettext.extract` warns about these when a
   resource or a module it names holds one; the app-wide scan skips them

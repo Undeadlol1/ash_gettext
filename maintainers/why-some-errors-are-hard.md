@@ -120,23 +120,10 @@ json_api do
 end
 ```
 
-AshJsonApi then calls this for every error in a reply:
-
-```elixir
-# lib/ash_gettext/json_api.ex
-def translate_error(%AshJsonApi.Error{} = error, %{domain: domain}) do
-  %{
-    error
-    | detail:
-        AshGettext.TransportText.translate(error.detail, domain,
-          code: error.code,
-          bindings: error.meta
-        )
-  }
-end
-```
-
-Only `detail` changes. An `error_handler` you already had runs first, and
+AshJsonApi then calls this for every error in a reply. It is `AshGettext.JsonApi.translate_error/2` (see `lib/ash_gettext/json_api.ex`).
+It hands `detail`, the error's `code`, its `meta` as values and the request's
+actor to `AshGettext.TransportText.translate/3`. Only `detail` changes.
+An `error_handler` you already had runs first, and
 what it returns is then translated. `translate_errors? false` leaves the
 domain as it was.
 

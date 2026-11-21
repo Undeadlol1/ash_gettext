@@ -71,6 +71,11 @@ defmodule AshGettext.JsonApiTest do
                reply(:post, "/notes", %{title: "t", weight: 5}, @russian)
     end
 
+    test "keeps an AshGettext.Error's own message when its code is one the transport has a sentence for" do
+      assert %{"detail" => "Вес должен быть не менее 30 кг", "code" => "not_found"} =
+               reply(:post, "/notes", %{title: "lost"}, @russian)
+    end
+
     test "gets a text nobody translated exactly as AshJsonApi wrote it" do
       assert %{"detail" => "no route found"} = reply(:get, "/nowhere", nil, @russian)
     end

@@ -9,7 +9,8 @@ defmodule Mix.Tasks.AshGettext.Install do
       mix ash_gettext.install --backend MyApp.Gettext --resolver MyApp.LocaleResolver
 
   For each Ash domain it adds the `AshGettext.Domain` extension and a
-  `gettext do` block naming this app's Gettext backend. A domain that already
+  `gettext do` block naming this app's Gettext backend. For each resource it
+  adds the `AshGettext.Resource` extension. A domain or resource that already
   has the extension is skipped, so re-running is safe.
 
   ## Options
@@ -50,6 +51,7 @@ defmodule Mix.Tasks.AshGettext.Install do
       )
 
     resources = add_extensions(resource_paths(searched), &Installer.install_resource/1)
+    resources = resources ++ unwired_base_users(searched, resources)
 
     report(domains, resources, backend, applying?(opts))
     print_resolver(opts[:resolver] || Installer.default_resolver(backend))
@@ -125,6 +127,30 @@ defmodule Mix.Tasks.AshGettext.Install do
   @backend_declaration ~r/^\s*use Gettext\.Backend/m
   @module_declaration ~r/^defmodule\s+([\w.]+)\s+do/m
 
+  # A resource written `use MyApp.Resource` has no `use Ash.Resource` of its own
+  # to edit. When that base module could not be wired, its users are reported
+  # rather than skipped without a word.
+  defp unwired_base_users(roots, resources) do
+    bases =
+      for {path, %{status: :unrecognised}} <- resources,
+          source = File.read!(path),
+          String.contains?(source, "__using__"),
+          [_full, module] <- Regex.scan(@module_declaration, source),
+          do: Regex.escape(module)
+
+    listed = Enum.map(resources, &elem(&1, 0))
+
+    case bases do
+      [] ->
+        []
+
+      _bases ->
+        for path <- paths_matching(roots, ~r/^\s*use (#{Enum.join(bases, "|")})\b/m),
+            path not in listed,
+            do: {path, %{status: :unrecognised, changed?: false, content: File.read!(path)}}
+    end
+  end
+
   defp gettext_backends do
     for path <- Path.wildcard("lib/**/*.ex"),
         source = File.read!(path),
@@ -182,8 +208,9 @@ defmodule Mix.Tasks.AshGettext.Install do
 
       #{Enum.map_join(unrecognised, "\n  ", fn {path, _result} -> path end)}
 
-    Add the extension and a gettext block by hand, or open an issue with the
-    shape of the `use Ash.Domain` call.
+    Add `AshGettext.Resource` to the `extensions:` of each resource, or of the
+    base module it uses. For a domain, add `AshGettext.Domain` and a
+    `gettext do` block. Or open an issue with the shape of the `use` call.
     """)
   end
 end

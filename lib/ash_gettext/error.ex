@@ -43,6 +43,11 @@ defmodule AshGettext.Error do
   When `:ash_json_api` is a dependency, the error renders with its `code` as a
   string, the message as `detail`, `vars` as `meta`, and the status of its
   class. It has no `title`, so no untranslated English reaches the reader.
+
+  ## GraphQL
+
+  When `:ash_graphql` is a dependency, the error reaches the client with its
+  `code` as a string, the message, `fields` (the `:field`, if set) and `vars`.
   """
 
   use Splode.Error, fields: [:code, :field, :message], class: :invalid
@@ -83,7 +88,25 @@ if Code.ensure_loaded?(AshJsonApi.ToJsonApiError) do
         code: to_string(error.code),
         detail: error.message,
         source_pointer: error.field && "/data/attributes/#{error.field}",
-        meta: Map.new(error.vars)
+        meta: Map.new(error.vars),
+        # Tells `AshGettext.JsonApi` this message is not the transport's to replace.
+        internal_description: :ash_gettext_error
+      }
+    end
+  end
+end
+
+if Code.ensure_loaded?(AshGraphql.Error) do
+  defimpl AshGraphql.Error, for: AshGettext.Error do
+    def to_error(error) do
+      %{
+        message: error.message,
+        short_message: error.message,
+        code: to_string(error.code),
+        vars: Map.new(error.vars),
+        fields: List.wrap(error.field),
+        # Tells `AshGettext.Graphql` this message is not the transport's to replace.
+        ash_gettext_error: true
       }
     end
   end

@@ -5,7 +5,7 @@
 Add `AshGettext.Domain` with a `gettext` block to the domain, and
 `AshGettext.Resource` to each resource. `mix ash_gettext.install --apply`
 does both; see [Set it up once](set-up-once.md) to write them once for the
-whole app. Create, update, destroy and generic actions are translated.
+whole app. Create, update, destroy, generic and read actions are translated.
 
 ## See one error in two languages
 

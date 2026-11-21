@@ -1,7 +1,8 @@
 defmodule AshGettext.Domain.Transformers.MarkTexts do
   @moduledoc """
   Shows `mix gettext.extract` every text this domain's resources translate:
-  written attribute labels, literal `message`s in their DSL and in the app's
+  written attribute labels, literal `message`s in their DSL (and in the embedded
+  resources they use as attribute or argument types) and in the app's
   own validation, change and preparation modules they use, every literal
   `message:` in the app's own source (`extract_messages_from`) go to
   `text_domain`. The sentences Ash ships in its own template and the ones for
@@ -31,6 +32,49 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
       else: {:ok, dsl_state}
   end
 
+  # Embedded resources are never listed in a domain, but their `message:`s are
+  # shown through the resources that use them as an attribute or argument type
+  # (also inside `{:array, _}`, and in each other). `seen` stops a cycle.
+  defp embedded_resources(resources, seen \\ []) do
+    found =
+      for resource <- resources,
+          type <- type_names(resource),
+          is_atom(type) and type not in seen,
+          Code.ensure_compiled(type) == {:module, type},
+          Ash.Resource.Info.resource?(type),
+          Ash.Resource.Info.embedded?(type),
+          uniq: true,
+          do: type
+
+    if found == [], do: seen, else: embedded_resources(found, seen ++ found)
+  end
+
+  defp type_names(resource) do
+    arguments =
+      for action <- Ash.Resource.Info.actions(resource), arg <- action.arguments, do: arg
+
+    attributes = Ash.Resource.Info.attributes(resource)
+
+    for %{type: type, constraints: constraints} <- attributes ++ arguments,
+        found <- types_in(type, constraints),
+        do: found
+  end
+
+  # The type itself, and every type its constraints name: an array's items, the
+  # `fields` of a map, keyword or struct, the `types` of a union.
+  defp types_in({:array, type}, constraints), do: types_in(type, constraints[:items] || [])
+
+  defp types_in(type, constraints) do
+    named = List.wrap(constraints[:fields]) ++ List.wrap(constraints[:types])
+
+    [
+      type
+      | Enum.flat_map(named, fn {_name, config} ->
+          types_in(config[:type], config[:constraints] || [])
+        end)
+    ]
+  end
+
   defp mark(dsl_state, backend) do
     text_domain = Transformer.get_option(dsl_state, [:gettext], :text_domain, "ash")
     errors? = Transformer.get_option(dsl_state, [:gettext], :translate_errors?, true)
@@ -44,10 +88,14 @@ defmodule AshGettext.Domain.Transformers.MarkTexts do
 
     scanned = MapSet.new(scan.messages, &{&1.msgid, &1.path})
 
-    texts =
+    resources =
       for %{resource: resource} <- Transformer.get_entities(dsl_state, [:resources]),
           Code.ensure_compiled(resource) == {:module, resource},
           AshGettext.Resource in Spark.extensions(resource),
+          do: resource
+
+    texts =
+      for resource <- resources ++ embedded_resources(resources),
           text <- Extractor.resource_messages(resource, errors?, scan.paths),
           not MapSet.member?(scanned, {text.msgid, text.path}),
           do: text
