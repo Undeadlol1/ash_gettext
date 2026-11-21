@@ -112,4 +112,30 @@ defmodule Mix.Tasks.AshGettext.InstallTest do
 
     assert stderr =~ "could not be wired"
   end
+
+  test "names each resource that uses a base module it could not wire", %{dir: dir} do
+    File.write!(Path.join(dir, "lib/base.ex"), """
+    defmodule MyApp.Resource do
+      defmacro __using__(opts) do
+        quote do
+          use Ash.Resource, unquote(opts)
+        end
+      end
+    end
+    """)
+
+    File.write!(
+      Path.join(dir, "lib/gadget.ex"),
+      "defmodule MyApp.Gadget do\n  use MyApp.Resource, domain: MyApp.Shop\nend\n"
+    )
+
+    stderr =
+      capture_io(:stderr, fn ->
+        File.cd!(dir, fn -> capture_io(fn -> Install.run(["--apply"]) end) end)
+      end)
+
+    assert stderr =~ "lib/gadget.ex"
+    assert stderr =~ "AshGettext.Resource"
+    assert read(dir, "gadget") =~ "use MyApp.Resource, domain: MyApp.Shop"
+  end
 end
