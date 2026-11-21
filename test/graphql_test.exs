@@ -99,6 +99,11 @@ defmodule AshGettext.GraphqlTest do
              ] = data["createNote"]["errors"]
     end
 
+    test "keeps its own message when its code is one the transport has a sentence for" do
+      assert %{"message" => "Вес должен быть не менее 30 кг", "code" => "not_found"} =
+               create_note(~s|title: "lost"|, @russian)
+    end
+
     test "reaches an English reader in English" do
       assert %{"message" => "Weight must be at least 30 kg", "code" => "weight_too_low"} =
                create_note(~s|title: "heavy"|, @english)

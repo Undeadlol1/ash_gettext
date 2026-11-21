@@ -58,7 +58,8 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
 
     The rules are `AshGettext.TransportText`'s: the `detail` is looked up as
     a msgid, with `meta` as its values, then the written sentence for the
-    error's `code`. With neither, the error comes back unchanged.
+    error's `code`, except for an `AshGettext.Error`, which keeps its own message.
+    With neither, the error comes back unchanged.
     """
     @spec translate_error(term(), map()) :: term()
     def translate_error(%AshJsonApi.Error{} = error, %{domain: domain} = context) do
@@ -66,7 +67,7 @@ if Code.ensure_loaded?(AshJsonApi.Error) do
         error
         | detail:
             AshGettext.TransportText.translate(error.detail, domain,
-              code: error.code,
+              code: if(error.internal_description != :ash_gettext_error, do: error.code),
               bindings: Map.put(carried(error, context[:resource]), :id, error.id),
               actor: request_actor(),
               remember_in: @serving

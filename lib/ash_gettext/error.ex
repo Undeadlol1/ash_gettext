@@ -88,7 +88,9 @@ if Code.ensure_loaded?(AshJsonApi.ToJsonApiError) do
         code: to_string(error.code),
         detail: error.message,
         source_pointer: error.field && "/data/attributes/#{error.field}",
-        meta: Map.new(error.vars)
+        meta: Map.new(error.vars),
+        # Tells `AshGettext.JsonApi` this message is not the transport's to replace.
+        internal_description: :ash_gettext_error
       }
     end
   end
@@ -102,7 +104,9 @@ if Code.ensure_loaded?(AshGraphql.Error) do
         short_message: error.message,
         code: to_string(error.code),
         vars: Map.new(error.vars),
-        fields: List.wrap(error.field)
+        fields: List.wrap(error.field),
+        # Tells `AshGettext.Graphql` this message is not the transport's to replace.
+        ash_gettext_error: true
       }
     end
   end

@@ -26,6 +26,7 @@ defmodule AshGettextFixture.ApiNote do
           primary?(true)
           accept([:title, :weight])
           validate({AshGettextFixture.MinimumWeight, []})
+          validate({AshGettextFixture.LostTitle, []})
         end
       end
 
