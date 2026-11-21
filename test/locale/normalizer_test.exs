@@ -24,6 +24,14 @@ defmodule AshGettext.Locale.NormalizerTest do
       assert Normalizer.normalize("de_DE", @supported, "en") == "en"
     end
 
+    test "keeps a region catalog the backend ships, with either separator" do
+      supported = ["en", "pt", "pt_BR"]
+
+      assert Normalizer.normalize("pt_BR", supported, "en") == "pt_BR"
+      assert Normalizer.normalize("pt-BR", supported, "en") == "pt_BR"
+      assert Normalizer.normalize("pt_PT", supported, "en") == "pt"
+    end
+
     test "falls back for nil" do
       assert Normalizer.normalize(nil, @supported, "en") == "en"
     end

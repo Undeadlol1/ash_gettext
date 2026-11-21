@@ -3,7 +3,7 @@ defmodule AshGettext.Locale.Normalizer do
   Reduce a locale as it arrives in the wild to one the catalogs actually have.
 
   Clients send `ru_RU`, `en-US`, `ru`, or nothing at all. Catalogs are keyed by
-  the language subtag. This module is the single place that reconciles the two,
+  the language subtag, or by language and region. This module is the single place that reconciles the two,
   so no call site has to decide what `en_KZ` means.
 
   `AshGettext.Info.language/2` runs it on what the resolver returns.
@@ -14,8 +14,10 @@ defmodule AshGettext.Locale.Normalizer do
   @doc """
   Reduce `locale` to a supported locale, or `default` when it maps to none.
 
-  The region and script are dropped, so `"ru_RU"` and `"ru-Cyrl"` both become
-  `"ru"`. A `nil` locale returns `default`. The result is always a member of
+  The whole locale is used when it is supported (`-` read as `_`), so
+  `"pt-BR"` becomes `"pt_BR"` when that catalog exists. Otherwise the region
+  and script are dropped, so `"ru_RU"` and `"ru-Cyrl"` both become `"ru"`.
+  A `nil` locale returns `default`. The result is always a member of
   `supported` or `default` itself.
 
       iex> AshGettext.Locale.Normalizer.normalize("ru_RU", ["en", "ru"], "en")
@@ -26,14 +28,25 @@ defmodule AshGettext.Locale.Normalizer do
 
       iex> AshGettext.Locale.Normalizer.normalize(nil, ["en", "ru"], "en")
       "en"
+
+      iex> AshGettext.Locale.Normalizer.normalize("pt-BR", ["en", "pt", "pt_BR"], "en")
+      "pt_BR"
+
+      iex> AshGettext.Locale.Normalizer.normalize("pt_PT", ["en", "pt", "pt_BR"], "en")
+      "pt"
   """
   @spec normalize(String.t() | nil, [String.t()], String.t()) :: String.t()
   def normalize(nil, _supported, default), do: default
 
   def normalize(locale, supported, default) when is_binary(locale) do
+    whole = String.replace(locale, "-", "_")
     language = language_code(locale)
 
-    if language in supported, do: language, else: default
+    cond do
+      whole in supported -> whole
+      language in supported -> language
+      true -> default
+    end
   end
 
   @doc """
