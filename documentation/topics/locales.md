@@ -34,9 +34,12 @@ actor.
 
 ## What the answer turns into
 
-The answer is matched to a locale your catalogs have. A region catalog wins
-when you have one (`pt-BR` becomes `pt_BR`); otherwise the region is cut off,
-so `ru_RU` and `en-US` become `ru` and `en`. A language with no catalog becomes `default_locale`.
+The answer is matched to a locale your catalogs have. Anything after a `.` or
+`@` is dropped, then the longest match wins: `zh-Hant-TW` tries `zh_Hant_TW`,
+then `zh_Hant`, then `zh`. Case does not matter and `-` reads as `_`, so
+`PT-br` becomes `pt_BR`. A language with no catalog becomes `default_locale`.
+Gettext does not fall back from a region catalog to the language catalog message
+by message, so a region catalog must hold every message.
 `AshGettext.known_locales/1` reads the languages from the backend's `priv`
 directory, so adding a language directory is all it takes to support one.
 

@@ -32,6 +32,27 @@ defmodule AshGettext.Locale.NormalizerTest do
       assert Normalizer.normalize("pt_PT", supported, "en") == "pt"
     end
 
+    test "tries the script catalog, then the language" do
+      supported = ["en", "pt", "pt_BR", "zh", "zh_Hant"]
+
+      assert Normalizer.normalize("zh-Hant-TW", supported, "en") == "zh_Hant"
+      assert Normalizer.normalize("zh-Hans-CN", supported, "en") == "zh"
+    end
+
+    test "ignores case and returns the spelling from the supported list" do
+      supported = ["en", "pt", "pt_BR"]
+
+      assert Normalizer.normalize("PT-br", supported, "en") == "pt_BR"
+      assert Normalizer.normalize("EN", supported, "en") == "en"
+    end
+
+    test "drops an encoding or modifier suffix" do
+      supported = ["en", "pt", "pt_BR"]
+
+      assert Normalizer.normalize("pt_BR.UTF-8", supported, "en") == "pt_BR"
+      assert Normalizer.normalize("pt@euro", supported, "en") == "pt"
+    end
+
     test "falls back for nil" do
       assert Normalizer.normalize(nil, @supported, "en") == "en"
     end
